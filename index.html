@@ -1,0 +1,2718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UN & Canadian Provinces Interactive Map Quiz</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- D3.js v7 and TopoJSON libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+    <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+    
+    <script>
+        /*
+         * AGE-OF-SAIL CHART THEME
+         * -----------------------
+         * Parchment surfaces, iron-gall ink text and brass/moss/vermilion
+         * accents, so the whole app reads like a navigator's chart table
+         * rather than a dark-mode dashboard.
+         */
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        // Aged paper — the base surface of everything
+                        parchment: {
+                            50:  '#fbf6e9',
+                            100: '#f6ecd6',
+                            200: '#efe0c0',
+                            300: '#e6d3a8',
+                            400: '#dcc190',
+                            500: '#cfae77',
+                            600: '#bd9760',
+                            700: '#a37e4b',
+                            800: '#7f6141',
+                            900: '#5f452a',
+                            950: '#3a2a19'
+                        },
+                        // Iron-gall / sepia writing ink
+                        ink: {
+                            300: '#b3a382',
+                            400: '#9b8663',
+                            500: '#7d6844',
+                            600: '#5f4c31',
+                            700: '#4a3a24',
+                            800: '#3a2c19',
+                            900: '#2a2013'
+                        },
+                        // Verdigris sea tints
+                        sea: {
+                            100: '#dce8e2',
+                            200: '#c3d7d0',
+                            300: '#a5c2b9',
+                            400: '#84aa9f',
+                            500: '#679288',
+                            600: '#4a7080',
+                            700: '#375862'
+                        },
+                        // Polished brass fittings
+                        brass: {
+                            300: '#e3c383',
+                            400: '#d0a75c',
+                            500: '#b98b3f',
+                            600: '#9a6f30',
+                            700: '#7a5626',
+                            800: '#5c411d'
+                        },
+                        // Ochre / old gold
+                        ochre: {
+                            200: '#f0dcae',
+                            300: '#e3c383',
+                            400: '#d8b04a',
+                            500: '#bd9130',
+                            600: '#9c7524',
+                            700: '#7d5c1c'
+                        },
+                        // Moss green — "first try" correct
+                        moss: {
+                            100: '#e4ecd6',
+                            300: '#a9bd85',
+                            400: '#87a163',
+                            500: '#6b8449',
+                            600: '#546a38',
+                            700: '#3f5029',
+                            900: '#2c3a1d'
+                        },
+                        // Burnt sienna — "third try"
+                        sienna: {
+                            300: '#d99a6c',
+                            400: '#c2703a',
+                            500: '#a85a2c',
+                            600: '#8a4822'
+                        },
+                        // Vermilion — wrong / revealed
+                        vermilion: {
+                            300: '#e0937f',
+                            400: '#c4553d',
+                            500: '#ad3f2a',
+                            600: '#8f3122',
+                            700: '#71261a'
+                        },
+                        map: {
+                            water: '#cfe0da',
+                            land: '#e7d4a8',
+                            stroke: '#7a5f3a',
+                            hover: '#f6e3ae',
+                            correct: '#6b8449',
+                            wrong: '#ad3f2a',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['"EB Garamond"', 'Georgia', 'serif'],
+                        display: ['"Cormorant Garamond"', 'Georgia', 'serif'],
+                        fell: ['"IM Fell English"', 'Georgia', 'serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* --------------------------------------------------------------
+           CHART TABLE — SURFACES, TYPE & ORNAMENT
+           -------------------------------------------------------------- */
+        body {
+            font-family: 'EB Garamond', Georgia, serif;
+            user-select: none;
+            overflow: hidden;
+            color: #3a2c19;
+            background-color: #f2e6ca;
+            /* Aged paper: warm mottling + fine grain */
+            background-image:
+                radial-gradient(ellipse at 18% 8%, rgba(255, 251, 240, 0.95), transparent 55%),
+                radial-gradient(ellipse at 85% 92%, rgba(176, 141, 82, 0.40), transparent 62%),
+                radial-gradient(circle at 62% 34%, rgba(210, 180, 122, 0.32), transparent 45%),
+                url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23g)' opacity='0.3'/%3E%3C/svg%3E");
+            background-blend-mode: normal, multiply, multiply, overlay;
+        }
+
+        /* Land is drawn in buff with an inked coastline, like an engraved chart.
+           --map-stroke is driven from the zoom handler so the ink grows
+           ever finer as the chart is magnified instead of turning into bars. */
+        .map-country {
+            fill: #e7d4a8;
+            stroke: #7a5f3a;
+            stroke-width: var(--map-stroke, 0.6px);
+            transition: fill 0.2s ease, stroke 0.2s ease, stroke-width 0.2s ease;
+            cursor: pointer;
+        }
+
+        /* Candle-lit highlight while pointing at a coastline.
+           NOTE: this only tints the shape — never reveals the place name. */
+        .map-country:hover {
+            fill: #f6e3ae !important;
+            stroke: #2a2013;
+            stroke-width: calc(var(--map-stroke, 0.6px) * 1.9);
+            filter: drop-shadow(0 0 5px rgba(154, 111, 48, 0.55));
+        }
+
+        /* Brief swell of the pen when a region is struck */
+        .map-country.pulse-tight {
+            stroke-width: calc(var(--map-stroke, 0.6px) * 3.7);
+        }
+
+        .map-country.guessed-correct {
+            fill: #7c9a55 !important;
+            stroke: #4d6332;
+        }
+
+        /* Attempt Color Coding */
+        .map-country.guessed-1st {
+            fill: #7c9a55 !important;
+            stroke: #4d6332;
+        }
+
+        .map-country.guessed-2nd {
+            fill: #d8b04a !important;
+            stroke: #8f6c1f;
+        }
+
+        .map-country.guessed-3rd {
+            fill: #c2703a !important;
+            stroke: #8a4822;
+        }
+
+        .map-country.guessed-failed {
+            fill: #b4472f !important;
+            stroke: #7d2b1c;
+            animation: pulse-failed 1s infinite alternate;
+        }
+
+        @keyframes pulse-failed {
+            0% { fill: #b4472f; }
+            100% { fill: #8a2f1e; }
+        }
+
+        /* On-map text labels: ink on a paper halo, sized per region by JS
+           so the name stays inside small countries instead of spilling out */
+        .map-label {
+            font-size: 8px;
+            font-weight: 600;
+            fill: #2f2312;
+            stroke: #f7eeda;
+            stroke-width: 2.4px;
+            paint-order: stroke fill;
+            pointer-events: none;
+            text-anchor: middle;
+            dominant-baseline: central;
+            font-family: 'EB Garamond', Georgia, serif;
+            letter-spacing: 0.02em;
+            transition: opacity 0.3s ease;
+        }
+
+        /* Micro-nations (Vatican, Nauru, Dominica…) carry a screen-sized pin
+           so they stay findable and clickable even when their polygon is
+           barely a speck; the pin retires once the land itself is visible. */
+        .map-marker {
+            stroke-width: 1px;
+            transition: fill 0.2s ease, stroke 0.2s ease;
+        }
+
+        .map-marker:hover {
+            filter: none;
+            stroke-width: 1.6px;
+        }
+
+        /* Chart-inset mini-map, top right */
+        #minimap {
+            display: block;
+            background: rgba(247, 238, 218, 0.85);
+            border-radius: 0.5rem;
+            cursor: crosshair;
+        }
+
+        #minimap .minimap-land {
+            fill: #e7d4a8;
+            stroke: #7a5f3a;
+            stroke-width: 0.5;
+            vector-effect: non-scaling-stroke;
+        }
+
+        #minimap .minimap-view {
+            fill: rgba(194, 112, 58, 0.18);
+            stroke: #c2703a;
+            stroke-width: 1.2;
+            pointer-events: none;
+        }
+
+        /* Advanced mode disables persistent green fill */
+        .advanced-mode .map-country.guessed-correct,
+        .advanced-mode .map-country.guessed-1st,
+        .advanced-mode .map-country.guessed-2nd,
+        .advanced-mode .map-country.guessed-3rd,
+        .advanced-mode .map-country.guessed-failed {
+            fill: #e7d4a8 !important;
+            stroke: #7a5f3a;
+        }
+
+        .map-country.guessed-wrong {
+            fill: #c4553d !important;
+            stroke: #7d2b1c;
+            animation: pulse-wrong 0.6s ease-in-out;
+        }
+
+        @keyframes pulse-wrong {
+            0% { opacity: 1; }
+            50% { opacity: 0.4; }
+            100% { opacity: 1; }
+        }
+
+        .map-water {
+            fill: #cfe0da;
+        }
+
+        .graticule {
+            fill: none;
+            stroke: #93b3a8;
+            stroke-width: calc(var(--map-stroke, 0.6px) * 0.667);
+            stroke-dasharray: 2 2;
+            opacity: 0.55;
+        }
+
+        /* Engraved sea titles: letterpressed into the chart, decoration only */
+        .ocean-label {
+            fill: #5c411d;
+            stroke: rgba(247, 238, 218, 0.9);
+            stroke-width: 1.2px;
+            paint-order: stroke fill;
+            text-anchor: middle;
+            letter-spacing: 0.34em;
+            font-family: 'IM Fell English', Georgia, serif;
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        /* Parchment panels in place of the old glassmorphism */
+        .glass-panel {
+            background: rgba(247, 237, 214, 0.93);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(96, 72, 38, 0.42);
+            box-shadow: 0 12px 28px rgba(74, 56, 30, 0.20), inset 0 1px 0 rgba(255, 255, 255, 0.55);
+        }
+
+        .glass-card {
+            background: rgba(252, 246, 232, 0.78);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(122, 95, 55, 0.30);
+            box-shadow: 0 6px 16px rgba(74, 56, 30, 0.12);
+        }
+
+        /* Custom scrollbar — worn leather */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        /* Form controls: the OS default blue fights the chart palette */
+        input[type="checkbox"] {
+            accent-color: #9a6f30;
+        }
+
+        select {
+            color-scheme: light;
+        }
+
+        input::placeholder {
+            color: #9b8663;
+            font-style: italic;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(190, 164, 116, 0.30);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(127, 97, 65, 0.75);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #7a5626;
+        }
+
+        /* Modal entry animations (declared here so they survive the CDN build) */
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(-6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fade-in 0.25s ease-out both;
+        }
+
+        @keyframes scale-up {
+            from { opacity: 0; transform: scale(0.96); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .animate-scale-up {
+            animation: scale-up 0.22s ease-out both;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col justify-between relative overflow-hidden bg-parchment-100 text-ink-800">
+
+    <!-- TOP NAVIGATION BAR -->
+    <header class="h-16 px-4 md:px-6 glass-panel z-20 flex items-center justify-between shadow-xl shrink-0">
+        <div class="flex items-center space-x-3">
+            <div class="p-2 bg-gradient-to-tr from-brass-600 to-ink-700 rounded-xl text-parchment-50 shadow-lg shadow-ink-900/20">
+                <i class="fa-solid me-0 fa-earth-americas text-xl"></i>
+            </div>
+            <div>
+                <h1 class="font-display font-bold text-lg md:text-xl tracking-tight text-ink-900 flex items-center gap-2">
+                    GeoMaster <span class="text-xs font-normal px-2 py-0.5 rounded-full bg-brass-500/20 text-brass-700 border border-brass-500/30">UN & Canada Edition</span>
+                </h1>
+                <p class="text-xs text-ink-500 hidden sm:block">Interactive Global & Canadian Geography Explorer</p>
+            </div>
+        </div>
+
+        <!-- Right Header Action Controls -->
+        <div class="flex items-center space-x-2 md:space-x-4">
+            <!-- Audio Toggle -->
+            <button id="btn-sound" onclick="toggleSound()" class="p-2.5 rounded-xl bg-parchment-400/80 hover:bg-parchment-500 text-ink-700 hover:text-ink-900 transition-all border border-parchment-700/60" title="Toggle Sound FX">
+                <i id="icon-sound" class="fa-solid fa-volume-high"></i>
+            </button>
+
+            <!-- Custom Country Selector Button -->
+            <button onclick="openCustomSelectionModal()" class="px-3.5 py-2 rounded-xl bg-moss-600/20 hover:bg-moss-600/30 text-moss-700 hover:text-moss-100 border border-moss-500/40 text-xs font-semibold flex items-center gap-2 transition-all shadow-lg shadow-ink-900/20" title="Choose specific countries to practice">
+                <i class="fa-solid fa-list-check text-moss-600"></i>
+                <span class="inline">Select Countries</span>
+                <span id="badge-custom-count" class="hidden text-[10px] bg-moss-500 text-parchment-50 font-extrabold px-1.5 py-0.5 rounded-full"></span>
+            </button>
+
+            <!-- Show Labels Toggle Button -->
+            <button id="btn-toggle-labels" onclick="toggleLabelsFromHeader()" class="px-3.5 py-2 rounded-xl bg-parchment-400/80 hover:bg-parchment-500 text-ink-700 hover:text-ink-900 border border-parchment-700/60 text-xs font-semibold flex items-center gap-2 transition-all" title="Toggle On-Map Area Labels">
+                <i class="fa-solid fa-tag text-ochre-600"></i>
+                <span class="hidden md:inline">Labels: <span id="txt-label-status" class="text-moss-600">ON</span></span>
+            </button>
+
+            <!-- Mini-Map Toggle -->
+            <button id="btn-toggle-minimap" onclick="toggleMinimap()" class="p-2.5 rounded-xl bg-parchment-400/80 hover:bg-parchment-500 text-ink-700 hover:text-ink-900 transition-all border border-parchment-700/60" title="Toggle Mini-Map">
+                <i class="fa-solid fa-map-location-dot text-sea-600"></i>
+            </button>
+
+            <!-- Stats Panel Toggle -->
+            <button id="btn-toggle-stats" onclick="toggleStatsHud()" class="p-2.5 rounded-xl bg-parchment-400/80 hover:bg-parchment-500 text-ink-700 hover:text-ink-900 transition-all border border-parchment-700/60" title="Toggle Stats Panel">
+                <i class="fa-solid fa-table-columns text-brass-600"></i>
+            </button>
+
+            <!-- Mode / Settings Button -->
+            <button onclick="openSettingsModal()" class="px-3.5 py-2 rounded-xl bg-parchment-400/80 hover:bg-parchment-500 text-ink-700 hover:text-ink-900 text-xs font-semibold flex items-center gap-2 border border-parchment-700/60 transition-all">
+                <i class="fa-solid fa-sliders text-brass-600"></i>
+                <span class="hidden md:inline">Quiz Settings</span>
+            </button>
+
+            <!-- Reset / Restart Quiz -->
+            <button onclick="restartQuiz()" class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-brass-600 to-sea-600 hover:from-brass-500 hover:to-sea-500 text-parchment-50 text-xs font-semibold shadow-md shadow-ink-900/20 transition-all flex items-center gap-2">
+                <i class="fa-solid fa-rotate-right"></i>
+                <span>Restart</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT CONTAINER -->
+    <div class="relative flex-1 w-full h-full overflow-hidden flex flex-col md:flex-row">
+        
+        <!-- TARGET QUESTION HUD OVERLAY (TOP CENTER) -->
+        <div class="absolute top-4 left-1/2 -translate-x-1/2 z-10 w-11/12 max-w-xl pointer-events-auto">
+            <div class="glass-panel rounded-2xl p-4 shadow-2xl border border-ink-900/15 flex flex-col sm:flex-row items-center justify-between gap-4">
+                
+                <div class="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-start">
+                    <div class="flex flex-col">
+                        <div class="flex items-center gap-2 mb-0.5">
+                            <span class="text-[10px] uppercase tracking-widest font-bold text-brass-600 flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-moss-500 animate-pulse"></span>
+                                Find Location
+                            </span>
+                            <!-- Attempt indicators -->
+                            <div id="attempt-dots" class="flex items-center gap-1 ml-2">
+                                <span class="w-2.5 h-2.5 rounded-full bg-moss-500" title="Attempt 1"></span>
+                                <span class="w-2.5 h-2.5 rounded-full bg-ochre-400" title="Attempt 2"></span>
+                                <span class="w-2.5 h-2.5 rounded-full bg-sienna-500" title="Attempt 3"></span>
+                            </div>
+                        </div>
+                        <h2 id="target-country-name" class="font-display text-xl sm:text-2xl font-black text-ink-900 tracking-wide">
+                            Loading Map...
+                        </h2>
+                        <span id="target-subtext" class="text-xs text-ink-500 font-medium">Preparing geographical database</span>
+                    </div>
+                </div>
+
+                <!-- Action Controls: Hint & Skip -->
+                <div class="flex items-center gap-2 w-full sm:w-auto justify-end shrink-0">
+                    <button id="btn-hint" onclick="useHint()" class="px-3 py-1.5 rounded-lg bg-ochre-500/10 hover:bg-ochre-500/20 text-ochre-700 border border-ochre-500/30 text-xs font-semibold transition-all flex items-center gap-1.5">
+                        <i class="fa-solid fa-lightbulb"></i>
+                        <span>Hint (<span id="hint-count">3</span>)</span>
+                    </button>
+                    <button onclick="skipTarget()" class="px-3 py-1.5 rounded-lg bg-parchment-400 hover:bg-parchment-500 text-ink-700 text-xs font-medium border border-parchment-700 transition-all">
+                        Skip <i class="fa-solid fa-forward text-xs ml-1"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Reveal & Clue Banner (Hidden by default) -->
+            <div id="hint-banner" class="hidden mt-2 glass-card rounded-xl p-3 text-xs text-ochre-700 border border-ochre-500/30 flex items-center justify-between animate-fade-in">
+                <div class="flex items-center gap-2">
+                    <i id="hint-icon" class="fa-solid fa-compass text-ochre-600 text-sm"></i>
+                    <span id="hint-text">Target continent: North America</span>
+                </div>
+                <button onclick="closeHintBanner()" class="text-ink-500 hover:text-ink-900"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+        </div>
+
+        <!-- STATS & PROGRESS HUD (TOP LEFT) -->
+        <div id="stats-hud" class="absolute top-4 left-4 z-10 hidden lg:flex flex-col gap-2 pointer-events-auto">
+            <div class="glass-card rounded-xl p-3 flex items-center gap-3 border border-parchment-700/50 min-w-[170px]">
+                <div class="p-2 bg-moss-500/20 text-moss-600 rounded-lg">
+                    <i class="fa-solid fa-trophy text-lg"></i>
+                </div>
+                <div>
+                    <div class="text-[10px] text-ink-500 uppercase tracking-wider font-semibold">Mastery Score</div>
+                    <div class="text-lg font-bold text-ink-900"><span id="stat-mastery-score">100</span>%</div>
+                </div>
+            </div>
+
+            <div class="glass-card rounded-xl p-3 flex items-center gap-3 border border-parchment-700/50 min-w-[170px]">
+                <div class="p-2 bg-brass-500/20 text-brass-600 rounded-lg">
+                    <i class="fa-solid fa-bullseye text-lg"></i>
+                </div>
+                <div>
+                    <div class="text-[10px] text-ink-500 uppercase tracking-wider font-semibold">Completed</div>
+                    <div class="text-lg font-bold text-ink-900"><span id="stat-score">0</span> / <span id="stat-total">0</span></div>
+                </div>
+            </div>
+
+            <div class="glass-card rounded-xl p-3 flex items-center gap-3 border border-parchment-700/50 min-w-[170px]">
+                <div class="p-2 bg-ochre-500/20 text-ochre-600 rounded-lg">
+                    <i class="fa-solid fa-fire text-lg"></i>
+                </div>
+                <div>
+                    <div class="text-[10px] text-ink-500 uppercase tracking-wider font-semibold">Streak</div>
+                    <div class="text-lg font-bold text-ink-900" id="stat-streak">0 🔥</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT OVERLAY COLUMN: advanced badge + mini-map inset -->
+        <div class="absolute top-4 right-4 z-10 flex flex-col items-end gap-2 pointer-events-auto">
+            <div id="badge-advanced-mode" class="hidden glass-card rounded-xl px-3 py-1.5 border border-ochre-500/40 text-ochre-700 text-xs font-bold flex items-center gap-2">
+                <i class="fa-solid fa-brain text-ochre-600"></i>
+                <span>ADVANCED MODE (No Map Highlighting)</span>
+            </div>
+
+            <!-- Mini-map: click or drag to jump the main chart -->
+            <div id="minimap-wrap" class="glass-panel rounded-xl p-1.5 border border-parchment-700/60 shadow-xl">
+                <svg id="minimap" width="158" height="96" class="block select-none" title="Click or drag to jump"></svg>
+            </div>
+        </div>
+
+        <!-- MAP ZOOM & CONTROLS BAR (BOTTOM RIGHT) -->
+        <div class="absolute bottom-6 right-6 z-10 flex flex-col gap-2 pointer-events-auto">
+            <button onclick="zoomInMap()" class="w-10 h-10 rounded-xl glass-panel hover:bg-parchment-400 text-ink-900 flex items-center justify-center shadow-lg transition-all border border-parchment-700/60" title="Zoom In (+)">
+                <i class="fa-solid fa-plus"></i>
+            </button>
+            <button onclick="zoomOutMap()" class="w-10 h-10 rounded-xl glass-panel hover:bg-parchment-400 text-ink-900 flex items-center justify-center shadow-lg transition-all border border-parchment-700/60" title="Zoom Out (-)">
+                <i class="fa-solid fa-minus"></i>
+            </button>
+            <button onclick="resetMapZoom()" class="w-10 h-10 rounded-xl glass-panel hover:bg-parchment-400 text-ink-900 flex items-center justify-center shadow-lg transition-all border border-parchment-700/60" title="Reset Projection View">
+                <i class="fa-solid fa-compress"></i>
+            </button>
+        </div>
+
+        <!-- SVG MAP CANVAS CONTAINER -->
+        <div id="map-container" class="w-full h-full bg-parchment-100 cursor-grab active:cursor-grabbing relative overflow-hidden">
+            <!-- Loading Indicator Overlay -->
+            <div id="map-loader" class="absolute inset-0 z-30 bg-parchment-100/95 backdrop-blur-md flex flex-col items-center justify-center gap-4 transition-opacity duration-500">
+                <div class="w-14 h-14 border-4 border-brass-500/20 border-t-sky-400 rounded-full animate-spin"></div>
+                <div class="text-center">
+                    <h3 class="text-lg font-bold text-ink-900 font-display">Generating Map Grid</h3>
+                    <p class="text-xs text-ink-500 mt-1">Loading UN countries & Canadian provincial boundaries...</p>
+                </div>
+            </div>
+
+            <!-- Compass rose: chart-table ornament, bottom-left away from the zoom controls -->
+            <svg class="pointer-events-none select-none absolute bottom-5 left-5 z-10 w-24 h-24 opacity-90" viewBox="0 0 120 120" aria-hidden="true">
+                <circle cx="60" cy="60" r="46" fill="rgba(251,246,233,0.55)" stroke="#7a5626" stroke-width="1.4"/>
+                <circle cx="60" cy="60" r="38" fill="none" stroke="#a37e4b" stroke-width="1" stroke-dasharray="1.5 3.5"/>
+                <!-- ordinal (shorter) points -->
+                <g stroke="#7a5626" stroke-width="0.9">
+                    <g transform="rotate(45 60 60)">
+                        <polygon points="60,34 64.5,60 60,60" fill="#f7eeda"/>
+                        <polygon points="60,34 55.5,60 60,60" fill="#c9b48a"/>
+                    </g>
+                    <g transform="rotate(135 60 60)">
+                        <polygon points="60,34 64.5,60 60,60" fill="#f7eeda"/>
+                        <polygon points="60,34 55.5,60 60,60" fill="#c9b48a"/>
+                    </g>
+                    <g transform="rotate(225 60 60)">
+                        <polygon points="60,34 64.5,60 60,60" fill="#f7eeda"/>
+                        <polygon points="60,34 55.5,60 60,60" fill="#c9b48a"/>
+                    </g>
+                    <g transform="rotate(315 60 60)">
+                        <polygon points="60,34 64.5,60 60,60" fill="#f7eeda"/>
+                        <polygon points="60,34 55.5,60 60,60" fill="#c9b48a"/>
+                    </g>
+                </g>
+                <!-- cardinal (long) points, split light/dark like an engraved rose -->
+                <g stroke="#7a5626" stroke-width="1">
+                    <g transform="rotate(90 60 60)">
+                        <polygon points="60,20 66,60 60,60" fill="#f7eeda"/>
+                        <polygon points="60,20 54,60 60,60" fill="#332614"/>
+                    </g>
+                    <g transform="rotate(180 60 60)">
+                        <polygon points="60,20 66,60 60,60" fill="#f7eeda"/>
+                        <polygon points="60,20 54,60 60,60" fill="#332614"/>
+                    </g>
+                    <g transform="rotate(270 60 60)">
+                        <polygon points="60,20 66,60 60,60" fill="#f7eeda"/>
+                        <polygon points="60,20 54,60 60,60" fill="#332614"/>
+                    </g>
+                    <g>
+                        <polygon points="60,20 66,60 60,60" fill="#f7eeda"/>
+                        <polygon points="60,20 54,60 60,60" fill="#332614"/>
+                    </g>
+                </g>
+                <circle cx="60" cy="60" r="3" fill="#7a5626"/>
+                <g font-family="'IM Fell English', Georgia, serif" font-size="13" fill="#5c411d" text-anchor="middle" dominant-baseline="central">
+                    <text x="60" y="8">N</text>
+                    <text x="60" y="112">S</text>
+                    <text x="112" y="60">E</text>
+                    <text x="8" y="60">W</text>
+                </g>
+            </svg>
+
+            <!-- D3 Interactive SVG target -->
+            <svg id="svg-map" class="w-full h-full block"></svg>
+        </div>
+    </div>
+
+    <!-- BOTTOM STATUS BAR -->
+    <footer class="h-12 px-4 md:px-6 glass-panel z-20 flex items-center justify-between text-xs text-ink-500 shrink-0 border-t border-parchment-600">
+        <!-- Filter & Canadian Provinces Status -->
+        <div class="flex items-center space-x-4">
+            <span class="flex items-center gap-1.5">
+                <i class="fa-solid fa-layer-group text-brass-600"></i>
+                <span id="label-region-mode">Region: World & Canadian Provinces</span>
+            </span>
+            <span class="hidden sm:inline-block text-ink-400">|</span>
+            <span class="hidden sm:flex items-center gap-1.5">
+                <i class="fa-solid fa-map-location-dot text-moss-600"></i>
+                <span id="label-total-targets">206 Total Entities</span>
+            </span>
+        </div>
+
+        <!-- Timer / Stopwatch -->
+        <div class="flex items-center space-x-2 font-mono text-ink-700 bg-parchment-200/80 px-3 py-1 rounded-lg border border-parchment-600">
+            <i class="fa-regular fa-clock text-brass-600"></i>
+            <span id="quiz-timer">00:00</span>
+        </div>
+    </footer>
+
+    <!-- MODAL: SETTINGS & MODE CONFIGURATION -->
+    <div id="modal-settings" class="fixed inset-0 z-50 bg-ink-900/75 backdrop-blur-md flex items-center justify-center p-4 hidden animate-fade-in">
+        <div class="glass-panel w-full max-w-lg rounded-2xl p-6 shadow-2xl border border-parchment-700 flex flex-col gap-6">
+            <div class="flex items-center justify-between border-b border-parchment-600 pb-4">
+                <div class="flex items-center gap-3">
+                    <div class="p-2.5 rounded-xl bg-brass-500/20 text-brass-600">
+                        <i class="fa-solid fa-gear text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-ink-900 font-display">Quiz Configuration</h3>
+                        <p class="text-xs text-ink-500">Customize target scope & difficulty settings</p>
+                    </div>
+                </div>
+                <button onclick="closeSettingsModal()" class="text-ink-500 hover:text-ink-900 p-2 text-lg"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="space-y-4">
+                <!-- Show Area Labels Checkbox -->
+                <div class="glass-card p-4 rounded-xl border border-parchment-600 flex items-start gap-3 cursor-pointer hover:border-brass-500/40 transition-all" onclick="toggleLabelsCheckbox(event)">
+                    <input type="checkbox" id="chk-show-labels" checked class="mt-1 w-4 h-4 rounded text-brass-700 bg-parchment-200 border-parchment-700 focus:ring-brass-500 focus:ring-offset-parchment-100">
+                    <div class="flex-1">
+                        <label class="text-sm font-semibold text-ink-900 block cursor-pointer">Show Area Names on Map 🏷️</label>
+                        <p class="text-xs text-ink-500 mt-0.5">Displays text labels on the map for guessed or revealed areas to help practice and memorize location names.</p>
+                    </div>
+                </div>
+
+                <!-- Advanced Mode Checkbox -->
+                <div class="glass-card p-4 rounded-xl border border-parchment-600 flex items-start gap-3 cursor-pointer hover:border-brass-500/40 transition-all" onclick="toggleAdvancedCheckbox(event)">
+                    <input type="checkbox" id="chk-advanced-mode" class="mt-1 w-4 h-4 rounded text-brass-700 bg-parchment-200 border-parchment-700 focus:ring-brass-500 focus:ring-offset-parchment-100">
+                    <div class="flex-1">
+                        <label class="text-sm font-semibold text-ink-900 block cursor-pointer">Advanced Challenge Mode</label>
+                        <p class="text-xs text-ink-500 mt-0.5">When checked, correctly identified countries will <strong>NOT</strong> stay highlighted on the map. Test your spatial memory without visual color clues!</p>
+                    </div>
+                </div>
+
+                <!-- Include Canadian Provinces Toggle -->
+                <div class="glass-card p-4 rounded-xl border border-parchment-600 flex items-start gap-3 cursor-pointer hover:border-brass-500/40 transition-all" onclick="toggleCanadaCheckbox(event)">
+                    <input type="checkbox" id="chk-canada-provinces" checked class="mt-1 w-4 h-4 rounded text-brass-700 bg-parchment-200 border-parchment-700 focus:ring-brass-500 focus:ring-offset-parchment-100">
+                    <div class="flex-1">
+                        <label class="text-sm font-semibold text-ink-900 block cursor-pointer">Include Canadian Provinces & Territories 🇨🇦</label>
+                        <p class="text-xs text-ink-500 mt-0.5">Includes Ontario, Quebec, BC, Alberta, Yukon, NWT, Nunavut, etc., as individual target questions along with world countries.</p>
+                    </div>
+                </div>
+
+                <!-- Include U.S. States Toggle -->
+                <div class="glass-card p-4 rounded-xl border border-parchment-600 flex items-start gap-3 cursor-pointer hover:border-brass-500/40 transition-all" onclick="toggleUSCheckbox(event)">
+                    <input type="checkbox" id="chk-us-states" checked class="mt-1 w-4 h-4 rounded text-brass-700 bg-parchment-200 border-parchment-700 focus:ring-brass-500 focus:ring-offset-parchment-100">
+                    <div class="flex-1">
+                        <label class="text-sm font-semibold text-ink-900 block cursor-pointer">Include U.S. States 🇺🇸</label>
+                        <p class="text-xs text-ink-500 mt-0.5">Adds all 50 states plus Washington, D.C. as individual target questions alongside world countries.</p>
+                    </div>
+                </div>
+
+                <!-- Region Filter Selection -->
+                <div>
+                    <label class="text-xs font-bold text-ink-700 uppercase tracking-wider block mb-2">Geographic Scope</label>
+                    <select id="select-region" class="w-full bg-parchment-200 border border-parchment-700 rounded-xl px-4 py-2.5 text-xs text-ink-900 focus:outline-none focus:border-brass-500">
+                        <option value="ALL">All Recognized UN Countries + Canada</option>
+                        <option value="CANADA_ONLY">Canada Only (10 Provinces & 3 Territories)</option>
+                        <option value="NORTH_AMERICA">North America & Caribbean</option>
+                        <option value="SOUTH_AMERICA">South America</option>
+                        <option value="EUROPE">Europe</option>
+                        <option value="ASIA">Asia</option>
+                        <option value="AFRICA">Africa</option>
+                        <option value="OCEANIA">Oceania</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-3 pt-2">
+                <button onclick="closeSettingsModal()" class="px-4 py-2 rounded-xl bg-parchment-400 hover:bg-parchment-500 text-ink-700 text-xs font-semibold transition-all">Cancel</button>
+                <button onclick="applySettingsAndRestart()" class="px-5 py-2 rounded-xl bg-brass-600 hover:bg-brass-500 text-parchment-50 text-xs font-semibold shadow-lg shadow-ink-900/20 transition-all">Apply & Restart</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: CUSTOM COUNTRY SELECTOR (GROUPED BY CONTINENT) -->
+    <div id="modal-custom-selection" class="fixed inset-0 z-50 bg-ink-900/75 backdrop-blur-md flex items-center justify-center p-3 md:p-6 hidden animate-fade-in">
+        <div class="glass-panel w-full max-w-4xl h-[88vh] rounded-2xl p-5 shadow-2xl border border-parchment-700 flex flex-col justify-between gap-4">
+            
+            <!-- Modal Header & Controls -->
+            <div class="flex flex-col gap-3 border-b border-parchment-600 pb-3 shrink-0">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2.5 rounded-xl bg-moss-500/20 text-moss-600">
+                            <i class="fa-solid fa-earth-americas text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-ink-900 font-display flex items-center gap-2">
+                                Custom Location Selector
+                            </h3>
+                            <p class="text-xs text-ink-500">Choose specific UN countries, observer states, Canadian regions or U.S. states to test yourself on</p>
+                        </div>
+                    </div>
+                    <button onclick="closeCustomSelectionModal()" class="text-ink-500 hover:text-ink-900 p-2 text-lg"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+
+                <!-- Filter & Quick Action Bar -->
+                <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+                    <!-- Search Input -->
+                    <div class="relative flex-1 min-w-[200px]">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-ink-500 text-xs"></i>
+                        <input type="text" id="input-country-search" oninput="handleCustomSearch(this.value)" placeholder="Search country, province or state..." class="w-full bg-parchment-200 border border-parchment-700/80 rounded-xl pl-9 pr-3 py-1.5 text-xs text-ink-900 focus:outline-none focus:border-moss-500">
+                    </div>
+
+                    <!-- Selection Quick Actions -->
+                    <div class="flex items-center gap-2 text-xs">
+                        <button onclick="selectAllCustomCountries(true)" class="px-3 py-1.5 rounded-lg bg-parchment-400 hover:bg-parchment-500 text-ink-700 border border-parchment-700 transition-all font-medium">
+                            <i class="fa-solid fa-check-double text-moss-600 mr-1"></i> Select All
+                        </button>
+                        <button onclick="selectAllCustomCountries(false)" class="px-3 py-1.5 rounded-lg bg-parchment-400 hover:bg-parchment-500 text-ink-700 border border-parchment-700 transition-all font-medium">
+                            <i class="fa-solid fa-xmark text-vermilion-600 mr-1"></i> Clear All
+                        </button>
+                        <span class="text-ink-400">|</span>
+                        <div class="px-3 py-1.5 rounded-lg bg-moss-500/10 border border-moss-500/30 text-moss-700 font-bold">
+                            <span id="txt-selected-count">0</span> Selected
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Grouped Country List Scroll Container -->
+            <div id="container-continent-groups" class="flex-1 overflow-y-auto pr-2 space-y-4">
+                <!-- Dynamic Continent Accordions rendered via JS -->
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="flex items-center justify-between border-t border-parchment-600 pt-3 shrink-0">
+                <div class="text-xs text-ink-500">
+                    <span id="txt-custom-selection-status">Practice active for selected locations</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="closeCustomSelectionModal()" class="px-4 py-2 rounded-xl bg-parchment-400 hover:bg-parchment-500 text-ink-700 text-xs font-semibold transition-all">Cancel</button>
+                    <button onclick="applyCustomSelectionAndRestart()" class="px-5 py-2 rounded-xl bg-moss-600 hover:bg-moss-500 text-parchment-50 font-bold text-xs shadow-lg shadow-ink-900/20 transition-all flex items-center gap-2">
+                        <i class="fa-solid fa-play"></i> Start Practice Quiz
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- MODAL: QUIZ RESULTS / SUMMARY -->
+    <div id="modal-summary" class="fixed inset-0 z-50 bg-ink-900/75 backdrop-blur-md flex items-center justify-center p-4 hidden">
+        <div class="glass-panel w-full max-w-md rounded-2xl p-6 shadow-2xl border border-parchment-700 text-center flex flex-col gap-5 animate-scale-up">
+            <div class="w-16 h-16 bg-gradient-to-tr from-ochre-500 to-moss-500 rounded-2xl mx-auto flex items-center justify-center text-3xl text-parchment-50 shadow-lg shadow-ink-900/20">
+                <i class="fa-solid fa-trophy"></i>
+            </div>
+            
+            <div>
+                <h2 class="text-2xl font-bold font-display text-ink-900">Quiz Completed!</h2>
+                <p class="text-xs text-ink-500 mt-1">Excellent effort exploring the geography of our planet!</p>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="grid grid-cols-2 gap-3 my-2">
+                <div class="glass-card p-3 rounded-xl border border-parchment-600 col-span-2 flex items-center justify-between px-6">
+                    <div class="text-left">
+                        <div class="text-xs text-ink-500 uppercase tracking-wider font-bold">Overall Mastery Score</div>
+                        <div class="text-xs text-ink-400">3 pts for 1st try • 2 pts for 2nd • 1 pt for 3rd</div>
+                    </div>
+                    <div id="summary-mastery-percentage" class="text-3xl font-black text-moss-600">100%</div>
+                </div>
+
+                <div class="glass-card p-3 rounded-xl border border-brass-500/40 bg-brass-500/10 col-span-2 flex items-center justify-between px-6">
+                    <div class="text-left">
+                        <div class="text-xs text-ink-500 uppercase tracking-wider font-bold">Locations Identified</div>
+                        <div class="text-xs text-ink-400">Correct out of everything you selected</div>
+                    </div>
+                    <div id="summary-correct" class="text-3xl font-black text-ink-900">0 / 0</div>
+                </div>
+
+                <div class="glass-card p-2.5 rounded-xl border border-moss-500/30 bg-moss-500/5 text-left">
+                    <div class="text-[10px] text-moss-600 uppercase font-bold flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-moss-500"></span> 1st Guess (3 pts)
+                    </div>
+                    <div id="summary-count-1st" class="text-lg font-bold text-ink-900 mt-0.5">0</div>
+                </div>
+
+                <div class="glass-card p-2.5 rounded-xl border border-ochre-500/30 bg-ochre-500/5 text-left">
+                    <div class="text-[10px] text-ochre-600 uppercase font-bold flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-ochre-500"></span> 2nd Guess (2 pts)
+                    </div>
+                    <div id="summary-count-2nd" class="text-lg font-bold text-ink-900 mt-0.5">0</div>
+                </div>
+
+                <div class="glass-card p-2.5 rounded-xl border border-sienna-500/30 bg-sienna-500/5 text-left">
+                    <div class="text-[10px] text-sienna-600 uppercase font-bold flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-sienna-500"></span> 3rd Guess (1 pt)
+                    </div>
+                    <div id="summary-count-3rd" class="text-lg font-bold text-ink-900 mt-0.5">0</div>
+                </div>
+
+                <div class="glass-card p-2.5 rounded-xl border border-vermilion-500/30 bg-vermilion-500/5 text-left">
+                    <div class="text-[10px] text-vermilion-600 uppercase font-bold flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-vermilion-500"></span> Revealed (0 pts)
+                    </div>
+                    <div id="summary-count-revealed" class="text-lg font-bold text-ink-900 mt-0.5">0</div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 text-xs text-ink-500">
+                <div class="glass-card p-2 rounded-lg">Time: <span id="summary-time" class="font-mono font-bold text-ink-900">00:00</span></div>
+                <div class="glass-card p-2 rounded-lg">Best Streak: <span id="summary-streak" class="font-bold text-ochre-600">0 🔥</span></div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <button onclick="restartQuiz()" class="w-full py-3 rounded-xl bg-gradient-to-r from-brass-600 to-ink-700 hover:from-brass-500 hover:to-ink-600 text-parchment-50 font-semibold text-xs shadow-lg transition-all">
+                    Play Again
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // GLOBAL APP STATE
+        const state = {
+            soundEnabled: true,
+            advancedMode: false,
+            includeCanadaProvinces: true,
+            includeUSStates: true,
+            showLabels: true, // Show area names on map after guess/reveal
+            showMinimap: true, // Chart-inset mini-map, top right
+            showStats: true,   // Stats list, top left
+            selectedRegion: 'ALL',
+            customSelectedIds: null, // Set of entity IDs or null if default
+            
+            // Attempt tracking per current question
+            currentAttempts: 0, // 0 = first guess, 1 = second, 2 = third
+            
+            // Scoring System Breakdown (3 points max per question)
+            count1stTry: 0,
+            count2ndTry: 0,
+            count3rdTry: 0,
+            countRevealed: 0,
+            earnedPoints: 0,
+            maxPossiblePoints: 0,
+
+            // Quiz statistics
+            score: 0,
+            mistakes: 0,
+            streak: 0,
+            bestStreak: 0,
+            totalQuestions: 0,
+            startTime: null,
+            timerInterval: null,
+            hintsRemaining: 3,
+
+            // Active list of target objects
+            targets: [],
+            currentTarget: null,
+            guessedMap: new Map(), // key: id, value: { status: '1st'|'2nd'|'3rd'|'failed', name: string }
+            completedTargetIds: new Set(), // targets already answered or revealed
+            
+            // Geo JSON reference features
+            worldFeatures: [],
+            canadaFeatures: [],
+            usStatesFeatures: [],
+            combinedFeatures: []
+        };
+
+        // UN MEMBER & OBSERVER STATES ISO NUMERIC -> NAME MAPPING
+        const ISO_COUNTRY_NAMES = {
+            "004": { name: "Afghanistan", continent: "ASIA", capital: "Kabul" },
+            "008": { name: "Albania", continent: "EUROPE", capital: "Tirana" },
+            "012": { name: "Algeria", continent: "AFRICA", capital: "Algiers" },
+            "020": { name: "Andorra", continent: "EUROPE", capital: "Andorra la Vella" },
+            "024": { name: "Angola", continent: "AFRICA", capital: "Luanda" },
+            "028": { name: "Antigua and Barbuda", continent: "NORTH_AMERICA", capital: "St. John's" },
+            "032": { name: "Argentina", continent: "SOUTH_AMERICA", capital: "Buenos Aires" },
+            "051": { name: "Armenia", continent: "ASIA", capital: "Yerevan" },
+            "036": { name: "Australia", continent: "OCEANIA", capital: "Canberra" },
+            "040": { name: "Austria", continent: "EUROPE", capital: "Vienna" },
+            "031": { name: "Azerbaijan", continent: "ASIA", capital: "Baku" },
+            "044": { name: "Bahamas", continent: "NORTH_AMERICA", capital: "Nassau" },
+            "048": { name: "Bahrain", continent: "ASIA", capital: "Manama" },
+            "050": { name: "Bangladesh", continent: "ASIA", capital: "Dhaka" },
+            "052": { name: "Barbados", continent: "NORTH_AMERICA", capital: "Bridgetown" },
+            "112": { name: "Belarus", continent: "EUROPE", capital: "Minsk" },
+            "056": { name: "Belgium", continent: "EUROPE", capital: "Brussels" },
+            "084": { name: "Belize", continent: "NORTH_AMERICA", capital: "Belmopan" },
+            "204": { name: "Benin", continent: "AFRICA", capital: "Porto-Novo" },
+            "064": { name: "Bhutan", continent: "ASIA", capital: "Thimphu" },
+            "068": { name: "Bolivia", continent: "SOUTH_AMERICA", capital: "Sucre" },
+            "070": { name: "Bosnia and Herzegovina", continent: "EUROPE", capital: "Sarajevo" },
+            "072": { name: "Botswana", continent: "AFRICA", capital: "Gaborone" },
+            "076": { name: "Brazil", continent: "SOUTH_AMERICA", capital: "Brasília" },
+            "096": { name: "Brunei", continent: "ASIA", capital: "Bandar Seri Begawan" },
+            "100": { name: "Bulgaria", continent: "EUROPE", capital: "Sofia" },
+            "854": { name: "Burkina Faso", continent: "AFRICA", capital: "Ouagadougou" },
+            "108": { name: "Burundi", continent: "AFRICA", capital: "Gitega" },
+            "116": { name: "Cambodia", continent: "ASIA", capital: "Phnom Penh" },
+            "120": { name: "Cameroon", continent: "AFRICA", capital: "Yaoundé" },
+            "124": { name: "Canada", continent: "NORTH_AMERICA", capital: "Ottawa" },
+            "132": { name: "Cape Verde", continent: "AFRICA", capital: "Praia" },
+            "140": { name: "Central African Republic", continent: "AFRICA", capital: "Bangui" },
+            "148": { name: "Chad", continent: "AFRICA", capital: "N'Djamena" },
+            "152": { name: "Chile", continent: "SOUTH_AMERICA", capital: "Santiago" },
+            "156": { name: "China", continent: "ASIA", capital: "Beijing" },
+            "170": { name: "Colombia", continent: "SOUTH_AMERICA", capital: "Bogotá" },
+            "174": { name: "Comoros", continent: "AFRICA", capital: "Moroni" },
+            "178": { name: "Republic of the Congo", continent: "AFRICA", capital: "Brazzaville" },
+            "180": { name: "Democratic Republic of the Congo", continent: "AFRICA", capital: "Kinshasa" },
+            "188": { name: "Costa Rica", continent: "NORTH_AMERICA", capital: "San José" },
+            "384": { name: "Côte d'Ivoire", continent: "AFRICA", capital: "Yamoussoukro" },
+            "191": { name: "Croatia", continent: "EUROPE", capital: "Zagreb" },
+            "192": { name: "Cuba", continent: "NORTH_AMERICA", capital: "Havana" },
+            "196": { name: "Cyprus", continent: "EUROPE", capital: "Nicosia" },
+            "203": { name: "Czechia", continent: "EUROPE", capital: "Prague" },
+            "208": { name: "Denmark", continent: "EUROPE", capital: "Copenhagen" },
+            "262": { name: "Djibouti", continent: "AFRICA", capital: "Djibouti" },
+            "212": { name: "Dominica", continent: "NORTH_AMERICA", capital: "Roseau" },
+            "214": { name: "Dominican Republic", continent: "NORTH_AMERICA", capital: "Santo Domingo" },
+            "218": { name: "Ecuador", continent: "SOUTH_AMERICA", capital: "Quito" },
+            "818": { name: "Egypt", continent: "AFRICA", capital: "Cairo" },
+            "222": { name: "El Salvador", continent: "NORTH_AMERICA", capital: "San Salvador" },
+            "226": { name: "Equatorial Guinea", continent: "AFRICA", capital: "Malabo" },
+            "232": { name: "Eritrea", continent: "AFRICA", capital: "Asmara" },
+            "233": { name: "Estonia", continent: "EUROPE", capital: "Tallinn" },
+            "748": { name: "Eswatini", continent: "AFRICA", capital: "Mbabane" },
+            "231": { name: "Ethiopia", continent: "AFRICA", capital: "Addis Ababa" },
+            "242": { name: "Fiji", continent: "OCEANIA", capital: "Suva" },
+            "246": { name: "Finland", continent: "EUROPE", capital: "Helsinki" },
+            "250": { name: "France", continent: "EUROPE", capital: "Paris" },
+            "266": { name: "Gabon", continent: "AFRICA", capital: "Libreville" },
+            "270": { name: "Gambia", continent: "AFRICA", capital: "Banjul" },
+            "268": { name: "Georgia", continent: "ASIA", capital: "Tbilisi" },
+            "276": { name: "Germany", continent: "EUROPE", capital: "Berlin" },
+            "288": { name: "Ghana", continent: "AFRICA", capital: "Accra" },
+            "300": { name: "Greece", continent: "EUROPE", capital: "Athens" },
+            "308": { name: "Grenada", continent: "NORTH_AMERICA", capital: "St. George's" },
+            "320": { name: "Guatemala", continent: "NORTH_AMERICA", capital: "Guatemala City" },
+            "324": { name: "Guinea", continent: "AFRICA", capital: "Conakry" },
+            "624": { name: "Guinea-Bissau", continent: "AFRICA", capital: "Bissau" },
+            "328": { name: "Guyana", continent: "SOUTH_AMERICA", capital: "Georgetown" },
+            "332": { name: "Haiti", continent: "NORTH_AMERICA", capital: "Port-au-Prince" },
+            "340": { name: "Honduras", continent: "NORTH_AMERICA", capital: "Tegucigalpa" },
+            "348": { name: "Hungary", continent: "EUROPE", capital: "Budapest" },
+            "352": { name: "Iceland", continent: "EUROPE", capital: "Reykjavík" },
+            "356": { name: "India", continent: "ASIA", capital: "New Delhi" },
+            "360": { name: "Indonesia", continent: "ASIA", capital: "Jakarta" },
+            "364": { name: "Iran", continent: "ASIA", capital: "Tehran" },
+            "368": { name: "Iraq", continent: "ASIA", capital: "Baghdad" },
+            "372": { name: "Ireland", continent: "EUROPE", capital: "Dublin" },
+            "376": { name: "Israel", continent: "ASIA", capital: "Jerusalem" },
+            "380": { name: "Italy", continent: "EUROPE", capital: "Rome" },
+            "388": { name: "Jamaica", continent: "NORTH_AMERICA", capital: "Kingston" },
+            "392": { name: "Japan", continent: "ASIA", capital: "Tokyo" },
+            "400": { name: "Jordan", continent: "ASIA", capital: "Amman" },
+            "398": { name: "Kazakhstan", continent: "ASIA", capital: "Astana" },
+            "404": { name: "Kenya", continent: "AFRICA", capital: "Nairobi" },
+            "296": { name: "Kiribati", continent: "OCEANIA", capital: "South Tarawa" },
+            "999": { name: "Kosovo", continent: "EUROPE", capital: "Pristina", category: "PARTIALLY_RECOGNIZED" },
+            "408": { name: "North Korea", continent: "ASIA", capital: "Pyongyang" },
+            "410": { name: "South Korea", continent: "ASIA", capital: "Seoul" },
+            "414": { name: "Kuwait", continent: "ASIA", capital: "Kuwait City" },
+            "417": { name: "Kyrgyzstan", continent: "ASIA", capital: "Bishkek" },
+            "418": { name: "Laos", continent: "ASIA", capital: "Vientiane" },
+            "428": { name: "Latvia", continent: "EUROPE", capital: "Riga" },
+            "422": { name: "Lebanon", continent: "ASIA", capital: "Beirut" },
+            "426": { name: "Lesotho", continent: "AFRICA", capital: "Maseru" },
+            "430": { name: "Liberia", continent: "AFRICA", capital: "Monrovia" },
+            "434": { name: "Libya", continent: "AFRICA", capital: "Tripoli" },
+            "438": { name: "Liechtenstein", continent: "EUROPE", capital: "Vaduz" },
+            "440": { name: "Lithuania", continent: "EUROPE", capital: "Vilnius" },
+            "442": { name: "Luxembourg", continent: "EUROPE", capital: "Luxembourg" },
+            "450": { name: "Madagascar", continent: "AFRICA", capital: "Antananarivo" },
+            "454": { name: "Malawi", continent: "AFRICA", capital: "Lilongwe" },
+            "458": { name: "Malaysia", continent: "ASIA", capital: "Kuala Lumpur" },
+            "462": { name: "Maldives", continent: "ASIA", capital: "Malé" },
+            "466": { name: "Mali", continent: "AFRICA", capital: "Bamako" },
+            "470": { name: "Malta", continent: "EUROPE", capital: "Valletta" },
+            "584": { name: "Marshall Islands", continent: "OCEANIA", capital: "Majuro" },
+            "478": { name: "Mauritania", continent: "AFRICA", capital: "Nouakchott" },
+            "480": { name: "Mauritius", continent: "AFRICA", capital: "Port Louis" },
+            "484": { name: "Mexico", continent: "NORTH_AMERICA", capital: "Mexico City" },
+            "583": { name: "Micronesia", continent: "OCEANIA", capital: "Palikir" },
+            "498": { name: "Moldova", continent: "EUROPE", capital: "Chișinău" },
+            "492": { name: "Monaco", continent: "EUROPE", capital: "Monaco" },
+            "496": { name: "Mongolia", continent: "ASIA", capital: "Ulaanbaatar" },
+            "499": { name: "Montenegro", continent: "EUROPE", capital: "Podgorica" },
+            "504": { name: "Morocco", continent: "AFRICA", capital: "Rabat" },
+            "508": { name: "Mozambique", continent: "AFRICA", capital: "Maputo" },
+            "104": { name: "Myanmar", continent: "ASIA", capital: "Naypyidaw" },
+            "516": { name: "Namibia", continent: "AFRICA", capital: "Windhoek" },
+            "520": { name: "Nauru", continent: "OCEANIA", capital: "Yaren" },
+            "524": { name: "Nepal", continent: "ASIA", capital: "Kathmandu" },
+            "528": { name: "Netherlands", continent: "EUROPE", capital: "Amsterdam" },
+            "554": { name: "New Zealand", continent: "OCEANIA", capital: "Wellington" },
+            "558": { name: "Nicaragua", continent: "NORTH_AMERICA", capital: "Managua" },
+            "562": { name: "Niger", continent: "AFRICA", capital: "Niamey" },
+            "566": { name: "Nigeria", continent: "AFRICA", capital: "Abuja" },
+            "807": { name: "North Macedonia", continent: "EUROPE", capital: "Skopje" },
+            "578": { name: "Norway", continent: "EUROPE", capital: "Oslo" },
+            "512": { name: "Oman", continent: "ASIA", capital: "Muscat" },
+            "586": { name: "Pakistan", continent: "ASIA", capital: "Islamabad" },
+            "585": { name: "Palau", continent: "OCEANIA", capital: "Ngerulmud" },
+            "275": { name: "Palestine", continent: "ASIA", capital: "Ramallah", category: "OBSERVER_STATES" },
+            "591": { name: "Panama", continent: "NORTH_AMERICA", capital: "Panama City" },
+            "598": { name: "Papua New Guinea", continent: "OCEANIA", capital: "Port Moresby" },
+            "600": { name: "Paraguay", continent: "SOUTH_AMERICA", capital: "Asunción" },
+            "604": { name: "Peru", continent: "SOUTH_AMERICA", capital: "Lima" },
+            "608": { name: "Philippines", continent: "ASIA", capital: "Manila" },
+            "616": { name: "Poland", continent: "EUROPE", capital: "Warsaw" },
+            "620": { name: "Portugal", continent: "EUROPE", capital: "Lisbon" },
+            "634": { name: "Qatar", continent: "ASIA", capital: "Doha" },
+            "642": { name: "Romania", continent: "EUROPE", capital: "Bucharest" },
+            "643": { name: "Russia", continent: "EUROPE", capital: "Moscow" },
+            "646": { name: "Rwanda", continent: "AFRICA", capital: "Kigali" },
+            "659": { name: "Saint Kitts and Nevis", continent: "NORTH_AMERICA", capital: "Basseterre" },
+            "662": { name: "Saint Lucia", continent: "NORTH_AMERICA", capital: "Castries" },
+            "670": { name: "Saint Vincent and the Grenadines", continent: "NORTH_AMERICA", capital: "Kingstown" },
+            "882": { name: "Samoa", continent: "OCEANIA", capital: "Apia" },
+            "674": { name: "San Marino", continent: "EUROPE", capital: "San Marino" },
+            "678": { name: "São Tomé and Príncipe", continent: "AFRICA", capital: "São Tomé" },
+            "682": { name: "Saudi Arabia", continent: "ASIA", capital: "Riyadh" },
+            "686": { name: "Senegal", continent: "AFRICA", capital: "Dakar" },
+            "688": { name: "Serbia", continent: "EUROPE", capital: "Belgrade" },
+            "690": { name: "Seychelles", continent: "AFRICA", capital: "Victoria" },
+            "694": { name: "Sierra Leone", continent: "AFRICA", capital: "Freetown" },
+            "702": { name: "Singapore", continent: "ASIA", capital: "Singapore" },
+            "703": { name: "Slovakia", continent: "EUROPE", capital: "Bratislava" },
+            "705": { name: "Slovenia", continent: "EUROPE", capital: "Ljubljana" },
+            "090": { name: "Solomon Islands", continent: "OCEANIA", capital: "Honiara" },
+            "706": { name: "Somalia", continent: "AFRICA", capital: "Mogadishu" },
+            "710": { name: "South Africa", continent: "AFRICA", capital: "Pretoria" },
+            "728": { name: "South Sudan", continent: "AFRICA", capital: "Juba" },
+            "724": { name: "Spain", continent: "EUROPE", capital: "Madrid" },
+            "144": { name: "Sri Lanka", continent: "ASIA", capital: "Sri Jayawardenepura Kotte" },
+            "729": { name: "Sudan", continent: "AFRICA", capital: "Khartoum" },
+            "740": { name: "Suriname", continent: "SOUTH_AMERICA", capital: "Paramaribo" },
+            "752": { name: "Sweden", continent: "EUROPE", capital: "Stockholm" },
+            "756": { name: "Switzerland", continent: "EUROPE", capital: "Bern" },
+            "760": { name: "Syria", continent: "ASIA", capital: "Damascus" },
+            "158": { name: "Taiwan", continent: "ASIA", capital: "Taipei", category: "PARTIALLY_RECOGNIZED" },
+            "762": { name: "Tajikistan", continent: "ASIA", capital: "Dushanbe" },
+            "834": { name: "Tanzania", continent: "AFRICA", capital: "Dodoma" },
+            "764": { name: "Thailand", continent: "ASIA", capital: "Bangkok" },
+            "626": { name: "Timor-Leste", continent: "ASIA", capital: "Dili" },
+            "768": { name: "Togo", continent: "AFRICA", capital: "Lomé" },
+            "776": { name: "Tonga", continent: "OCEANIA", capital: "Nukuʻalofa" },
+            "780": { name: "Trinidad and Tobago", continent: "NORTH_AMERICA", capital: "Port of Spain" },
+            "788": { name: "Tunisia", continent: "AFRICA", capital: "Tunis" },
+            "792": { name: "Turkey", continent: "ASIA", capital: "Ankara" },
+            "795": { name: "Turkmenistan", continent: "ASIA", capital: "Ashgabat" },
+            "798": { name: "Tuvalu", continent: "OCEANIA", capital: "Funafuti" },
+            "800": { name: "Uganda", continent: "AFRICA", capital: "Kampala" },
+            "804": { name: "Ukraine", continent: "EUROPE", capital: "Kyiv" },
+            "784": { name: "United Arab Emirates", continent: "ASIA", capital: "Abu Dhabi" },
+            "826": { name: "United Kingdom", continent: "EUROPE", capital: "London" },
+            "840": { name: "United States of America", continent: "NORTH_AMERICA", capital: "Washington, D.C." },
+            "858": { name: "Uruguay", continent: "SOUTH_AMERICA", capital: "Montevideo" },
+            "860": { name: "Uzbekistan", continent: "ASIA", capital: "Tashkent" },
+            "548": { name: "Vanuatu", continent: "OCEANIA", capital: "Port Vila" },
+            "336": { name: "Vatican City", continent: "EUROPE", capital: "Vatican City", category: "OBSERVER_STATES" },
+            "862": { name: "Venezuela", continent: "SOUTH_AMERICA", capital: "Caracas" },
+            "704": { name: "Vietnam", continent: "ASIA", capital: "Hanoi" },
+            "887": { name: "Yemen", continent: "ASIA", capital: "Sana'a" },
+            "894": { name: "Zambia", continent: "AFRICA", capital: "Lusaka" },
+            "716": { name: "Zimbabwe", continent: "AFRICA", capital: "Harare" }
+        };
+
+        // CANADIAN PROVINCES & TERRITORIES METADATA
+        const CANADA_PROVINCES = {
+            "CA-ON": { name: "Ontario", type: "Province", capital: "Toronto", continent: "NORTH_AMERICA", shortName: "ON" },
+            "CA-QC": { name: "Quebec", type: "Province", capital: "Quebec City", continent: "NORTH_AMERICA", shortName: "QC" },
+            "CA-BC": { name: "British Columbia", type: "Province", capital: "Victoria", continent: "NORTH_AMERICA", shortName: "BC" },
+            "CA-AB": { name: "Alberta", type: "Province", capital: "Edmonton", continent: "NORTH_AMERICA", shortName: "AB" },
+            "CA-MB": { name: "Manitoba", type: "Province", capital: "Winnipeg", continent: "NORTH_AMERICA", shortName: "MB" },
+            "CA-SK": { name: "Saskatchewan", type: "Province", capital: "Regina", continent: "NORTH_AMERICA", shortName: "SK" },
+            "CA-NS": { name: "Nova Scotia", type: "Province", capital: "Halifax", continent: "NORTH_AMERICA", shortName: "NS" },
+            "CA-NB": { name: "New Brunswick", type: "Province", capital: "Fredericton", continent: "NORTH_AMERICA", shortName: "NB" },
+            "CA-NL": { name: "Newfoundland and Labrador", type: "Province", capital: "St. John's", continent: "NORTH_AMERICA", shortName: "NL" },
+            "CA-PE": { name: "Prince Edward Island", type: "Province", capital: "Charlottetown", continent: "NORTH_AMERICA", shortName: "PE" },
+            "CA-NT": { name: "Northwest Territories", type: "Territory", capital: "Yellowknife", continent: "NORTH_AMERICA", shortName: "NT" },
+            "CA-YT": { name: "Yukon", type: "Territory", capital: "Whitehorse", continent: "NORTH_AMERICA", shortName: "YT" },
+            "CA-NU": { name: "Nunavut", type: "Territory", capital: "Iqaluit", continent: "NORTH_AMERICA", shortName: "NU" }
+        };
+
+        // U.S. STATES — full names on the map, capital city for hints
+        const US_STATES = {
+            "US-AL": { name: "Alabama", type: "State", capital: "Montgomery" },
+            "US-AK": { name: "Alaska", type: "State", capital: "Juneau" },
+            "US-AZ": { name: "Arizona", type: "State", capital: "Phoenix" },
+            "US-AR": { name: "Arkansas", type: "State", capital: "Little Rock" },
+            "US-CA": { name: "California", type: "State", capital: "Sacramento" },
+            "US-CO": { name: "Colorado", type: "State", capital: "Denver" },
+            "US-CT": { name: "Connecticut", type: "State", capital: "Hartford" },
+            "US-DE": { name: "Delaware", type: "State", capital: "Dover" },
+            "US-DC": { name: "Washington, D.C.", type: "District", capital: "Washington" },
+            "US-FL": { name: "Florida", type: "State", capital: "Tallahassee" },
+            "US-GA": { name: "Georgia", type: "State", capital: "Atlanta" },
+            "US-HI": { name: "Hawaii", type: "State", capital: "Honolulu" },
+            "US-ID": { name: "Idaho", type: "State", capital: "Boise" },
+            "US-IL": { name: "Illinois", type: "State", capital: "Springfield" },
+            "US-IN": { name: "Indiana", type: "State", capital: "Indianapolis" },
+            "US-IA": { name: "Iowa", type: "State", capital: "Des Moines" },
+            "US-KS": { name: "Kansas", type: "State", capital: "Topeka" },
+            "US-KY": { name: "Kentucky", type: "State", capital: "Frankfort" },
+            "US-LA": { name: "Louisiana", type: "State", capital: "Baton Rouge" },
+            "US-ME": { name: "Maine", type: "State", capital: "Augusta" },
+            "US-MD": { name: "Maryland", type: "State", capital: "Annapolis" },
+            "US-MA": { name: "Massachusetts", type: "State", capital: "Boston" },
+            "US-MI": { name: "Michigan", type: "State", capital: "Lansing" },
+            "US-MN": { name: "Minnesota", type: "State", capital: "Saint Paul" },
+            "US-MS": { name: "Mississippi", type: "State", capital: "Jackson" },
+            "US-MO": { name: "Missouri", type: "State", capital: "Jefferson City" },
+            "US-MT": { name: "Montana", type: "State", capital: "Helena" },
+            "US-NE": { name: "Nebraska", type: "State", capital: "Lincoln" },
+            "US-NV": { name: "Nevada", type: "State", capital: "Carson City" },
+            "US-NH": { name: "New Hampshire", type: "State", capital: "Concord" },
+            "US-NJ": { name: "New Jersey", type: "State", capital: "Trenton" },
+            "US-NM": { name: "New Mexico", type: "State", capital: "Santa Fe" },
+            "US-NY": { name: "New York", type: "State", capital: "Albany" },
+            "US-NC": { name: "North Carolina", type: "State", capital: "Raleigh" },
+            "US-ND": { name: "North Dakota", type: "State", capital: "Bismarck" },
+            "US-OH": { name: "Ohio", type: "State", capital: "Columbus" },
+            "US-OK": { name: "Oklahoma", type: "State", capital: "Oklahoma City" },
+            "US-OR": { name: "Oregon", type: "State", capital: "Salem" },
+            "US-PA": { name: "Pennsylvania", type: "State", capital: "Harrisburg" },
+            "US-RI": { name: "Rhode Island", type: "State", capital: "Providence" },
+            "US-SC": { name: "South Carolina", type: "State", capital: "Columbia" },
+            "US-SD": { name: "South Dakota", type: "State", capital: "Pierre" },
+            "US-TN": { name: "Tennessee", type: "State", capital: "Nashville" },
+            "US-TX": { name: "Texas", type: "State", capital: "Austin" },
+            "US-UT": { name: "Utah", type: "State", capital: "Salt Lake City" },
+            "US-VT": { name: "Vermont", type: "State", capital: "Montpelier" },
+            "US-VA": { name: "Virginia", type: "State", capital: "Richmond" },
+            "US-WA": { name: "Washington", type: "State", capital: "Olympia" },
+            "US-WV": { name: "West Virginia", type: "State", capital: "Charleston" },
+            "US-WI": { name: "Wisconsin", type: "State", capital: "Madison" },
+            "US-WY": { name: "Wyoming", type: "State", capital: "Cheyenne" }
+        };
+
+        // Census FIPS state codes -> postal codes (territories are absent on
+        // purpose: Puerto Rico, Guam etc. are not part of the 50 states)
+        const FIPS_STATE_CODES = {
+            "01": "AL", "02": "AK", "04": "AZ", "05": "AR", "06": "CA", "08": "CO",
+            "09": "CT", "10": "DE", "11": "DC", "12": "FL", "13": "GA", "15": "HI",
+            "16": "ID", "17": "IL", "18": "IN", "19": "IA", "20": "KS", "21": "KY",
+            "22": "LA", "23": "ME", "24": "MD", "25": "MA", "26": "MI", "27": "MN",
+            "28": "MS", "29": "MO", "30": "MT", "31": "NE", "32": "NV", "33": "NH",
+            "34": "NJ", "35": "NM", "36": "NY", "37": "NC", "38": "ND", "39": "OH",
+            "40": "OK", "41": "OR", "42": "PA", "44": "RI", "45": "SC", "46": "SD",
+            "47": "TN", "48": "TX", "49": "UT", "50": "VT", "51": "VA", "53": "WA",
+            "54": "WV", "55": "WI", "56": "WY"
+        };
+
+        // Some nations are missing from Natural Earth at any scale — a small
+        // reef-square is drawn in their place so every target stays answerable
+        const MISSING_FEATURE_PATCHES = [
+            { id: "798", name: "Tuvalu", lon: 179.19, lat: -8.52, size: 0.22 }
+        ];
+
+        // The dataset ships Kosovo without an id — give it an internal code so
+        // it can be clicked and labeled like any other country
+        const KOSOVO_ID = "999";
+
+        // Stable identifier for every drawable region: provinces (CA-*) and
+        // states (US-*) use their custom code, countries their 3-digit id
+        function featureFid(f) {
+            if (!f) return "";
+            if (f.properties && f.properties.customId) return f.properties.customId;
+            if (f.id === undefined || f.id === null || f.id === "") return "undefined";
+            return String(f.id).padStart(3, '0');
+        }
+
+        // Which whole country does a drawn piece belong to?
+        function parentCountryOf(fid) {
+            if (typeof fid !== "string") return null;
+            if (fid.startsWith("CA-")) return "124";
+            if (fid.startsWith("US-")) return "840";
+            return null;
+        }
+
+        function findTargetFeature(targetId) {
+            return state.combinedFeatures.find(f => featureFid(f) === targetId)
+                || state.worldFeatures.find(f => featureFid(f) === targetId)
+                || null;
+        }
+
+        // Has this drawn region already been answered or revealed?
+        function isRegionCompleted(fid) {
+            if (!fid || fid === "undefined") return false;
+            if (state.completedTargetIds.has(fid)) return true;
+            // Pieces of a completed whole country read as done too
+            const parent = parentCountryOf(fid);
+            return !!parent && state.completedTargetIds.has(parent);
+        }
+
+        // SYNTHESIZED SOUND EFFECTS (WEB AUDIO API)
+        const AudioFX = {
+            ctx: null,
+            init() {
+                if (!this.ctx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    if (AudioCtx) this.ctx = new AudioCtx();
+                }
+            },
+            playCorrect() {
+                if (!state.soundEnabled) return;
+                this.init();
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(523.25, now); // C5
+                osc.frequency.exponentialRampToValueAtTime(880, now + 0.15); // A5
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.3);
+            },
+            playWrong() {
+                if (!state.soundEnabled) return;
+                this.init();
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(160, now);
+                osc.frequency.exponentialRampToValueAtTime(110, now + 0.2);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.25);
+            }
+        };
+
+        // D3 MAP VARS
+        let svg, gMap, gOcean, projection, pathGenerator, zoomBehavior;
+
+        // Reserved footprints of placed map labels, in base projection units.
+        // Zoom scales every label together, so an overlap-free arrangement at
+        // rest stays overlap-free at any zoom level — only a resize (which
+        // re-projects everything) requires a fresh layout pass.
+        let labelBoxes = new Map();
+        const labelMeasureCache = new Map();
+
+        // Chart decoration: sea titles pinned to real coordinates, stacked in
+        // two lines like an engraved chart. Ornament only — never quiz targets.
+        const OCEAN_LABELS = [
+            { lines: ['ATLANTIC', 'OCEAN'], lon: -26, lat: -28, size: 15 },
+            { lines: ['PACIFIC', 'OCEAN'],  lon: -135, lat: -14, size: 15 },
+            { lines: ['PACIFIC', 'OCEAN'],  lon: 152, lat: 14,  size: 14 },
+            { lines: ['INDIAN', 'OCEAN'],   lon: 76,  lat: -30, size: 14 },
+            { lines: ['SOUTHERN', 'OCEAN'], lon: 30,  lat: -60, size: 12 }
+        ];
+
+        // MAP ZOOM CONTROLS
+        function zoomInMap() {
+            if (svg && zoomBehavior) {
+                svg.transition().duration(300).call(zoomBehavior.scaleBy, 1.4);
+            }
+        }
+
+        function zoomOutMap() {
+            if (svg && zoomBehavior) {
+                svg.transition().duration(300).call(zoomBehavior.scaleBy, 0.7);
+            }
+        }
+
+        function resetMapZoom() {
+            if (svg && zoomBehavior) {
+                svg.transition().duration(500).call(zoomBehavior.transform, d3.zoomIdentity);
+            }
+        }
+
+        // TIMER FUNCTIONS
+        function startTimer() {
+            stopTimer();
+            state.startTime = Date.now();
+            state.timerInterval = setInterval(updateTimerDisplay, 1000);
+            updateTimerDisplay();
+        }
+
+        function stopTimer() {
+            if (state.timerInterval) {
+                clearInterval(state.timerInterval);
+                state.timerInterval = null;
+            }
+        }
+
+        function resetTimer() {
+            stopTimer();
+            document.getElementById('quiz-timer').innerText = "00:00";
+        }
+
+        function updateTimerDisplay() {
+            if (!state.startTime) return;
+            const elapsedSeconds = Math.floor((Date.now() - state.startTime) / 1000);
+            const mins = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
+            const secs = String(elapsedSeconds % 60).padStart(2, '0');
+            document.getElementById('quiz-timer').innerText = `${mins}:${secs}`;
+        }
+
+        function getFormattedElapsedTime() {
+            if (!state.startTime) return "00:00";
+            const elapsedSeconds = Math.floor((Date.now() - state.startTime) / 1000);
+            const mins = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
+            const secs = String(elapsedSeconds % 60).padStart(2, '0');
+            return `${mins}:${secs}`;
+        }
+
+        // QUIZ LIFECYCLE CONTROLS
+        function restartQuiz() {
+            const summaryModal = document.getElementById('modal-summary');
+            if (summaryModal) summaryModal.classList.add('hidden');
+            
+            if (gMap) {
+                gMap.selectAll(".map-country")
+                    .classed("guessed-correct", false)
+                    .classed("guessed-1st", false)
+                    .classed("guessed-2nd", false)
+                    .classed("guessed-3rd", false)
+                    .classed("guessed-failed", false)
+                    .classed("guessed-wrong", false);
+
+                // Remove existing labels
+                gMap.selectAll(".map-label").remove();
+                labelBoxes.clear();
+            }
+
+            state.count1stTry = 0;
+            state.count2ndTry = 0;
+            state.count3rdTry = 0;
+            state.countRevealed = 0;
+            state.earnedPoints = 0;
+
+            resetTimer();
+            startTimer();
+            prepareTargetQueue();
+        }
+
+        function finishQuiz() {
+            stopTimer();
+            state.currentTarget = null;
+            // Refresh the HUD now that the final target is gone
+            updateStatsUI();
+            document.getElementById('target-country-name').innerText = "Quiz Completed!";
+            document.getElementById('target-subtext').innerText = "Congratulations on finishing all targets!";
+
+            const maxPts = state.totalQuestions * 3;
+            const percentage = maxPts > 0 ? Math.round((state.earnedPoints / maxPts) * 100) : 100;
+
+            document.getElementById('summary-mastery-percentage').innerText = `${percentage}%`;
+            // How many of the selected locations were identified correctly —            // 197 with countries only, plus provinces/states when those are on
+            document.getElementById('summary-correct').innerText = `${state.score} / ${state.totalQuestions}`;
+            document.getElementById('summary-count-1st').innerText = state.count1stTry;
+            document.getElementById('summary-count-2nd').innerText = state.count2ndTry;
+            document.getElementById('summary-count-3rd').innerText = state.count3rdTry;
+            document.getElementById('summary-count-revealed').innerText = state.countRevealed;
+
+            document.getElementById('summary-time').innerText = getFormattedElapsedTime();
+            document.getElementById('summary-streak').innerText = `${state.bestStreak} 🔥`;
+
+            document.getElementById('modal-summary').classList.remove('hidden');
+        }
+
+        function initD3Map() {
+            const container = document.getElementById('map-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            svg = d3.select("#svg-map")
+                .attr("width", width)
+                .attr("height", height);
+
+            // Natural Earth projection for aesthetic global proportions
+            projection = d3.geoNaturalEarth1()
+                .scale(width / 5.8)
+                .translate([width / 2, height / 1.8]);
+
+            pathGenerator = d3.geoPath().projection(projection);
+
+            zoomBehavior = d3.zoom()
+                .scaleExtent([1, 18])
+                .on("zoom", (event) => {
+                    gMap.attr("transform", event.transform);
+                    gOcean.attr("transform", event.transform);
+                    // Coastlines and rhumb lines thin out as the chart is
+                    // magnified, like finer and finer pen work
+                    svg.style("--map-stroke", (0.6 * Math.pow(event.transform.k, -1.5)) + "px");
+                    // Sea titles keep their on-screen size and line spacing,
+                    // as if printed on the paper itself rather than drawn on it
+                    gOcean.selectAll(".ocean-label")
+                        .style("font-size", function () { return (+this.dataset.baseSize / event.transform.k) + "px"; })
+                        .style("stroke-width", function () { return (1.2 / event.transform.k) + "px"; })
+                        .each(function () {
+                            const dy = (+this.dataset.baseDy) / event.transform.k;
+                            d3.select(this).selectAll("tspan")
+                                .each(function (d, i) { d3.select(this).attr("dy", i === 0 ? 0 : dy); });
+                        });
+                });
+
+            svg.call(zoomBehavior);
+
+            gMap = svg.append("g");
+            // Sea titles live in their own layer above the land, so a coastline
+            // never chops a word in half
+            gOcean = svg.append("g");
+
+            // Render sphere background (water)
+            gMap.append("path")
+                .datum({type: "Sphere"})
+                .attr("class", "map-water")
+                .attr("d", pathGenerator);
+
+            // Render graticule grid lines
+            const graticule = d3.geoGraticule();
+            gMap.append("path")
+                .datum(graticule)
+                .attr("class", "graticule")
+                .attr("d", pathGenerator);
+
+            renderOceanLabels();
+        }
+
+        // Faint engraved titles across the seas (decoration only)
+        function renderOceanLabels() {
+            OCEAN_LABELS.forEach(o => {
+                const [x, y] = projection([o.lon, o.lat]);
+                if (!isFinite(x) || !isFinite(y)) return;
+                const label = gOcean.append("text")
+                    .attr("class", "ocean-label")
+                    .attr("data-lon", o.lon)
+                    .attr("data-lat", o.lat)
+                    .attr("data-base-size", o.size)
+                    .attr("data-base-dy", Math.round(o.size * 1.35))
+                    .attr("x", x)
+                    .attr("y", y)
+                    .style("font-size", o.size + "px");
+
+                o.lines.forEach((line, i) => {
+                    label.append("tspan")
+                        .attr("x", x)
+                        .attr("dy", i === 0 ? 0 : Math.round(o.size * 1.35))
+                        .text(line);
+                });
+            });
+        }
+
+        // After a window resize the projection changes, so every placed label
+        // has to be laid out again against its neighbours.
+        function repositionLabels() {
+            if (!gMap || !gOcean || !state.combinedFeatures.length) return;
+
+            relayoutMapLabels();
+
+            gOcean.selectAll(".ocean-label").each(function () {
+                const [x, y] = projection([+this.dataset.lon, +this.dataset.lat]);
+                if (!isFinite(x) || !isFinite(y)) return;
+                d3.select(this).attr("x", x).attr("y", y).selectAll("tspan").attr("x", x);
+            });
+        }
+
+        async function loadGeographicData() {
+            try {
+                // Load world topojson — 50m detail keeps small nations visible;
+                // fall back to the coarse 110m sheet if the CDN is unhappy
+                let worldData;
+                try {
+                    worldData = await d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json");
+                } catch (fallbackErr) {
+                    console.warn("50m world data unavailable, falling back to 110m", fallbackErr);
+                    worldData = await d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json");
+                }
+                state.worldFeatures = topojson.feature(worldData, worldData.objects.countries).features;
+
+                // Kosovo ships without an id; give it the quiz's internal code
+                state.worldFeatures.forEach(f => {
+                    if ((f.id === undefined || f.id === null) && /kosovo/i.test((f.properties && f.properties.name) || "")) {
+                        f.id = KOSOVO_ID;
+                    }
+                });
+
+                // Draw the nations Natural Earth leaves out entirely, so that
+                // every one of the 197 targets has a clickable region
+                MISSING_FEATURE_PATCHES.forEach(p => {
+                    const fid = String(p.id).padStart(3, '0');
+                    if (state.worldFeatures.some(f => featureFid(f) === fid)) return;
+                    const h = p.size / 2;
+                    state.worldFeatures.push({
+                        type: "Feature",
+                        id: p.id,
+                        properties: { name: p.name },
+                        geometry: {
+                            type: "Polygon",
+                            coordinates: [[
+                                [p.lon - h, p.lat - h], [p.lon + h, p.lat - h],
+                                [p.lon + h, p.lat + h], [p.lon - h, p.lat + h],
+                                [p.lon - h, p.lat - h]
+                            ]]
+                        }
+                    });
+                });
+
+                // Load Canadian provinces GeoJSON dataset with robust Yukon & territorial name mapping
+                try {
+                    const canadaData = await d3.json("https://raw.githubusercontent.com/codeforamerica/click_that_hood/master/public/data/canada.geojson");
+                    
+                    // Comprehensive Province & Territory Code Mapping (including Yukon aliases)
+                    const codeMap = {
+                        "Ontario": "CA-ON", 
+                        "Quebec": "CA-QC", "Québec": "CA-QC",
+                        "British Columbia": "CA-BC",
+                        "Alberta": "CA-AB", 
+                        "Manitoba": "CA-MB", 
+                        "Saskatchewan": "CA-SK",
+                        "Nova Scotia": "CA-NS", 
+                        "New Brunswick": "CA-NB", 
+                        "Newfoundland and Labrador": "CA-NL", "Newfoundland": "CA-NL",
+                        "Prince Edward Island": "CA-PE", 
+                        "Northwest Territories": "CA-NT",
+                        "Yukon": "CA-YT", "Yukon Territory": "CA-YT", "Yukon Territory / Territoire du Yukon": "CA-YT",
+                        "Nunavut": "CA-NU"
+                    };
+
+                    state.canadaFeatures = canadaData.features.map(f => {
+                        const rawName = f.properties.name || f.properties.cartodb_id || "";
+                        // Match code or fallback
+                        let pId = codeMap[rawName];
+                        if (!pId) {
+                            for (const [key, code] of Object.entries(codeMap)) {
+                                if (rawName.toLowerCase().includes(key.toLowerCase())) {
+                                    pId = code;
+                                    break;
+                                }
+                            }
+                        }
+                        if (!pId) pId = f.id || rawName;
+
+                        return {
+                            ...f,
+                            id: pId,
+                            properties: {
+                                ...f.properties,
+                                isCanadaProvince: true,
+                                name: CANADA_PROVINCES[pId] ? CANADA_PROVINCES[pId].name : rawName,
+                                customId: pId
+                            }
+                        };
+                    });
+                } catch (err) {
+                    console.warn("Could not load detailed Canadian provinces, using standard Canada boundary", err);
+                    state.canadaFeatures = [];
+                }
+
+                // Load U.S. state boundaries (50 states + Washington, D.C.)
+                try {
+                    const usData = await d3.json("https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json");
+                    const rawStates = topojson.feature(usData, usData.objects.states).features;
+                    state.usStatesFeatures = rawStates.map(f => {
+                        const code = FIPS_STATE_CODES[String(f.id).padStart(2, '0')];
+                        if (!code || !US_STATES['US-' + code]) return null; // territories: not part of the 50 states
+                        return {
+                            ...f,
+                            id: code,
+                            properties: {
+                                ...f.properties,
+                                isUSState: true,
+                                customId: 'US-' + code,
+                                name: US_STATES['US-' + code].name
+                            }
+                        };
+                    }).filter(Boolean);
+                } catch (err) {
+                    console.warn("Could not load U.S. states, using standard USA boundary", err);
+                    state.usStatesFeatures = [];
+                }
+
+                // Hide loader overlay
+                document.getElementById('map-loader').classList.add('opacity-0');
+                setTimeout(() => {
+                    document.getElementById('map-loader').style.display = 'none';
+                }, 500);
+
+                // Build geometry feature paths and start game
+                buildMapFeatures();
+                restartQuiz();
+
+            } catch (err) {
+                console.error("Error loading geographic data:", err);
+                alert("Geographic data failed to load. Please check your internet connection and refresh.");
+            }
+        }
+
+        function buildMapFeatures() {
+            gMap.selectAll(".map-country").remove();
+
+            // Sub-divisions replace their parent country's outline, so every
+            // click lands on a piece rather than the whole
+            let featuresToDraw = [...state.worldFeatures];
+            if (state.includeCanadaProvinces && state.canadaFeatures.length > 0) {
+                featuresToDraw = featuresToDraw.filter(f => featureFid(f) !== '124').concat(state.canadaFeatures);
+            }
+            if (state.includeUSStates && state.usStatesFeatures.length > 0) {
+                featuresToDraw = featuresToDraw.filter(f => featureFid(f) !== '840').concat(state.usStatesFeatures);
+            }
+
+            state.combinedFeatures = featuresToDraw;
+
+            // Render country paths
+            gMap.selectAll(".map-country")
+                .data(featuresToDraw)
+                .enter()
+                .append("path")
+                .attr("class", "map-country")
+                .attr("d", pathGenerator)
+                .attr("data-id", d => featureFid(d))
+                .on("click", handleCountryClick)
+                // Deliberately left blank: a hover tooltip would hand the player
+                // the answer. The name is written in only once it is identified.
+                .append("title")
+                .text("");
+
+            buildMapMarkers();
+            buildMinimap();
+        }
+
+        // --- micro-region pins ------------------------------------------------
+        // Tiny nations (Vatican, Nauru, Dominica…) are drawn as a screen-sized
+        // pin so they stay findable and clickable even when their polygon is
+        // barely a speck. The pin retires as soon as the region itself has
+        // grown big enough to see.
+        const MICRO_PIN_MAX = 4.5;  // base units (px at rest) below which a pin is drawn
+        const MICRO_PIN_R = 4;      // base units — constant on-screen radius
+        const MICRO_PIN_SHOW = 6;   // hide the pin once the region spans this many screen px
+        let markerBoxes = new Map();
+
+        function buildMapMarkers() {
+            if (!gMap) return;
+            gMap.selectAll(".map-marker").remove();
+            markerBoxes.clear();
+            const k = (svg && d3.zoomTransform(svg.node()).k) || 1;
+            const tint = ["guessed-correct", "guessed-1st", "guessed-2nd", "guessed-3rd", "guessed-failed", "guessed-wrong"];
+
+            state.combinedFeatures.forEach(f => {
+                const fid = featureFid(f);
+                if (fid === "undefined") return;
+                const a = largestPartAnchor(f);
+                if (!a || Math.max(a.w, a.h) >= MICRO_PIN_MAX) return;
+
+                const pin = gMap.append("circle")
+                    .datum(f)
+                    .attr("class", "map-country map-marker")
+                    .attr("data-id", fid)
+                    .attr("data-max-dim", Math.max(a.w, a.h))
+                    .attr("cx", a.cx)
+                    .attr("cy", a.cy)
+                    .attr("r", MICRO_PIN_R / k)
+                    .style("display", Math.max(a.w, a.h) * k < MICRO_PIN_SHOW ? null : "none")
+                    .on("click", handleCountryClick);
+
+                // Mirror the region's own state — colour and revealed name
+                const path = gMap.select('path.map-country[data-id="' + fid + '"]');
+                tint.forEach(c => pin.classed(c, path.classed(c)));
+                pin.append("title").text(path.select("title").text() || "");
+
+                // Labels keep a respectful distance from every pin
+                markerBoxes.set(fid, {
+                    x: a.cx - MICRO_PIN_R, y: a.cy - MICRO_PIN_R,
+                    w: MICRO_PIN_R * 2, h: MICRO_PIN_R * 2
+                });
+            });
+        }
+
+        // --- mini-map (top-right inset) --------------------------------------
+        const MINI_W = 158, MINI_H = 96;
+        let miniFit = null;   // base -> inset coords: mini = base * s + t
+
+        function buildMinimap() {
+            const node = document.getElementById("minimap");
+            if (!node || !pathGenerator || !state.worldFeatures.length) return;
+
+            const b = pathGenerator.bounds({ type: "Sphere" });
+            const w = b[1][0] - b[0][0], h = b[1][1] - b[0][1];
+            const s = Math.min((MINI_W - 6) / w, (MINI_H - 6) / h);
+            miniFit = {
+                s: s,
+                tx: (MINI_W - w * s) / 2 - b[0][0] * s,
+                ty: (MINI_H - h * s) / 2 - b[0][1] * s
+            };
+
+            const sel = d3.select(node);
+            sel.selectAll("*").remove();
+
+            sel.append("g")
+                .attr("transform", `translate(${miniFit.tx},${miniFit.ty}) scale(${miniFit.s})`)
+                .selectAll("path")
+                .data(state.worldFeatures)
+                .enter()
+                .append("path")
+                .attr("class", "minimap-land")
+                .attr("d", pathGenerator);
+
+            sel.append("rect")
+                .attr("id", "minimap-viewport")
+                .attr("class", "minimap-view");
+
+            updateMinimapViewport();
+
+            // Click or drag to jump the main chart to a spot
+            let dragging = false;
+            const jump = (clientX, clientY) => {
+                if (!miniFit || !svg) return;
+                const r = node.getBoundingClientRect();
+                const bx = ((clientX - r.left) - miniFit.tx) / miniFit.s;
+                const by = ((clientY - r.top) - miniFit.ty) / miniFit.s;
+                const t = d3.zoomTransform(svg.node());
+                const W = +svg.attr("width"), H = +svg.attr("height");
+                svg.call(zoomBehavior.transform,
+                    d3.zoomIdentity.translate(W / 2, H / 2).scale(t.k).translate(-bx, -by));
+            };
+            node.onpointerdown = e => {
+                e.preventDefault();
+                dragging = true;
+                try { node.setPointerCapture(e.pointerId); } catch (err) {}
+                jump(e.clientX, e.clientY);
+            };
+            node.onpointermove = e => { if (dragging) jump(e.clientX, e.clientY); };
+            node.onpointerup = node.onpointercancel = () => { dragging = false; };
+        }
+
+        // Outline of what the main chart currently shows
+        function updateMinimapViewport() {
+            const rect = document.getElementById("minimap-viewport");
+            if (!rect || !miniFit || !svg) return;
+            const t = d3.zoomTransform(svg.node());
+            const W = +svg.attr("width"), H = +svg.attr("height");
+            const x0 = -t.x / t.k, y0 = -t.y / t.k;
+            const x1 = (W - t.x) / t.k, y1 = (H - t.y) / t.k;
+            d3.select(rect)
+                .attr("x", x0 * miniFit.s + miniFit.tx)
+                .attr("y", y0 * miniFit.s + miniFit.ty)
+                .attr("width", Math.max(2, (x1 - x0) * miniFit.s))
+                .attr("height", Math.max(2, (y1 - y0) * miniFit.s));
+        }
+
+        function toggleMinimap() {
+            state.showMinimap = !state.showMinimap;
+            document.getElementById("minimap-wrap").style.display = state.showMinimap ? "" : "none";
+            document.getElementById("btn-toggle-minimap").classList.toggle("opacity-50", !state.showMinimap);
+        }
+
+        function toggleStatsHud() {
+            state.showStats = !state.showStats;
+            document.getElementById("stats-hud").style.display = state.showStats ? "" : "none";
+            document.getElementById("btn-toggle-stats").classList.toggle("opacity-50", !state.showStats);
+        }
+
+        function prepareTargetQueue() {
+            let targetList = [];
+
+            // 1. World Countries — 193 UN members + 2 observer states +
+            //    2 partially recognized states = 197 nations
+            if (state.selectedRegion !== 'CANADA_ONLY') {
+                for (const [iso, meta] of Object.entries(ISO_COUNTRY_NAMES)) {
+                    // Region filter
+                    if (state.selectedRegion === 'ALL' || meta.continent === state.selectedRegion) {
+                        targetList.push({
+                            id: iso,
+                            name: meta.name,
+                            type: 'Country',
+                            capital: meta.capital,
+                            continent: meta.continent
+                        });
+                    }
+                }
+            }
+
+            // 2. Canadian Provinces
+            if (state.includeCanadaProvinces && (state.selectedRegion === 'ALL' || state.selectedRegion === 'NORTH_AMERICA' || state.selectedRegion === 'CANADA_ONLY')) {
+                for (const [code, meta] of Object.entries(CANADA_PROVINCES)) {
+                    targetList.push({
+                        id: code,
+                        name: `${meta.name} (${meta.type})`,
+                        displayName: meta.name,
+                        type: meta.type,
+                        capital: meta.capital,
+                        continent: 'CANADA_PROVINCES',
+                        isCanadaProvince: true
+                    });
+                }
+            }
+
+            // 3. U.S. States & D.C.
+            if (state.includeUSStates && (state.selectedRegion === 'ALL' || state.selectedRegion === 'NORTH_AMERICA')) {
+                for (const [code, meta] of Object.entries(US_STATES)) {
+                    targetList.push({
+                        id: code,
+                        name: `${meta.name} (${meta.type})`,
+                        displayName: meta.name,
+                        type: meta.type,
+                        capital: meta.capital,
+                        continent: 'US_STATES',
+                        isUSState: true
+                    });
+                }
+            }
+
+            // Apply Custom Country Selection Filter if enabled
+            if (state.customSelectedIds && state.customSelectedIds.size > 0) {
+                targetList = targetList.filter(item => state.customSelectedIds.has(item.id));
+            }
+
+            // Fisher-Yates Shuffle
+            for (let i = targetList.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [targetList[i], targetList[j]] = [targetList[j], targetList[i]];
+            }
+
+            state.targets = targetList;
+            state.totalQuestions = targetList.length;
+            state.maxPossiblePoints = state.totalQuestions * 3;
+            state.score = 0;
+            state.mistakes = 0;
+            state.streak = 0;
+            state.bestStreak = 0;
+            state.guessedMap.clear();
+            state.completedTargetIds.clear();
+
+            updateStatsUI();
+            nextTarget();
+        }
+
+        function nextTarget() {
+            if (state.targets.length === 0) {
+                finishQuiz();
+                return;
+            }
+
+            state.currentTarget = state.targets.pop();
+            state.currentAttempts = 0; // Reset attempts for new target
+            state.hintsRemaining = 3;
+            document.getElementById('hint-count').innerText = state.hintsRemaining;
+            closeHintBanner();
+
+            // Display target name
+            document.getElementById('target-country-name').innerText = state.currentTarget.displayName || state.currentTarget.name;
+            document.getElementById('target-subtext').innerText = state.currentTarget.isCanadaProvince 
+                ? "Canadian Province/Territory" 
+                : state.currentTarget.isUSState
+                ? `U.S. ${state.currentTarget.type}`
+                : "UN Recognized Sovereign State";
+
+            updateAttemptDotsUI();
+            updateStatsUI();
+        }
+
+        function updateAttemptDotsUI() {
+            const container = document.getElementById('attempt-dots');
+            if (!container) return;
+
+            const remaining = 3 - state.currentAttempts;
+            container.innerHTML = `
+                <span class="w-2.5 h-2.5 rounded-full ${remaining >= 1 ? 'bg-moss-500' : 'bg-parchment-500'}" title="Attempt 1"></span>
+                <span class="w-2.5 h-2.5 rounded-full ${remaining >= 2 ? 'bg-ochre-400' : 'bg-parchment-500'}" title="Attempt 2"></span>
+                <span class="w-2.5 h-2.5 rounded-full ${remaining >= 3 ? 'bg-sienna-500' : 'bg-parchment-500'}" title="Attempt 3"></span>
+            `;
+        }
+
+        function handleCountryClick(event, d) {
+            if (!state.currentTarget) return;
+
+            const clickedId = featureFid(d);
+            const targetId = state.currentTarget.id;
+            const parent = parentCountryOf(clickedId);
+
+            // Provinces and states paint their whole country, so clicking any
+            // piece of them answers for the country itself
+            const viaSubUnit = parent === targetId;
+            const answersTarget = clickedId === targetId || viaSubUnit;
+
+            // Straying onto a region that is already identified (green or red
+            // from an earlier question) is almost always a slip of the mouse —
+            // never charge it as a mistake
+            if (!answersTarget && isRegionCompleted(clickedId)) return;
+
+            const element = d3.select(this);
+
+            if (answersTarget) {
+                // CORRECT GUESS
+                AudioFX.playCorrect();
+                state.score++;
+                state.streak++;
+                if (state.streak > state.bestStreak) state.bestStreak = state.streak;
+
+                let attemptClass = "guessed-1st";
+                let pointsEarned = 3;
+
+                if (state.currentAttempts === 0) {
+                    attemptClass = "guessed-1st";
+                    pointsEarned = 3;
+                    state.count1stTry++;
+                } else if (state.currentAttempts === 1) {
+                    attemptClass = "guessed-2nd";
+                    pointsEarned = 2;
+                    state.count2ndTry++;
+                } else {
+                    attemptClass = "guessed-3rd";
+                    pointsEarned = 1;
+                    state.count3rdTry++;
+                }
+
+                state.earnedPoints += pointsEarned;
+                const targetName = state.currentTarget.displayName || state.currentTarget.name;
+                state.guessedMap.set(targetId, { status: attemptClass, name: targetName });
+                state.completedTargetIds.add(targetId);
+
+                // Highlight feature with color tier (unless in Advanced Mode)
+                if (!state.advancedMode) {
+                    if (viaSubUnit) {
+                        // Light up every piece of the country that was answered
+                        gMap.selectAll(".map-country")
+                            .filter(x => { const f = featureFid(x); return f === targetId || parentCountryOf(f) === targetId; })
+                            .classed("guessed-1st guessed-2nd guessed-3rd guessed-failed", false)
+                            .classed(attemptClass, true);
+                    } else {
+                        element.classed(attemptClass, true);
+                    }
+                }
+
+                // Render area label on map if enabled
+                if (state.showLabels) {
+                    renderAreaLabel(findTargetFeature(targetId) || d, targetName);
+                }
+
+                // Now that it is identified, hovering can show the real name —
+                // but a province's tooltip must keep its own name for its own turn
+                if (!viaSubUnit) {
+                    element.select("title").text(targetName);
+                }
+
+                // Brief swell of the pen
+                element.classed("pulse-tight", true);
+                setTimeout(() => element.classed("pulse-tight", false), 350);
+
+                nextTarget();
+
+            } else {
+                // INCORRECT GUESS
+                AudioFX.playWrong();
+                state.mistakes++;
+                state.currentAttempts++;
+                updateAttemptDotsUI();
+
+                // Visual wrong flash animation
+                element.classed("guessed-wrong", true);
+                setTimeout(() => {
+                    element.classed("guessed-wrong", false);
+                }, 600);
+
+                // If user reached 3 incorrect guesses on this location, REVEAL IT!
+                if (state.currentAttempts >= 3) {
+                    state.streak = 0;
+                    state.countRevealed++;
+                    state.guessedMap.set(targetId, { status: 'guessed-failed', name: state.currentTarget.displayName || state.currentTarget.name });
+                    state.completedTargetIds.add(targetId);
+
+                    // Reveal target on map in Red
+                    revealTargetArea(targetId);
+
+                    // Show Banner Notification
+                    const hintBanner = document.getElementById('hint-banner');
+                    const hintText = document.getElementById('hint-text');
+                    const hintIcon = document.getElementById('hint-icon');
+                    if (hintBanner && hintText) {
+                        hintIcon.className = "fa-solid fa-triangle-exclamation text-vermilion-600 text-sm";
+                        hintText.innerText = `3 Tries Exceeded! Revealed location: ${state.currentTarget.displayName || state.currentTarget.name}`;
+                        hintBanner.classList.remove('hidden');
+                    }
+
+                    // Delay before advancing so student can study the correct location on map
+                    setTimeout(() => {
+                        nextTarget();
+                    }, 1800);
+                }
+
+                updateStatsUI();
+            }
+        }
+
+        function revealTargetArea(targetId) {
+            const targetFeature = findTargetFeature(targetId);
+
+            if (targetFeature) {
+                const targetName = state.currentTarget
+                    ? (state.currentTarget.displayName || state.currentTarget.name)
+                    : "";
+
+                // Highlight in Red — for whole countries the drawn pieces
+                // (provinces / states) all light up together
+                gMap.selectAll(".map-country")
+                    .filter(d => {
+                        const f = featureFid(d);
+                        return f === targetId || parentCountryOf(f) === targetId;
+                    })
+                    .classed("guessed-failed", true);
+
+                // Render area label on map
+                if (state.showLabels) {
+                    renderAreaLabel(targetFeature, targetName);
+                }
+
+                // Reveal the name in the tooltip only after it has been shown.
+                // (A province keeps its own tooltip: it may still be a target.)
+                gMap.selectAll(".map-country")
+                    .filter(d => featureFid(d) === targetId)
+                    .select("title")
+                    .text(targetName);
+
+                // Auto zoom to target location area so student learns where it is
+                const [[x0, y0], [x1, y1]] = pathGenerator.bounds(targetFeature);
+                svg.transition().duration(800).call(
+                    zoomBehavior.transform,
+                    d3.zoomIdentity
+                        .translate(svg.attr("width") / 2, svg.attr("height") / 2)
+                        .scale(Math.min(7, 0.85 / Math.max((x1 - x0) / svg.attr("width"), (y1 - y0) / svg.attr("height"))))
+                        .translate(-(x0 + x1) / 2, -(y0 + y1) / 2)
+                );
+            }
+        }
+
+        const LABEL_MAX_FONT = 9;     // user units (px at rest) — cap for region names
+        const LABEL_MIN_FONT = 0.6;    // below this a name is only noise
+        const LABEL_BOX_PAD = 1.2;     // paper halo + a breath between neighbours
+
+        // Measure a layout once at font-size 100 and scale arithmetically:
+        // SVG text scales linearly with font-size, so one getBBox per variant
+        // is all it takes.
+        function measureLabelLines(text, lines) {
+            const key = text + '\u0000' + lines.join('\u2028');
+            if (labelMeasureCache.has(key)) return labelMeasureCache.get(key);
+
+            const probe = gMap.append("text")
+                .attr("class", "map-label")
+                .attr("x", 0).attr("y", 0)
+                .style("font-size", "100px")
+                .style("stroke-width", "0px");
+            lines.forEach((ln, i) => {
+                probe.append("tspan")
+                    .attr("dy", i === 0 ? -((lines.length - 1) / 2) * 115 : 115)
+                    .text(ln);
+            });
+            let b = null;
+            try { b = probe.node().getBBox(); } catch (e) { b = null; }
+            probe.remove();
+            const m = (b && b.width > 0 && b.height > 0)
+                ? { x: b.x, y: b.y, w: b.width, h: b.height }
+                : { x: -100, y: -50, w: 200, h: 100 };
+            labelMeasureCache.set(key, m);
+            return m;
+        }
+
+        // All sensible ways of breaking a name onto 1..3 lines — longest line
+        // wins, so the wrapped version gets the bigger font
+        function wrapCandidatesFor(text) {
+            const words = String(text).split(/\s+/).filter(Boolean);
+            const cands = [[text]];
+            const maxK = Math.min(3, words.length);
+            for (let k = 2; k <= maxK; k++) {
+                let best = null;
+                const rec = (start, left, acc) => {
+                    if (left === 1) {
+                        const lines = acc.concat(words.slice(start).join(' '));
+                        const maxLen = Math.max.apply(null, lines.map(l => l.length));
+                        if (!best || maxLen < best.maxLen) best = { lines, maxLen };
+                        return;
+                    }
+                    for (let end = start + 1; end <= words.length - (left - 1); end++) {
+                        rec(end, left - 1, acc.concat(words.slice(start, end).join(' ')));
+                    }
+                };
+                rec(0, k, []);
+                if (best) cands.push(best.lines);
+            }
+            return cands;
+        }
+
+        // Anchor on the feature's largest landmass: a mean centroid can fall
+        // far outside the country it names (Fiji, Russia, France, the U.S.)
+        function largestPartAnchor(feature) {
+            const geom = feature && feature.geometry;
+            if (!geom) return null;
+            const polys = geom.type === 'Polygon' ? [geom.coordinates]
+                : geom.type === 'MultiPolygon' ? geom.coordinates : [];
+
+            let best = null;
+            polys.forEach(rings => {
+                const part = {
+                    type: "Feature",
+                    properties: feature.properties,
+                    geometry: { type: "Polygon", coordinates: rings }
+                };
+                const b = pathGenerator.bounds(part);
+                const w = Math.abs(b[1][0] - b[0][0]);
+                const h = Math.abs(b[1][1] - b[0][1]);
+                if (!(w > 0) || !(h > 0) || !(w * h > (best ? best.area : 0))) return;
+                const c = pathGenerator.centroid(part);
+                if (isNaN(c[0]) || isNaN(c[1])) return;
+                best = { area: w * h, cx: c[0], cy: c[1], w, h, x0: b[0][0], y0: b[0][1] };
+            });
+
+            if (!best) {
+                const b = pathGenerator.bounds(feature);
+                const w = Math.abs(b[1][0] - b[0][0]);
+                const h = Math.abs(b[1][1] - b[0][1]);
+                if (!(w > 0) || !(h > 0)) return null;
+                const c = pathGenerator.centroid(feature);
+                if (isNaN(c[0]) || isNaN(c[1])) return null;
+                best = { area: w * h, cx: c[0], cy: c[1], w, h, x0: b[0][0], y0: b[0][1] };
+            }
+            return best;
+        }
+
+        function labelBoxHits(box, pad) {
+            const p = pad === undefined ? LABEL_BOX_PAD : pad;
+            const l = box.x - p, r = box.x + box.w + p,
+                  t = box.y - p, b = box.y + box.h + p;
+            for (const o of labelBoxes.values()) {
+                if (l < o.x + o.w && r > o.x && t < o.y + o.h && b > o.y) return true;
+            }
+            return false;
+        }
+
+        // Find a spot for one label that clears every neighbour, keeping the
+        // type as large as its region allows: shrink first, step off the
+        // shape only if there is truly no room. If even that fails the label
+        // is dropped — the hover tooltip still tells the story.
+        function placeLabel(feature, fid, text) {
+            if (!gMap || !feature || !text || !fid || fid === "undefined") return;
+            if (labelBoxes.has(fid)) return;
+            if (gMap.select(`.map-label[data-label-id="${fid}"]`).size() > 0) return;
+
+            const anchor = largestPartAnchor(feature);
+            if (!anchor) return;
+            const cx = anchor.cx, cy = anchor.cy, bw = anchor.w, bh = anchor.h,
+                  x0 = anchor.x0, y0 = anchor.y0;
+
+            // Long names wrap onto more lines — bigger type beats a squashed ribbon
+            let chosen = null;
+            wrapCandidatesFor(text).forEach(lines => {
+                const m = measureLabelLines(text, lines);
+                const fs = Math.min(LABEL_MAX_FONT, (bw * 0.94 / m.w) * 100, (bh * 0.94 / m.h) * 100);
+                if (fs > (chosen ? chosen.fs : 0)) chosen = { lines, m, fs };
+            });
+            if (!chosen || !(chosen.fs > 0)) return;
+
+            // Candidate anchor points: on the shape first, then open water nearby
+            const near = [];
+            [0.1, 0.3, 0.5, 0.7, 0.9].forEach(fx => [0.1, 0.3, 0.5, 0.7, 0.9].forEach(fy => near.push([x0 + fx * bw, y0 + fy * bh])));
+            near.unshift([cx, cy]);
+            const D = Math.hypot(bw, bh);
+            const far = [];
+            for (const r of [0.4 * D, 0.55 * D, 0.7 * D, 0.9 * D, 1.1 * D, 1.4 * D]) {
+                for (let a = 0; a < 360; a += 15) {
+                    far.push([cx + Math.cos(a * Math.PI / 180) * r, cy + Math.sin(a * Math.PI / 180) * r]);
+                }
+            }
+
+            const fonts = [];
+            [chosen.fs, chosen.fs * 0.66, Math.max(LABEL_MIN_FONT, chosen.fs * 0.42)].forEach(v => {
+                if (v > 0 && (fonts.length === 0 || v < fonts[fonts.length - 1] - 0.01)) fonts.push(v);
+            });
+
+            // Comfortable spacing first; in the tightest corners the halo is
+            // allowed to come closer as long as no two names ever touch
+            const pads = [LABEL_BOX_PAD, 0.6, 0.2];
+
+            let placed = null;
+            for (const pad of pads) {
+                for (const fs of fonts) {
+                    const s = fs / 100;
+                    const rel = { x: chosen.m.x * s, y: chosen.m.y * s, w: chosen.m.w * s, h: chosen.m.h * s };
+                    for (const pass of [near, far]) {
+                        for (const [ax, ay] of pass) {
+                            const box = { x: ax + rel.x, y: ay + rel.y, w: rel.w, h: rel.h };
+                            if (!labelBoxHits(box, pad)) { placed = { ax, ay, fs, box, lines: chosen.lines }; break; }
+                        }
+                        if (placed) break;
+                    }
+                    if (placed) break;
+                }
+                if (placed) break;
+            }
+            if (!placed) {
+                // Nothing fits in the current arrangement — lay every label
+                // out again in one calm pass (tight spots choose first) and            // give this one another chance inside it
+                relayoutMapLabels({ fid, text });
+                return;
+            }
+
+            const node = gMap.append("text")
+                .attr("class", "map-label")
+                .attr("data-label-id", fid)
+                .attr("data-full-text", text)
+                .attr("x", placed.ax)
+                .attr("y", placed.ay)
+                .style("font-size", placed.fs + "px")
+                .style("stroke-width", Math.max(0.5, placed.fs * 0.3) + "px");
+
+            placed.lines.forEach((ln, i) => {
+                node.append("tspan")
+                    .attr("dy", i === 0 ? -((placed.lines.length - 1) / 2) * 1.15 * placed.fs
+                                        : 1.15 * placed.fs)
+                    .text(ln);
+            });
+
+            // Trust the real layout over the estimate: nudge so the drawn box            // occupies exactly the reserved rectangle
+            try {
+                const bb = node.node().getBBox();
+                if (bb.width > 0) {
+                    const dx = placed.box.x - bb.x, dy = placed.box.y - bb.y;
+                    if (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01) {
+                        node.attr("x", placed.ax + dx).attr("y", placed.ay + dy);
+                    }
+                }
+            } catch (e) { /* keep the estimated placement */ }
+
+            labelBoxes.set(fid, placed.box);
+        }
+
+        // Re-place every label from scratch — used after a resize, when the
+        // projection (and with it every reserved box) has changed, and as a
+        // rescue when a late label finds no room among its neighbours.
+        let relayoutBusy = false;
+        function relayoutMapLabels(extra) {
+            if (!gMap || relayoutBusy || !state.combinedFeatures.length) return;
+            relayoutBusy = true;
+            try {
+                const entries = [];
+                gMap.selectAll(".map-label").each(function () {
+                    const fid = this.getAttribute("data-label-id");
+                    const text = this.getAttribute("data-full-text") || this.textContent;
+                    if (fid && text) entries.push({ fid, text });
+                });
+                if (extra && extra.fid && extra.text && !entries.some(e => e.fid === extra.fid)) {
+                    entries.push({ fid: extra.fid, text: extra.text });
+                }
+                gMap.selectAll(".map-label").remove();
+                labelBoxes.clear();
+
+                // The tightest spots choose their ground first
+                entries.forEach(e => {
+                    const f = findTargetFeature(e.fid);
+                    const a = f && largestPartAnchor(f);
+                    e.area = a ? a.area : Infinity;
+                });
+                entries.sort((a, b) => a.area - b.area);
+                entries.forEach(e => {
+                    const f = findTargetFeature(e.fid);
+                    if (f) placeLabel(f, e.fid, e.text);
+                });
+
+                gMap.selectAll(".map-label").style("display", state.showLabels ? "block" : "none");
+            } finally {
+                relayoutBusy = false;
+            }
+        }
+
+        function renderAreaLabel(feature, labelText) {
+            if (!feature || !labelText) return;
+            placeLabel(feature, featureFid(feature), labelText);
+        }
+
+        function toggleLabelsFromHeader() {
+            state.showLabels = !state.showLabels;
+            const labelStatus = document.getElementById('txt-label-status');
+            const chk = document.getElementById('chk-show-labels');
+
+            if (state.showLabels) {
+                if (labelStatus) {
+                    labelStatus.innerText = "ON";
+                    labelStatus.className = "text-moss-600";
+                }
+                if (chk) chk.checked = true;
+                if (gMap) gMap.selectAll(".map-label").style("display", "block");
+            } else {
+                if (labelStatus) {
+                    labelStatus.innerText = "OFF";
+                    labelStatus.className = "text-ink-400";
+                }
+                if (chk) chk.checked = false;
+                if (gMap) gMap.selectAll(".map-label").style("display", "none");
+            }
+        }
+
+        function toggleLabelsCheckbox(event) {
+            const chk = document.getElementById('chk-show-labels');
+            // Clicks landing on the checkbox itself already toggle it natively;
+            // flipping again here would cancel it out.
+            if (event && event.target === chk) return;
+            chk.checked = !chk.checked;
+            state.showLabels = chk.checked;
+            
+            const labelStatus = document.getElementById('txt-label-status');
+            if (state.showLabels) {
+                if (labelStatus) {
+                    labelStatus.innerText = "ON";
+                    labelStatus.className = "text-moss-600";
+                }
+                if (gMap) gMap.selectAll(".map-label").style("display", "block");
+            } else {
+                if (labelStatus) {
+                    labelStatus.innerText = "OFF";
+                    labelStatus.className = "text-ink-400";
+                }
+                if (gMap) gMap.selectAll(".map-label").style("display", "none");
+            }
+        }
+
+        function skipTarget() {
+            if (!state.currentTarget) return;
+            // A skip counts as a loss: no points, the streak breaks, and the            // area is revealed on the map
+            state.streak = 0;
+            state.mistakes++;
+            state.countRevealed++;
+            state.currentAttempts = 3;
+            updateAttemptDotsUI();
+            AudioFX.playWrong();
+            state.guessedMap.set(state.currentTarget.id, {
+                status: 'guessed-failed',
+                name: state.currentTarget.displayName || state.currentTarget.name
+            });
+            state.completedTargetIds.add(state.currentTarget.id);
+            revealTargetArea(state.currentTarget.id);
+            updateStatsUI();
+            setTimeout(() => {
+                nextTarget();
+            }, 1200);
+        }
+
+        function useHint() {
+            if (state.hintsRemaining <= 0 || !state.currentTarget) return;
+
+            state.hintsRemaining--;
+            document.getElementById('hint-count').innerText = state.hintsRemaining;
+
+            const hintBanner = document.getElementById('hint-banner');
+            const hintText = document.getElementById('hint-text');
+            const hintIcon = document.getElementById('hint-icon');
+            hintBanner.classList.remove('hidden');
+            if (hintIcon) hintIcon.className = "fa-solid fa-compass text-ochre-600 text-sm";
+
+            if (state.hintsRemaining === 2) {
+                hintText.innerText = `Capital City: ${state.currentTarget.capital}`;
+            } else if (state.hintsRemaining === 1) {
+                hintText.innerText = `Region: ${state.currentTarget.continent.replace('_', ' ')}`;
+            } else {
+                // Zoom map to target bounding box
+                const targetFeature = findTargetFeature(state.currentTarget.id);
+
+                if (targetFeature) {
+                    const [[x0, y0], [x1, y1]] = pathGenerator.bounds(targetFeature);
+                    svg.transition().duration(1000).call(
+                        zoomBehavior.transform,
+                        d3.zoomIdentity
+                            .translate(svg.attr("width") / 2, svg.attr("height") / 2)
+                            .scale(Math.min(8, 0.9 / Math.max((x1 - x0) / svg.attr("width"), (y1 - y0) / svg.attr("height"))))
+                            .translate(-(x0 + x1) / 2, -(y0 + y1) / 2)
+                    );
+                    hintText.innerText = "Map auto-zoomed to target location area!";
+                }
+            }
+        }
+
+        function closeHintBanner() {
+            document.getElementById('hint-banner').classList.add('hidden');
+        }
+
+        function updateStatsUI() {
+            document.getElementById('stat-score').innerText = state.score;
+            document.getElementById('stat-total').innerText = state.totalQuestions;
+
+            const maxPts = state.totalQuestions * 3;
+            const percentage = maxPts > 0 ? Math.round((state.earnedPoints / maxPts) * 100) : 100;
+            document.getElementById('stat-mastery-score').innerText = `${percentage}`;
+            document.getElementById('stat-streak').innerText = `${state.streak} 🔥`;
+
+            // Advanced Mode status badge
+            const badge = document.getElementById('badge-advanced-mode');
+            if (state.advancedMode) {
+                badge.classList.remove('hidden');
+                document.body.classList.add('advanced-mode');
+            } else {
+                badge.classList.add('hidden');
+                document.body.classList.remove('advanced-mode');
+            }
+
+            // Custom Selection Badge
+            const badgeCustomCount = document.getElementById('badge-custom-count');
+            if (state.customSelectedIds && state.customSelectedIds.size > 0) {
+                badgeCustomCount.innerText = state.customSelectedIds.size;
+                badgeCustomCount.classList.remove('hidden');
+            } else {
+                badgeCustomCount.classList.add('hidden');
+            }
+
+            // Region status footer
+            const regionLabel = state.customSelectedIds && state.customSelectedIds.size > 0 
+                ? `Custom Set (${state.customSelectedIds.size} Locations)` 
+                : `Scope: ${state.selectedRegion.replace('_', ' ')}`;
+
+            document.getElementById('label-region-mode').innerText = regionLabel;
+            document.getElementById('label-total-targets').innerText = `${state.totalQuestions} Total | Remaining: ${state.targets.length + (state.currentTarget ? 1 : 0)}`;
+        }
+
+        // CUSTOM COUNTRY SELECTION SYSTEM logic
+        const CONTINENT_META = {
+            "CANADA_PROVINCES": { title: "🇨🇦 Canadian Provinces & Territories", icon: "fa-map-location-dot" },
+            "US_STATES": { title: "🇺🇸 U.S. States & D.C.", icon: "fa-star" },
+            "NORTH_AMERICA": { title: "North America & Caribbean", icon: "fa-earth-americas" },
+            "SOUTH_AMERICA": { title: "South America", icon: "fa-earth-americas" },
+            "EUROPE": { title: "Europe", icon: "fa-earth-europe" },
+            "ASIA": { title: "Asia", icon: "fa-earth-asia" },
+            "AFRICA": { title: "Africa", icon: "fa-earth-africa" },
+            "OCEANIA": { title: "Oceania", icon: "fa-earth-oceania" },
+            "OBSERVER_STATES": { title: "👁️ UN Observer States", icon: "fa-eye" },
+            "PARTIALLY_RECOGNIZED": { title: "🏳️ Partially Recognized States", icon: "fa-flag" }
+        };
+
+        let tempSelectedIds = new Set();
+
+        function getAllAvailableEntities() {
+            const list = [];
+            
+            // Canadian Provinces
+            for (const [code, meta] of Object.entries(CANADA_PROVINCES)) {
+                list.push({
+                    id: code,
+                    name: meta.name,
+                    continent: meta.continent,
+                    group: 'CANADA_PROVINCES',
+                    type: meta.type
+                });
+            }
+
+            // U.S. States
+            for (const [code, meta] of Object.entries(US_STATES)) {
+                list.push({
+                    id: code,
+                    name: meta.name,
+                    continent: 'NORTH_AMERICA',
+                    group: 'US_STATES',
+                    type: meta.type
+                });
+            }
+
+            // UN World Countries — observers and partially recognized states            // gather in their own selector categories
+            for (const [iso, meta] of Object.entries(ISO_COUNTRY_NAMES)) {
+                list.push({
+                    id: iso,
+                    name: meta.name,
+                    continent: meta.continent,
+                    group: meta.category || meta.continent,
+                    type: 'Country'
+                });
+            }
+
+            return list;
+        }
+
+        function openCustomSelectionModal() {
+            const allEntities = getAllAvailableEntities();
+
+            if (state.customSelectedIds && state.customSelectedIds.size > 0) {
+                tempSelectedIds = new Set(state.customSelectedIds);
+            } else {
+                tempSelectedIds = new Set(allEntities.map(e => e.id));
+            }
+
+            document.getElementById('input-country-search').value = '';
+            renderCustomSelectionList();
+            document.getElementById('modal-custom-selection').classList.remove('hidden');
+        }
+
+        function closeCustomSelectionModal() {
+            document.getElementById('modal-custom-selection').classList.add('hidden');
+        }
+
+        function handleCustomSearch(query) {
+            renderCustomSelectionList(query.trim().toLowerCase());
+        }
+
+        function renderCustomSelectionList(filterQuery = '') {
+            const container = document.getElementById('container-continent-groups');
+            container.innerHTML = '';
+
+            const allEntities = getAllAvailableEntities();
+            
+            // Group entities by continent
+            const grouped = {};
+            for (const key of Object.keys(CONTINENT_META)) {
+                grouped[key] = [];
+            }
+
+            allEntities.forEach(item => {
+                if (!filterQuery || item.name.toLowerCase().includes(filterQuery)) {
+                    const groupKey = item.group || item.continent;
+                    if (grouped[groupKey]) {
+                        grouped[groupKey].push(item);
+                    }
+                }
+            });
+
+            // Update header selection counter
+            document.getElementById('txt-selected-count').innerText = tempSelectedIds.size;
+
+            // Render Accordion Sections per Continent
+            for (const [contKey, meta] of Object.entries(CONTINENT_META)) {
+                const items = grouped[contKey];
+                if (!items || items.length === 0) continue;
+
+                items.sort((a, b) => a.name.localeCompare(b.name));
+
+                const allContSelected = items.every(item => tempSelectedIds.has(item.id));
+                const someContSelected = items.some(item => tempSelectedIds.has(item.id));
+
+                const groupCard = document.createElement('div');
+                groupCard.className = 'glass-card rounded-xl border border-parchment-600/80 overflow-hidden';
+
+                const groupHeader = document.createElement('div');
+                groupHeader.className = 'px-4 py-3 bg-parchment-200/80 flex items-center justify-between border-b border-parchment-600 cursor-pointer select-none';
+                
+                groupHeader.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid ${meta.icon} text-moss-600 text-sm"></i>
+                        <span class="font-bold text-xs text-ink-900">${meta.title}</span>
+                        <span class="text-[10px] text-ink-500 bg-parchment-400 px-2 py-0.5 rounded-full">${items.length}</span>
+                    </div>
+                    <div class="flex items-center gap-2" onclick="event.stopPropagation()">
+                        <button onclick="toggleContinentGroup('${contKey}', ${!allContSelected})" class="text-[11px] text-moss-600 hover:text-moss-700 font-medium px-2 py-1 rounded bg-parchment-400 border border-parchment-700/60">
+                            ${allContSelected ? 'Deselect Continent' : 'Select Continent'}
+                        </button>
+                    </div>
+                `;
+
+                const grid = document.createElement('div');
+                grid.className = 'p-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 text-xs';
+
+                items.forEach(item => {
+                    const isChecked = tempSelectedIds.has(item.id);
+
+                    const label = document.createElement('label');
+                    label.className = `p-2 rounded-lg border flex items-center gap-2 cursor-pointer transition-all ${
+                        isChecked 
+                            ? 'bg-moss-500/25 border-moss-500/60 text-ink-900 font-medium' 
+                            : 'bg-parchment-50/70 border-parchment-600/60 text-ink-500 hover:text-ink-800'
+                    }`;
+
+                    label.innerHTML = `
+                        <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleIndividualCountry('${item.id}', this.checked)" class="w-3.5 h-3.5 rounded text-moss-600 bg-parchment-200 border-parchment-700 focus:ring-moss-500 focus:ring-offset-parchment-100">
+                        <span class="truncate">${item.name}</span>
+                    `;
+
+                    grid.appendChild(label);
+                });
+
+                groupCard.appendChild(groupHeader);
+                groupCard.appendChild(grid);
+                container.appendChild(groupCard);
+            }
+        }
+
+        function toggleIndividualCountry(id, checked) {
+            if (checked) {
+                tempSelectedIds.add(id);
+            } else {
+                tempSelectedIds.delete(id);
+            }
+            document.getElementById('txt-selected-count').innerText = tempSelectedIds.size;
+            renderCustomSelectionList(document.getElementById('input-country-search').value.trim().toLowerCase());
+        }
+
+        function toggleContinentGroup(continentKey, selectAll) {
+            const allEntities = getAllAvailableEntities();
+            allEntities.forEach(item => {
+                if ((item.group || item.continent) === continentKey) {
+                    if (selectAll) {
+                        tempSelectedIds.add(item.id);
+                    } else {
+                        tempSelectedIds.delete(item.id);
+                    }
+                }
+            });
+            renderCustomSelectionList(document.getElementById('input-country-search').value.trim().toLowerCase());
+        }
+
+        function selectAllCustomCountries(selectAll) {
+            const allEntities = getAllAvailableEntities();
+            if (selectAll) {
+                tempSelectedIds = new Set(allEntities.map(e => e.id));
+            } else {
+                tempSelectedIds.clear();
+            }
+            renderCustomSelectionList(document.getElementById('input-country-search').value.trim().toLowerCase());
+        }
+
+        function applyCustomSelectionAndRestart() {
+            const allEntities = getAllAvailableEntities();
+            if (tempSelectedIds.size === 0) {
+                alert("Please select at least one country or province to practice!");
+                return;
+            }
+
+            if (tempSelectedIds.size === allEntities.length) {
+                state.customSelectedIds = null; // reset to default full set
+            } else {
+                state.customSelectedIds = new Set(tempSelectedIds);
+            }
+
+            closeCustomSelectionModal();
+            restartQuiz();
+        }
+
+        function toggleSound() {
+            state.soundEnabled = !state.soundEnabled;
+            const icon = document.getElementById('icon-sound');
+            if (state.soundEnabled) {
+                icon.className = "fa-solid fa-volume-high";
+            } else {
+                icon.className = "fa-solid fa-volume-xmark text-ink-400";
+            }
+        }
+
+        function openSettingsModal() {
+            document.getElementById('chk-advanced-mode').checked = state.advancedMode;
+            document.getElementById('chk-canada-provinces').checked = state.includeCanadaProvinces;
+            document.getElementById('chk-us-states').checked = state.includeUSStates;
+            document.getElementById('chk-show-labels').checked = state.showLabels;
+            document.getElementById('select-region').value = state.selectedRegion;
+            document.getElementById('modal-settings').classList.remove('hidden');
+        }
+
+        function closeSettingsModal() {
+            document.getElementById('modal-settings').classList.add('hidden');
+        }
+
+        function toggleAdvancedCheckbox(event) {
+            const chk = document.getElementById('chk-advanced-mode');
+            if (event && event.target === chk) return;
+            chk.checked = !chk.checked;
+        }
+
+        function toggleCanadaCheckbox(event) {
+            const chk = document.getElementById('chk-canada-provinces');
+            if (event && event.target === chk) return;
+            chk.checked = !chk.checked;
+        }
+
+        function toggleUSCheckbox(event) {
+            const chk = document.getElementById('chk-us-states');
+            if (event && event.target === chk) return;
+            chk.checked = !chk.checked;
+        }
+
+        function applySettingsAndRestart() {
+            state.advancedMode = document.getElementById('chk-advanced-mode').checked;
+            state.includeCanadaProvinces = document.getElementById('chk-canada-provinces').checked;
+            state.includeUSStates = document.getElementById('chk-us-states').checked;
+            state.showLabels = document.getElementById('chk-show-labels').checked;
+            state.selectedRegion = document.getElementById('select-region').value;
+
+            closeSettingsModal();
+            if (gMap) buildMapFeatures();
+            restartQuiz();
+        }
+
+        window.addEventListener('resize', () => {
+            if (!svg || !gMap || !projection) return;
+            const container = document.getElementById('map-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            svg.attr("width", width).attr("height", height);
+            projection.scale(width / 5.8).translate([width / 2, height / 1.8]);
+            gMap.selectAll('.map-country').attr('d', pathGenerator);
+            gMap.selectAll('.map-water').attr('d', pathGenerator({type: "Sphere"}));
+            gMap.selectAll('.graticule').attr('d', pathGenerator);
+            repositionLabels();
+        });
+
+        window.onload = function() {
+            initD3Map();
+            loadGeographicData();
+        };
+    </script>
+</body>
+</html>
