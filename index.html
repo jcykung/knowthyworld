@@ -1344,6 +1344,9 @@
                     .classed("guessed-failed", false)
                     .classed("guessed-wrong", false);
 
+                // Old hover tooltips would spoil the fresh round
+                gMap.selectAll(".map-country").select("title").text("");
+
                 // Remove existing labels
                 gMap.selectAll(".map-label").remove();
                 labelBoxes.clear();
@@ -1409,6 +1412,14 @@
                     // Coastlines and rhumb lines thin out as the chart is
                     // magnified, like finer and finer pen work
                     svg.style("--map-stroke", (0.6 * Math.pow(event.transform.k, -1.5)) + "px");
+                    // Micro-region pins hold their on-screen size and retire
+                    // once the land itself has grown visible
+                    gMap.selectAll(".map-marker")
+                        .attr("r", MICRO_PIN_R / event.transform.k)
+                        .style("display", function () {
+                            return (+this.getAttribute("data-max-dim") * event.transform.k < MICRO_PIN_SHOW) ? null : "none";
+                        });
+                    updateMinimapViewport();
                     // Sea titles keep their on-screen size and line spacing,
                     // as if printed on the paper itself rather than drawn on it
                     gOcean.selectAll(".ocean-label")
@@ -1514,9 +1525,12 @@
                         properties: { name: p.name },
                         geometry: {
                             type: "Polygon",
+                            // NOTE: d3-geo wants spherical rings wound clockwise
+                            // (opposite of RFC 7946) — a wrong-wound ring reads
+                            // as "the whole globe minus this hole"
                             coordinates: [[
-                                [p.lon - h, p.lat - h], [p.lon + h, p.lat - h],
-                                [p.lon + h, p.lat + h], [p.lon - h, p.lat + h],
+                                [p.lon - h, p.lat - h], [p.lon - h, p.lat + h],
+                                [p.lon + h, p.lat + h], [p.lon + h, p.lat - h],
                                 [p.lon - h, p.lat - h]
                             ]]
                         }
@@ -1614,7 +1628,7 @@
         }
 
         function buildMapFeatures() {
-            gMap.selectAll(".map-country").remove();
+            gMap.selectAll(".map-country").remove(); // paths and pins both
 
             // Sub-divisions replace their parent country's outline, so every
             // click lands on a piece rather than the whole
@@ -1629,7 +1643,7 @@
             state.combinedFeatures = featuresToDraw;
 
             // Render country paths
-            gMap.selectAll(".map-country")
+            gMap.selectAll("path.map-country")
                 .data(featuresToDraw)
                 .enter()
                 .append("path")
@@ -1945,7 +1959,9 @@
                             .classed("guessed-1st guessed-2nd guessed-3rd guessed-failed", false)
                             .classed(attemptClass, true);
                     } else {
-                        element.classed(attemptClass, true);
+                        // The pin (if the region has one) takes the colour too
+                        gMap.selectAll('.map-country[data-id="' + clickedId + '"]')
+                            .classed(attemptClass, true);
                     }
                 }
 
@@ -1957,7 +1973,9 @@
                 // Now that it is identified, hovering can show the real name —
                 // but a province's tooltip must keep its own name for its own turn
                 if (!viaSubUnit) {
-                    element.select("title").text(targetName);
+                    gMap.selectAll('.map-country[data-id="' + clickedId + '"]')
+                        .select("title")
+                        .text(targetName);
                 }
 
                 // Brief swell of the pen
@@ -2149,6 +2167,9 @@
             for (const o of labelBoxes.values()) {
                 if (l < o.x + o.w && r > o.x && t < o.y + o.h && b > o.y) return true;
             }
+            for (const o of markerBoxes.values()) {
+                if (l < o.x + o.w && r > o.x && t < o.y + o.h && b > o.y) return true;
+            }
             return false;
         }
 
@@ -2181,7 +2202,13 @@
             near.unshift([cx, cy]);
             const D = Math.hypot(bw, bh);
             const far = [];
-            for (const r of [0.4 * D, 0.55 * D, 0.7 * D, 0.9 * D, 1.1 * D, 1.4 * D]) {
+            // Rings scale with the region, but every region also gets an
+            // absolute floor so a speck-sized target can still step beyond
+            // its own pin and the neighbours crowding it
+            const rings = Array.from(new Set(
+                [0.4 * D, 0.55 * D, 0.7 * D, 0.9 * D, 1.1 * D, 1.4 * D, 6, 9, 12, 16, 21, 27]
+            )).sort((a, b) => a - b);
+            for (const r of rings) {
                 for (let a = 0; a < 360; a += 15) {
                     far.push([cx + Math.cos(a * Math.PI / 180) * r, cy + Math.sin(a * Math.PI / 180) * r]);
                 }
@@ -2703,9 +2730,11 @@
 
             svg.attr("width", width).attr("height", height);
             projection.scale(width / 5.8).translate([width / 2, height / 1.8]);
-            gMap.selectAll('.map-country').attr('d', pathGenerator);
+            gMap.selectAll('path.map-country').attr('d', pathGenerator);
             gMap.selectAll('.map-water').attr('d', pathGenerator({type: "Sphere"}));
             gMap.selectAll('.graticule').attr('d', pathGenerator);
+            buildMapMarkers();
+            buildMinimap();
             repositionLabels();
         });
 
