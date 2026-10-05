@@ -3,12 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UN & Canadian Provinces Interactive Map Quiz</title>
+    <title>Know Thy World — Interactive Map Quiz</title>
+    <meta name="description" content="Know Thy World — an old-timey chart-table quiz of world countries, Canadian provinces and U.S. states.">
+    <meta name="theme-color" content="#f2e6ca">
+    <!-- Globe mark: SVG where supported, raster PNG everywhere else -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2064%2064'%3E%3Cdefs%3E%3CradialGradient%20id%3D's'%20cx%3D'34%25'%20cy%3D'28%25'%20r%3D'78%25'%3E%3Cstop%20offset%3D'0'%20stop-color%3D'%23a5c2b9'%2F%3E%3Cstop%20offset%3D'1'%20stop-color%3D'%23375862'%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Ccircle%20cx%3D'32'%20cy%3D'32'%20r%3D'27'%20fill%3D'url(%23s)'%2F%3E%3Cpath%20d%3D'M32%205c-9%207-13%2016-13%2027s4%2020%2013%2027M32%205c9%207%2013%2016%2013%2027s-4%2020-13%2027'%20fill%3D'none'%20stroke%3D'%23f6ecd6'%20stroke-width%3D'2.4'%20stroke-opacity%3D'.8'%2F%3E%3Cpath%20d%3D'M7%2024h50M6%2032h52M7%2040h50'%20fill%3D'none'%20stroke%3D'%23f6ecd6'%20stroke-width%3D'2.4'%20stroke-opacity%3D'.8'%2F%3E%3Cpath%20d%3D'M28%2014c5%201%208%204%2010%208%203%201%206%203%207%206-1%205-4%208-8%2010-2%205-4%209-4%2014-4-3-7-7-9-12-4-3-7-7-8-12%201-6%205-11%2012-14z'%20fill%3D'%23e7d4a8'%20stroke%3D'%233a2c19'%20stroke-width%3D'1.6'%20stroke-linejoin%3D'round'%2F%3E%3Ccircle%20cx%3D'32'%20cy%3D'32'%20r%3D'28.5'%20fill%3D'none'%20stroke%3D'%239a6f30'%20stroke-width%3D'5'%2F%3E%3C%2Fsvg%3E">
+    <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,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">
+    <link rel="apple-touch-icon" sizes="180x180" href="data:image/png;base64,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">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Know Thy World">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- D3.js v7 and TopoJSON libraries -->
     <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
     <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
+    <!-- Modal screenshots for the results card (with a hand-drawn fallback) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Fonts -->
@@ -217,17 +229,28 @@
             transition: opacity 0.3s ease;
         }
 
-        /* Micro-nations (Vatican, Nauru, Dominica…) carry a screen-sized pin
-           so they stay findable and clickable even when their polygon is
-           barely a speck; the pin retires once the land itself is visible. */
-        .map-marker {
-            stroke-width: 1px;
-            transition: fill 0.2s ease, stroke 0.2s ease;
+        /* --- slide-to-skip: a deliberate drag, never a stray click ------- */
+        #skip-track,
+        #skip-track * {
+            touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        #skip-track #skip-knob {
+            transition: transform 0.16s ease;
+        }
+        #skip-track.dragging #skip-knob {
+            transition: none;
         }
 
-        .map-marker:hover {
-            filter: none;
-            stroke-width: 1.6px;
+        /* --- share-toasts ------------------------------------------------ */
+        #toast {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        #toast.toast-hidden {
+            opacity: 0;
+            transform: translateY(8px);
+            pointer-events: none;
         }
 
         /* Chart-inset mini-map, top right */
@@ -272,6 +295,22 @@
             0% { opacity: 1; }
             50% { opacity: 0.4; }
             100% { opacity: 1; }
+        }
+
+        /* Out of tries: the answer flares cyan so the eye is pulled straight
+           to it while the chart swings the region into view. The flare then
+           fades back to the ordinary "revealed" red once it has been seen.
+           Declared last so it outranks every persistent fill above. */
+        .map-country.reveal-flash,
+        .advanced-mode .map-country.reveal-flash {
+            fill: #3fd6e8 !important;
+            stroke: #166877 !important;
+            animation: reveal-cyan 0.42s ease-in-out infinite alternate;
+        }
+
+        @keyframes reveal-cyan {
+            from { fill: #3fd6e8; }
+            to   { fill: #0ea5bd; }
         }
 
         .map-water {
@@ -360,6 +399,107 @@
         .animate-scale-up {
             animation: scale-up 0.22s ease-out both;
         }
+
+        /* Quiet rules between the groups of header controls */
+        .header-divider {
+            width: 1px;
+            align-self: stretch;
+            margin: 15px 1px;
+            background: linear-gradient(to bottom, transparent, rgba(58, 44, 25, 0.26) 20%, rgba(58, 44, 25, 0.26) 80%, transparent);
+            border-radius: 1px;
+        }
+
+        /* Slide-to-skip: the words sit clear of where the knob starts, and
+           step aside for as long as the knob travels over them */
+        .skip-label {
+            left: 46px;
+            right: 6px;
+            transition: opacity 0.16s ease;
+        }
+        #skip-track.dragging .skip-label { opacity: 0; }
+
+        /* The opening choice: what is on the list, and how to work through it */
+        .mode-chip {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: rgba(154, 111, 48, 0.12);
+            border: 1px solid rgba(154, 111, 48, 0.3);
+            color: #7d5a26;
+            white-space: nowrap;
+        }
+        .mode-chip b { font-size: 11px; color: #3a2c19; }
+
+        .mode-area-list {
+            max-height: 30vh;
+            overflow-y: auto;
+            padding: 10px 12px;
+            border: 1px solid rgba(163, 126, 75, 0.35);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.35);
+            column-count: 2;
+            column-gap: 18px;
+            font-size: 11px;
+            line-height: 1.75;
+            color: #54462f;
+            text-align: left;
+        }
+        .mode-area-list .mode-area-name {
+            break-inside: avoid;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .mode-area-list .mode-area-name::before {
+            content: "·";
+            color: #a37e4b;
+            margin-right: 5px;
+        }
+        @media (max-width: 480px) { .mode-area-list { column-count: 1; } }
+
+        /* --------------------------------------------------------------
+           CHART ON A HANDHELD DEVICE
+           Thumb-sized controls, no phantom double-taps, and a viewport
+           that follows the phone chrome instead of hiding behind it.
+           -------------------------------------------------------------- */
+        body {
+            height: 100vh;
+            height: 100dvh;
+        }
+
+        button, a, input, select, label, .tap {
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        @media (max-width: 767px) {
+            /* The chart-room buttons run off the edge on a phone — let the
+               header scroll sideways rather than crush them */
+            .header-actions {
+                overflow-x: auto;
+                overflow-y: hidden;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                max-width: 68vw;
+            }
+            .header-actions::-webkit-scrollbar { display: none; }
+        }
+
+        @media (pointer: coarse) {
+            /* 44px: the smallest target that a thumb can trust */
+            button { min-height: 44px; }
+            .zoom-controls button { width: 48px; height: 48px; font-size: 16px; }
+            .zoom-controls { bottom: 16px; right: 16px; }
+            #btn-sound, .zoom-controls button, .header-actions button, #btn-hint { min-width: 44px; }
+            #minimap { cursor: crosshair; }
+            #container-continent-groups label { min-height: 44px; }
+            .settings-row { min-height: 44px; }
+            /* iOS magnifies any field under 16px on focus — keep it calm */
+            input[type="text"], select { font-size: 16px; }
+            .map-country:hover { filter: none; }
+        }
     </style>
 </head>
 <body class="h-screen w-screen flex flex-col justify-between relative overflow-hidden bg-parchment-100 text-ink-800">
@@ -367,55 +507,60 @@
     <!-- TOP NAVIGATION BAR -->
     <header class="h-16 px-4 md:px-6 glass-panel z-20 flex items-center justify-between shadow-xl shrink-0">
         <div class="flex items-center space-x-3">
-            <div class="p-2 bg-gradient-to-tr from-brass-600 to-ink-700 rounded-xl text-parchment-50 shadow-lg shadow-ink-900/20">
+            <div class="p-2 bg-gradient-to-tr from-brass-600 to-ink-700 rounded-xl text-parchment-50 shadow-lg shadow-ink-900/20 shrink-0">
                 <i class="fa-solid me-0 fa-earth-americas text-xl"></i>
             </div>
-            <div>
-                <h1 class="font-display font-bold text-lg md:text-xl tracking-tight text-ink-900 flex items-center gap-2">
-                    GeoMaster <span class="text-xs font-normal px-2 py-0.5 rounded-full bg-brass-500/20 text-brass-700 border border-brass-500/30">UN & Canada Edition</span>
+            <div class="min-w-0">
+                <h1 class="font-display font-bold text-lg md:text-xl tracking-tight text-ink-900 whitespace-nowrap">
+                    Know Thy World
                 </h1>
-                <p class="text-xs text-ink-500 hidden sm:block">Interactive Global & Canadian Geography Explorer</p>
+                <a class="header-byline text-xs font-semibold text-moss-700 hover:text-moss-600 transition-colors select-none whitespace-nowrap inline-flex items-center gap-1.5"
+                   href="https://ko-fi.com/coolpuddytat" target="_blank" rel="noopener noreferrer" title="Buy me a coffee! on Ko-fi">
+                    <span>&gt; Jonathan Kung</span>
+                    <i class="fa-solid fa-mug-hot text-[10px]"></i>
+                </a>
             </div>
         </div>
 
-        <!-- Right Header Action Controls -->
-        <div class="flex items-center space-x-2 md:space-x-4">
-            <!-- Audio Toggle -->
-            <button id="btn-sound" onclick="toggleSound()" class="p-2.5 rounded-xl bg-parchment-400/80 hover:bg-parchment-500 text-ink-700 hover:text-ink-900 transition-all border border-parchment-700/60" title="Toggle Sound FX">
-                <i id="icon-sound" class="fa-solid fa-volume-high"></i>
-            </button>
+        <!-- Right Header Action Controls — grouped by what they are for -->
+        <div class="header-actions flex items-center gap-2 md:gap-3">
+            <!-- Looking at the chart: sound, names, study -->
+            <div class="flex items-center gap-2" role="group" aria-label="Chart display">
+                <button id="btn-sound" onclick="toggleSound()" class="px-2.5 py-2 rounded-xl bg-parchment-400/80 hover:bg-parchment-500 text-ink-700 hover:text-ink-900 transition-all border border-parchment-700/60" title="Toggle Sound FX">
+                    <i id="icon-sound" class="fa-solid fa-volume-high"></i>
+                </button>
 
-            <!-- Custom Country Selector Button -->
-            <button onclick="openCustomSelectionModal()" class="px-3.5 py-2 rounded-xl bg-moss-600/20 hover:bg-moss-600/30 text-moss-700 hover:text-moss-100 border border-moss-500/40 text-xs font-semibold flex items-center gap-2 transition-all shadow-lg shadow-ink-900/20" title="Choose specific countries to practice">
-                <i class="fa-solid fa-list-check text-moss-600"></i>
-                <span class="inline">Select Countries</span>
-                <span id="badge-custom-count" class="hidden text-[10px] bg-moss-500 text-parchment-50 font-extrabold px-1.5 py-0.5 rounded-full"></span>
-            </button>
+                <button id="btn-toggle-labels" onclick="toggleLabelsFromHeader()" class="px-3 py-2 rounded-xl bg-parchment-400/80 hover:bg-parchment-500 text-ink-700 hover:text-ink-900 border border-parchment-700/60 text-xs font-semibold flex items-center gap-2 transition-all" title="Toggle On-Map Area Labels">
+                    <i class="fa-solid fa-tag text-ochre-600"></i>
+                    <span class="hidden md:inline">Labels: <span id="txt-label-status" class="text-moss-600">ON</span></span>
+                </button>
 
-            <!-- Show Labels Toggle Button -->
-            <button id="btn-toggle-labels" onclick="toggleLabelsFromHeader()" class="px-3.5 py-2 rounded-xl bg-parchment-400/80 hover:bg-parchment-500 text-ink-700 hover:text-ink-900 border border-parchment-700/60 text-xs font-semibold flex items-center gap-2 transition-all" title="Toggle On-Map Area Labels">
-                <i class="fa-solid fa-tag text-ochre-600"></i>
-                <span class="hidden md:inline">Labels: <span id="txt-label-status" class="text-moss-600">ON</span></span>
-            </button>
+                <button id="btn-study" onclick="toggleStudyMode()" class="px-3 py-2 rounded-xl bg-ochre-500/10 hover:bg-ochre-500/20 text-ochre-700 border border-ochre-500/30 text-xs font-semibold flex items-center gap-2 transition-all" title="Show the name of every area in the current selection">
+                    <i class="fa-solid fa-book-open text-ochre-600"></i>
+                    <span class="hidden md:inline">Study: <span id="txt-study-status" class="text-ink-400">OFF</span></span>
+                </button>
+            </div>
 
-            <!-- Mini-Map Toggle -->
-            <button id="btn-toggle-minimap" onclick="toggleMinimap()" class="p-2.5 rounded-xl bg-parchment-400/80 hover:bg-parchment-500 text-ink-700 hover:text-ink-900 transition-all border border-parchment-700/60" title="Toggle Mini-Map">
-                <i class="fa-solid fa-map-location-dot text-sea-600"></i>
-            </button>
+            <span class="header-divider" aria-hidden="true"></span>
 
-            <!-- Stats Panel Toggle -->
-            <button id="btn-toggle-stats" onclick="toggleStatsHud()" class="p-2.5 rounded-xl bg-parchment-400/80 hover:bg-parchment-500 text-ink-700 hover:text-ink-900 transition-all border border-parchment-700/60" title="Toggle Stats Panel">
-                <i class="fa-solid fa-table-columns text-brass-600"></i>
-            </button>
+            <!-- Setting up the quiz: scope, selection, options -->
+            <div class="flex items-center gap-2" role="group" aria-label="Quiz setup">
+                <button onclick="openCustomSelectionModal()" class="px-3 py-2 rounded-xl bg-moss-600/20 hover:bg-moss-600/30 text-moss-700 hover:text-moss-100 border border-moss-500/40 text-xs font-semibold flex items-center gap-2 transition-all shadow-lg shadow-ink-900/20" title="Choose specific countries to practice">
+                    <i class="fa-solid fa-list-check text-moss-600"></i>
+                    <span class="hidden sm:inline">Select Countries</span>
+                    <span id="badge-custom-count" class="hidden text-[10px] bg-moss-500 text-parchment-50 font-extrabold px-1.5 py-0.5 rounded-full"></span>
+                </button>
 
-            <!-- Mode / Settings Button -->
-            <button onclick="openSettingsModal()" class="px-3.5 py-2 rounded-xl bg-parchment-400/80 hover:bg-parchment-500 text-ink-700 hover:text-ink-900 text-xs font-semibold flex items-center gap-2 border border-parchment-700/60 transition-all">
-                <i class="fa-solid fa-sliders text-brass-600"></i>
-                <span class="hidden md:inline">Quiz Settings</span>
-            </button>
+                <button onclick="openSettingsModal()" class="px-3 py-2 rounded-xl bg-parchment-400/80 hover:bg-parchment-500 text-ink-700 hover:text-ink-900 text-xs font-semibold flex items-center gap-2 border border-parchment-700/60 transition-all" title="Quiz settings, chart display and scope">
+                    <i class="fa-solid fa-sliders text-brass-600"></i>
+                    <span class="hidden md:inline">Quiz Settings</span>
+                </button>
+            </div>
 
-            <!-- Reset / Restart Quiz -->
-            <button onclick="restartQuiz()" class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-brass-600 to-sea-600 hover:from-brass-500 hover:to-sea-500 text-parchment-50 text-xs font-semibold shadow-md shadow-ink-900/20 transition-all flex items-center gap-2">
+            <span class="header-divider" aria-hidden="true"></span>
+
+            <!-- Start over -->
+            <button onclick="restartQuiz()" class="px-3 py-2 rounded-xl bg-gradient-to-r from-brass-600 to-sea-600 hover:from-brass-500 hover:to-sea-500 text-parchment-50 text-xs font-semibold shadow-md shadow-ink-900/20 transition-all flex items-center gap-2" title="Restart the quiz">
                 <i class="fa-solid fa-rotate-right"></i>
                 <span>Restart</span>
             </button>
@@ -450,15 +595,20 @@
                     </div>
                 </div>
 
-                <!-- Action Controls: Hint & Skip -->
+                <!-- Action Controls: Hint & a deliberate slide-to-skip -->
                 <div class="flex items-center gap-2 w-full sm:w-auto justify-end shrink-0">
                     <button id="btn-hint" onclick="useHint()" class="px-3 py-1.5 rounded-lg bg-ochre-500/10 hover:bg-ochre-500/20 text-ochre-700 border border-ochre-500/30 text-xs font-semibold transition-all flex items-center gap-1.5">
                         <i class="fa-solid fa-lightbulb"></i>
                         <span>Hint (<span id="hint-count">3</span>)</span>
                     </button>
-                    <button onclick="skipTarget()" class="px-3 py-1.5 rounded-lg bg-parchment-400 hover:bg-parchment-500 text-ink-700 text-xs font-medium border border-parchment-700 transition-all">
-                        Skip <i class="fa-solid fa-forward text-xs ml-1"></i>
-                    </button>
+                    <div id="skip-track" class="relative w-[144px] h-11 rounded-lg bg-parchment-300/70 border border-parchment-700/70 overflow-hidden shadow-inner shrink-0"
+                         title="Drag the knob across to skip and reveal the answer" role="button" tabindex="0"
+                         aria-label="Slide to skip this question">
+                        <span class="skip-label absolute inset-y-0 flex items-center justify-center text-[11px] font-semibold text-ink-600 pointer-events-none select-none tracking-wide">Slide to skip</span>
+                        <div id="skip-knob" class="absolute top-[3px] left-[3px] w-[38px] h-[38px] rounded-md bg-brass-600 hover:bg-brass-500 text-parchment-50 flex items-center justify-center shadow-md cursor-grab active:cursor-grabbing">
+                            <i class="fa-solid fa-forward text-sm"></i>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -519,7 +669,7 @@
         </div>
 
         <!-- MAP ZOOM & CONTROLS BAR (BOTTOM RIGHT) -->
-        <div class="absolute bottom-6 right-6 z-10 flex flex-col gap-2 pointer-events-auto">
+        <div class="absolute bottom-6 right-6 z-10 flex flex-col gap-2 pointer-events-auto zoom-controls">
             <button onclick="zoomInMap()" class="w-10 h-10 rounded-xl glass-panel hover:bg-parchment-400 text-ink-900 flex items-center justify-center shadow-lg transition-all border border-parchment-700/60" title="Zoom In (+)">
                 <i class="fa-solid fa-plus"></i>
             </button>
@@ -538,7 +688,7 @@
                 <div class="w-14 h-14 border-4 border-brass-500/20 border-t-sky-400 rounded-full animate-spin"></div>
                 <div class="text-center">
                     <h3 class="text-lg font-bold text-ink-900 font-display">Generating Map Grid</h3>
-                    <p class="text-xs text-ink-500 mt-1">Loading UN countries & Canadian provincial boundaries...</p>
+                    <p class="text-xs text-ink-500 mt-1">Loading nations, provinces &amp; state boundaries...</p>
                 </div>
             </div>
 
@@ -604,7 +754,7 @@
         <div class="flex items-center space-x-4">
             <span class="flex items-center gap-1.5">
                 <i class="fa-solid fa-layer-group text-brass-600"></i>
-                <span id="label-region-mode">Region: World & Canadian Provinces</span>
+                <span id="label-region-mode">Scope: ALL</span>
             </span>
             <span class="hidden sm:inline-block text-ink-400">|</span>
             <span class="hidden sm:flex items-center gap-1.5">
@@ -657,19 +807,34 @@
 
                 <!-- Include Canadian Provinces Toggle -->
                 <div class="glass-card p-4 rounded-xl border border-parchment-600 flex items-start gap-3 cursor-pointer hover:border-brass-500/40 transition-all" onclick="toggleCanadaCheckbox(event)">
-                    <input type="checkbox" id="chk-canada-provinces" checked class="mt-1 w-4 h-4 rounded text-brass-700 bg-parchment-200 border-parchment-700 focus:ring-brass-500 focus:ring-offset-parchment-100">
+                    <input type="checkbox" id="chk-canada-provinces" class="mt-1 w-4 h-4 rounded text-brass-700 bg-parchment-200 border-parchment-700 focus:ring-brass-500 focus:ring-offset-parchment-100">
                     <div class="flex-1">
-                        <label class="text-sm font-semibold text-ink-900 block cursor-pointer">Include Canadian Provinces & Territories 🇨🇦</label>
-                        <p class="text-xs text-ink-500 mt-0.5">Includes Ontario, Quebec, BC, Alberta, Yukon, NWT, Nunavut, etc., as individual target questions along with world countries.</p>
+                        <label class="text-sm font-semibold text-ink-900 block cursor-pointer">Include Canadian Provinces &amp; Territories 🇨🇦</label>
+                        <p class="text-xs text-ink-500 mt-0.5">Adds Ontario, Quebec, BC, Alberta, Yukon, NWT, Nunavut, etc. as individual target questions. Canada itself is then left out of the quiz — you are being tested on the provinces, not on both. Off by default.</p>
                     </div>
                 </div>
 
                 <!-- Include U.S. States Toggle -->
                 <div class="glass-card p-4 rounded-xl border border-parchment-600 flex items-start gap-3 cursor-pointer hover:border-brass-500/40 transition-all" onclick="toggleUSCheckbox(event)">
-                    <input type="checkbox" id="chk-us-states" checked class="mt-1 w-4 h-4 rounded text-brass-700 bg-parchment-200 border-parchment-700 focus:ring-brass-500 focus:ring-offset-parchment-100">
+                    <input type="checkbox" id="chk-us-states" class="mt-1 w-4 h-4 rounded text-brass-700 bg-parchment-200 border-parchment-700 focus:ring-brass-500 focus:ring-offset-parchment-100">
                     <div class="flex-1">
                         <label class="text-sm font-semibold text-ink-900 block cursor-pointer">Include U.S. States 🇺🇸</label>
-                        <p class="text-xs text-ink-500 mt-0.5">Adds all 50 states plus Washington, D.C. as individual target questions alongside world countries.</p>
+                        <p class="text-xs text-ink-500 mt-0.5">Adds all 50 states plus Washington, D.C. as individual target questions. The United States itself is then left out of the quiz — you are being tested on the states, not on both. Off by default.</p>
+                    </div>
+                </div>
+
+                <!-- Chart Display: which furniture stays on the screen -->
+                <div>
+                    <label class="text-xs font-bold text-ink-700 uppercase tracking-wider block mb-2">Chart Display</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="glass-card p-3 rounded-xl border border-parchment-600 flex items-center gap-3 cursor-pointer hover:border-brass-500/40 transition-all" onclick="toggleMinimapCheckbox(event)">
+                            <input type="checkbox" id="chk-minimap" checked class="mt-0 w-4 h-4 rounded text-brass-700 bg-parchment-200 border-parchment-700 focus:ring-brass-500 focus:ring-offset-parchment-100">
+                            <label class="text-sm font-semibold text-ink-900 cursor-pointer flex items-center gap-2"><i class="fa-solid fa-map-location-dot text-sea-600"></i> Mini-map</label>
+                        </div>
+                        <div class="glass-card p-3 rounded-xl border border-parchment-600 flex items-center gap-3 cursor-pointer hover:border-brass-500/40 transition-all" onclick="toggleStatsCheckbox(event)">
+                            <input type="checkbox" id="chk-stats" checked class="mt-0 w-4 h-4 rounded text-brass-700 bg-parchment-200 border-parchment-700 focus:ring-brass-500 focus:ring-offset-parchment-100">
+                            <label class="text-sm font-semibold text-ink-900 cursor-pointer flex items-center gap-2"><i class="fa-solid fa-table-columns text-brass-600"></i> Score Panel</label>
+                        </div>
                     </div>
                 </div>
 
@@ -693,6 +858,44 @@
                 <button onclick="closeSettingsModal()" class="px-4 py-2 rounded-xl bg-parchment-400 hover:bg-parchment-500 text-ink-700 text-xs font-semibold transition-all">Cancel</button>
                 <button onclick="applySettingsAndRestart()" class="px-5 py-2 rounded-xl bg-brass-600 hover:bg-brass-500 text-parchment-50 text-xs font-semibold shadow-lg shadow-ink-900/20 transition-all">Apply & Restart</button>
             </div>
+        </div>
+    </div>
+
+    <!-- MODAL: CHOOSE STUDY OR TEST -->
+    <div id="modal-mode" class="fixed inset-0 z-50 bg-ink-900/75 backdrop-blur-md flex items-center justify-center p-4 hidden animate-fade-in">
+        <div class="glass-panel w-full max-w-lg rounded-2xl p-6 shadow-2xl border border-parchment-700 flex flex-col gap-4 text-center">
+            <div class="w-14 h-14 bg-gradient-to-tr from-brass-600 to-ink-700 rounded-2xl mx-auto flex items-center justify-center text-2xl text-parchment-50 shadow-lg shadow-ink-900/20">
+                <i class="fa-solid fa-compass"></i>
+            </div>
+
+            <div>
+                <h3 class="text-2xl font-bold font-display text-ink-900">Study, or be tested?</h3>
+                <p class="text-xs text-ink-500 mt-1">
+                    <span id="mode-count" class="font-bold text-ink-800">0</span> areas are on the list.
+                    Read them now, or be quizzed on them.
+                </p>
+            </div>
+
+            <div id="mode-scope" class="flex flex-wrap justify-center gap-2"></div>
+
+            <div id="mode-area-list" class="mode-area-list text-left" aria-label="Areas in this round"></div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="chooseMode('study')" class="py-3 rounded-xl bg-ochre-500/15 hover:bg-ochre-500/25 border border-ochre-500/40 text-ochre-800 font-semibold text-sm flex flex-col items-center gap-1 transition-all">
+                    <i class="fa-solid fa-book-open text-lg"></i>
+                    <span>Study the Map</span>
+                    <span class="text-[10px] font-normal text-ink-500">Every name shown at once</span>
+                </button>
+                <button onclick="chooseMode('test')" class="py-3 rounded-xl bg-moss-600/15 hover:bg-moss-600/25 border border-moss-500/40 text-moss-800 font-semibold text-sm flex flex-col items-center gap-1 transition-all">
+                    <i class="fa-solid fa-stopwatch text-lg"></i>
+                    <span>Take the Test</span>
+                    <span class="text-[10px] font-normal text-ink-500">Names appear as you find them</span>
+                </button>
+            </div>
+
+            <button onclick="closeModeChooser()" class="text-[11px] text-ink-400 hover:text-ink-600 transition-all">
+                Leave the chart as it is
+            </button>
         </div>
     </div>
 
@@ -751,10 +954,13 @@
                 <div class="text-xs text-ink-500">
                     <span id="txt-custom-selection-status">Practice active for selected locations</span>
                 </div>
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2">
                     <button onclick="closeCustomSelectionModal()" class="px-4 py-2 rounded-xl bg-parchment-400 hover:bg-parchment-500 text-ink-700 text-xs font-semibold transition-all">Cancel</button>
-                    <button onclick="applyCustomSelectionAndRestart()" class="px-5 py-2 rounded-xl bg-moss-600 hover:bg-moss-500 text-parchment-50 font-bold text-xs shadow-lg shadow-ink-900/20 transition-all flex items-center gap-2">
-                        <i class="fa-solid fa-play"></i> Start Practice Quiz
+                    <button onclick="applyCustomSelectionAndRestart('study')" class="px-4 py-2 rounded-xl bg-ochre-500/15 hover:bg-ochre-500/25 text-ochre-800 border border-ochre-500/40 text-xs font-bold transition-all flex items-center gap-2" title="Show the name of every area you have picked">
+                        <i class="fa-solid fa-book-open"></i> Study these
+                    </button>
+                    <button onclick="applyCustomSelectionAndRestart('test')" class="px-5 py-2 rounded-xl bg-moss-600 hover:bg-moss-500 text-parchment-50 text-xs font-bold shadow-lg shadow-ink-900/20 transition-all flex items-center gap-2" title="Start the quiz on the areas you have picked">
+                        <i class="fa-solid fa-play"></i> Test me on these
                     </button>
                 </div>
             </div>
@@ -764,13 +970,14 @@
 
     <!-- MODAL: QUIZ RESULTS / SUMMARY -->
     <div id="modal-summary" class="fixed inset-0 z-50 bg-ink-900/75 backdrop-blur-md flex items-center justify-center p-4 hidden">
-        <div class="glass-panel w-full max-w-md rounded-2xl p-6 shadow-2xl border border-parchment-700 text-center flex flex-col gap-5 animate-scale-up">
+        <div id="summary-panel" class="glass-panel w-full max-w-md rounded-2xl p-6 shadow-2xl border border-parchment-700 text-center flex flex-col gap-5 animate-scale-up">
             <div class="w-16 h-16 bg-gradient-to-tr from-ochre-500 to-moss-500 rounded-2xl mx-auto flex items-center justify-center text-3xl text-parchment-50 shadow-lg shadow-ink-900/20">
                 <i class="fa-solid fa-trophy"></i>
             </div>
             
             <div>
                 <h2 class="text-2xl font-bold font-display text-ink-900">Quiz Completed!</h2>
+                <p class="text-[10px] uppercase tracking-[0.25em] text-brass-600 font-bold mt-1">Know Thy World</p>
                 <p class="text-xs text-ink-500 mt-1">Excellent effort exploring the geography of our planet!</p>
             </div>
 
@@ -826,12 +1033,32 @@
                 <div class="glass-card p-2 rounded-lg">Best Streak: <span id="summary-streak" class="font-bold text-ochre-600">0 🔥</span></div>
             </div>
 
-            <div class="flex items-center gap-3">
-                <button onclick="restartQuiz()" class="w-full py-3 rounded-xl bg-gradient-to-r from-brass-600 to-ink-700 hover:from-brass-500 hover:to-ink-600 text-parchment-50 font-semibold text-xs shadow-lg transition-all">
-                    Play Again
+            <!-- Actions: play again, close to study, or hand in the score -->
+            <div class="flex flex-col gap-2" data-share-exclude>
+                <button onclick="restartQuiz()" class="w-full py-3 rounded-xl bg-gradient-to-r from-brass-600 to-ink-700 hover:from-brass-500 hover:to-ink-600 text-parchment-50 font-semibold text-sm shadow-lg transition-all">
+                    <i class="fa-solid fa-rotate-right mr-1.5"></i>Play Again
+                </button>
+                <button onclick="closeSummaryToStudy()" class="w-full py-3 rounded-xl bg-parchment-300 hover:bg-parchment-400 text-ink-800 font-semibold text-sm border border-parchment-700 transition-all">
+                    <i class="fa-solid fa-map mr-1.5"></i>Close &amp; Study the Map
+                </button>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="copyScoreToClipboard()" class="py-2.5 rounded-xl bg-moss-600/15 hover:bg-moss-600/25 text-moss-700 border border-moss-500/40 font-semibold text-xs transition-all flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-copy"></i>Copy Score
+                    </button>
+                    <button onclick="copySummaryImage()" class="py-2.5 rounded-xl bg-sea-600/15 hover:bg-sea-600/25 text-sea-700 border border-sea-500/40 font-semibold text-xs transition-all flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-clipboard"></i>Copy Image
+                    </button>
+                </div>
+                <button onclick="downloadSummaryImage()" class="w-full py-2.5 rounded-xl bg-parchment-300/70 hover:bg-parchment-400 text-ink-700 border border-parchment-700 font-semibold text-xs transition-all flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-download"></i>Save Screenshot as PNG
                 </button>
             </div>
         </div>
+    </div>
+
+    <!-- Small confirmation note for clipboard / download actions -->
+    <div id="toast" class="toast-hidden fixed bottom-20 left-1/2 -translate-x-1/2 z-[60] glass-card px-4 py-2.5 rounded-xl border border-moss-500/40 text-xs font-semibold text-moss-700 shadow-xl pointer-events-none">
+        Copied!
     </div>
 
     <script>
@@ -839,9 +1066,12 @@
         const state = {
             soundEnabled: true,
             advancedMode: false,
-            includeCanadaProvinces: true,
-            includeUSStates: true,
+            includeCanadaProvinces: false, // the round opens with countries only
+            includeUSStates: false,
             showLabels: true, // Show area names on map after guess/reveal
+            studyMode: false, // Every name in the selection, laid on the chart
+            timerStarted: false, // The clock waits for the player's first move
+            skipLocked: false,   // One skip per question, however fast the drag
             showMinimap: true, // Chart-inset mini-map, top right
             showStats: true,   // Stats list, top left
             selectedRegion: 'ALL',
@@ -870,6 +1100,7 @@
 
             // Active list of target objects
             targets: [],
+            selection: [],      // the whole chosen set, for study mode
             currentTarget: null,
             guessedMap: new Map(), // key: id, value: { status: '1st'|'2nd'|'3rd'|'failed', name: string }
             completedTargetIds: new Set(), // targets already answered or revealed
@@ -1201,6 +1432,18 @@
                 || null;
         }
 
+        // Every region the quiz could ever ask about: the 197 nations, plus
+        // the provinces and states when they are drawn. The chart also plots
+        // Western Sahara, Greenland, the Falklands and other territories for
+        // geography's sake — they are scenery, never questions.
+        function isQuizRegion(fid) {
+            if (!fid || fid === "undefined") return false;
+            if (ISO_COUNTRY_NAMES[fid]) return true;
+            if (fid.indexOf("CA-") === 0) return !!CANADA_PROVINCES[fid];
+            if (fid.indexOf("US-") === 0) return !!US_STATES[fid];
+            return false;
+        }
+
         // Has this drawn region already been answered or revealed?
         function isRegionCompleted(fid) {
             if (!fid || fid === "undefined") return false;
@@ -1264,6 +1507,9 @@
         // re-projects everything) requires a fresh layout pass.
         let labelBoxes = new Map();
         const labelMeasureCache = new Map();
+        // A region gets one full re-layout as a rescue; never twice for the
+        // same name, so a stubborn label can't stall the game.
+        let labelRescueUsed = new Set();
 
         // Chart decoration: sea titles pinned to real coordinates, stacked in
         // two lines like an engraved chart. Ornament only — never quiz targets.
@@ -1295,6 +1541,14 @@
         }
 
         // TIMER FUNCTIONS
+        // The clock holds at 00:00 until the player makes a move — nobody
+        // should be charged for reading the chart first.
+        function ensureTimerStarted() {
+            if (state.timerStarted || state.currentTarget === null) return;
+            state.timerStarted = true;
+            startTimer();
+        }
+
         function startTimer() {
             stopTimer();
             state.startTime = Date.now();
@@ -1311,6 +1565,7 @@
 
         function resetTimer() {
             stopTimer();
+            state.timerStarted = false;
             document.getElementById('quiz-timer').innerText = "00:00";
         }
 
@@ -1331,10 +1586,15 @@
         }
 
         // QUIZ LIFECYCLE CONTROLS
-        function restartQuiz() {
+        // opts.mode: 'study' | 'test' — answer the opening question for the
+        // caller (the selector's two buttons do this). Otherwise the choice
+        // is put to the student, as it is on a fresh page.
+        function restartQuiz(opts) {
             const summaryModal = document.getElementById('modal-summary');
             if (summaryModal) summaryModal.classList.add('hidden');
-            
+            exitStudyMode(true);
+            resetSkipKnob();
+
             if (gMap) {
                 gMap.selectAll(".map-country")
                     .classed("guessed-correct", false)
@@ -1342,6 +1602,7 @@
                     .classed("guessed-2nd", false)
                     .classed("guessed-3rd", false)
                     .classed("guessed-failed", false)
+                    .classed("reveal-flash", false)
                     .classed("guessed-wrong", false);
 
                 // Old hover tooltips would spoil the fresh round
@@ -1350,6 +1611,7 @@
                 // Remove existing labels
                 gMap.selectAll(".map-label").remove();
                 labelBoxes.clear();
+                labelRescueUsed.clear();
             }
 
             state.count1stTry = 0;
@@ -1358,9 +1620,13 @@
             state.countRevealed = 0;
             state.earnedPoints = 0;
 
+            // The clock starts on the first guess, not a moment sooner
             resetTimer();
-            startTimer();
             prepareTargetQueue();
+
+            // Read it, or be tested on it? Every fresh round asks
+            if (opts && (opts.mode === 'study' || opts.mode === 'test')) chooseMode(opts.mode);
+            else openModeChooser();
         }
 
         function finishQuiz() {
@@ -1412,13 +1678,6 @@
                     // Coastlines and rhumb lines thin out as the chart is
                     // magnified, like finer and finer pen work
                     svg.style("--map-stroke", (0.6 * Math.pow(event.transform.k, -1.5)) + "px");
-                    // Micro-region pins hold their on-screen size and retire
-                    // once the land itself has grown visible
-                    gMap.selectAll(".map-marker")
-                        .attr("r", MICRO_PIN_R / event.transform.k)
-                        .style("display", function () {
-                            return (+this.getAttribute("data-max-dim") * event.transform.k < MICRO_PIN_SHOW) ? null : "none";
-                        });
                     updateMinimapViewport();
                     // Sea titles keep their on-screen size and line spacing,
                     // as if printed on the paper itself rather than drawn on it
@@ -1656,55 +1915,7 @@
                 .append("title")
                 .text("");
 
-            buildMapMarkers();
             buildMinimap();
-        }
-
-        // --- micro-region pins ------------------------------------------------
-        // Tiny nations (Vatican, Nauru, Dominica…) are drawn as a screen-sized
-        // pin so they stay findable and clickable even when their polygon is
-        // barely a speck. The pin retires as soon as the region itself has
-        // grown big enough to see.
-        const MICRO_PIN_MAX = 4.5;  // base units (px at rest) below which a pin is drawn
-        const MICRO_PIN_R = 4;      // base units — constant on-screen radius
-        const MICRO_PIN_SHOW = 6;   // hide the pin once the region spans this many screen px
-        let markerBoxes = new Map();
-
-        function buildMapMarkers() {
-            if (!gMap) return;
-            gMap.selectAll(".map-marker").remove();
-            markerBoxes.clear();
-            const k = (svg && d3.zoomTransform(svg.node()).k) || 1;
-            const tint = ["guessed-correct", "guessed-1st", "guessed-2nd", "guessed-3rd", "guessed-failed", "guessed-wrong"];
-
-            state.combinedFeatures.forEach(f => {
-                const fid = featureFid(f);
-                if (fid === "undefined") return;
-                const a = largestPartAnchor(f);
-                if (!a || Math.max(a.w, a.h) >= MICRO_PIN_MAX) return;
-
-                const pin = gMap.append("circle")
-                    .datum(f)
-                    .attr("class", "map-country map-marker")
-                    .attr("data-id", fid)
-                    .attr("data-max-dim", Math.max(a.w, a.h))
-                    .attr("cx", a.cx)
-                    .attr("cy", a.cy)
-                    .attr("r", MICRO_PIN_R / k)
-                    .style("display", Math.max(a.w, a.h) * k < MICRO_PIN_SHOW ? null : "none")
-                    .on("click", handleCountryClick);
-
-                // Mirror the region's own state — colour and revealed name
-                const path = gMap.select('path.map-country[data-id="' + fid + '"]');
-                tint.forEach(c => pin.classed(c, path.classed(c)));
-                pin.append("title").text(path.select("title").text() || "");
-
-                // Labels keep a respectful distance from every pin
-                markerBoxes.set(fid, {
-                    x: a.cx - MICRO_PIN_R, y: a.cy - MICRO_PIN_R,
-                    w: MICRO_PIN_R * 2, h: MICRO_PIN_R * 2
-                });
-            });
         }
 
         // --- mini-map (top-right inset) --------------------------------------
@@ -1779,25 +1990,71 @@
                 .attr("height", Math.max(2, (y1 - y0) * miniFit.s));
         }
 
-        function toggleMinimap() {
-            state.showMinimap = !state.showMinimap;
-            document.getElementById("minimap-wrap").style.display = state.showMinimap ? "" : "none";
-            document.getElementById("btn-toggle-minimap").classList.toggle("opacity-50", !state.showMinimap);
+        // Chart furniture lives in Quiz Settings now; these keep the panel,
+        // the checkbox and the state in step with one another.
+        function setMinimapVisible(on) {
+            state.showMinimap = !!on;
+            const wrap = document.getElementById("minimap-wrap");
+            if (wrap) wrap.style.display = state.showMinimap ? "" : "none";
+            const chk = document.getElementById("chk-minimap");
+            if (chk) chk.checked = state.showMinimap;
+            const btn = document.getElementById("btn-toggle-minimap");
+            if (btn) btn.classList.toggle("opacity-50", !state.showMinimap);
         }
 
-        function toggleStatsHud() {
-            state.showStats = !state.showStats;
-            document.getElementById("stats-hud").style.display = state.showStats ? "" : "none";
-            document.getElementById("btn-toggle-stats").classList.toggle("opacity-50", !state.showStats);
+        function setStatsVisible(on) {
+            state.showStats = !!on;
+            const hud = document.getElementById("stats-hud");
+            if (hud) hud.style.display = state.showStats ? "" : "none";
+            const chk = document.getElementById("chk-stats");
+            if (chk) chk.checked = state.showStats;
+            const btn = document.getElementById("btn-toggle-stats");
+            if (btn) btn.classList.toggle("opacity-50", !state.showStats);
+        }
+
+        function toggleMinimap() { setMinimapVisible(!state.showMinimap); }
+
+        function toggleStatsHud() { setStatsVisible(!state.showStats); }
+
+        function toggleMinimapCheckbox(event) {
+            const chk = document.getElementById('chk-minimap');
+            if (event && event.target === chk) { setMinimapVisible(chk.checked); return; }
+            setMinimapVisible(!chk.checked);
+        }
+
+        function toggleStatsCheckbox(event) {
+            const chk = document.getElementById('chk-stats');
+            if (event && event.target === chk) { setStatsVisible(chk.checked); return; }
+            setStatsVisible(!chk.checked);
+        }
+
+        // Whether the sub-divisions are part of the round at all — they need
+        // both the switch and a scope that reaches North America.
+        function subdivisionsInQuiz() {
+            const northAmerica = state.selectedRegion === 'ALL' || state.selectedRegion === 'NORTH_AMERICA';
+            return {
+                canada: !!state.includeCanadaProvinces && (northAmerica || state.selectedRegion === 'CANADA_ONLY'),
+                us: !!state.includeUSStates && northAmerica
+            };
         }
 
         function prepareTargetQueue() {
             let targetList = [];
+            const subunits = subdivisionsInQuiz();
+
+            // A student drilling the provinces (or the states) should not also
+            // be asked for the country they belong to — that question is
+            // already answered by every one of them.
+            const provincesInQuiz = subunits.canada;
+            const statesInQuiz = subunits.us;
 
             // 1. World Countries — 193 UN members + 2 observer states +
             //    2 partially recognized states = 197 nations
             if (state.selectedRegion !== 'CANADA_ONLY') {
                 for (const [iso, meta] of Object.entries(ISO_COUNTRY_NAMES)) {
+                    // The subdivisions stand in for their country
+                    if (iso === '124' && provincesInQuiz) continue;
+                    if (iso === '840' && statesInQuiz) continue;
                     // Region filter
                     if (state.selectedRegion === 'ALL' || meta.continent === state.selectedRegion) {
                         targetList.push({
@@ -1812,7 +2069,7 @@
             }
 
             // 2. Canadian Provinces
-            if (state.includeCanadaProvinces && (state.selectedRegion === 'ALL' || state.selectedRegion === 'NORTH_AMERICA' || state.selectedRegion === 'CANADA_ONLY')) {
+            if (provincesInQuiz) {
                 for (const [code, meta] of Object.entries(CANADA_PROVINCES)) {
                     targetList.push({
                         id: code,
@@ -1827,7 +2084,7 @@
             }
 
             // 3. U.S. States & D.C.
-            if (state.includeUSStates && (state.selectedRegion === 'ALL' || state.selectedRegion === 'NORTH_AMERICA')) {
+            if (statesInQuiz) {
                 for (const [code, meta] of Object.entries(US_STATES)) {
                     targetList.push({
                         id: code,
@@ -1852,6 +2109,7 @@
                 [targetList[i], targetList[j]] = [targetList[j], targetList[i]];
             }
 
+            state.selection = targetList.slice();
             state.targets = targetList;
             state.totalQuestions = targetList.length;
             state.maxPossiblePoints = state.totalQuestions * 3;
@@ -1867,6 +2125,9 @@
         }
 
         function nextTarget() {
+            state.skipLocked = false;
+            resetSkipKnob();
+
             if (state.targets.length === 0) {
                 finishQuiz();
                 return;
@@ -1904,8 +2165,19 @@
 
         function handleCountryClick(event, d) {
             if (!state.currentTarget) return;
+            if (modeChooserOpen()) return;
+            if (state.studyMode) {
+                showToast("Study mode is on — switch it off to keep playing.");
+                return;
+            }
 
             const clickedId = featureFid(d);
+
+            // A region that is drawn but never asked for (Western Sahara and
+            // friends) is scenery: touching one is not a wrong answer, and
+            // costs neither a mistake nor the clock
+            if (!isQuizRegion(clickedId)) return;
+
             const targetId = state.currentTarget.id;
             const parent = parentCountryOf(clickedId);
 
@@ -1918,6 +2190,9 @@
             // from an earlier question) is almost always a slip of the mouse —
             // never charge it as a mistake
             if (!answersTarget && isRegionCompleted(clickedId)) return;
+
+            // The player has made a real move: the clock may start now
+            ensureTimerStarted();
 
             const element = d3.select(this);
 
@@ -2027,6 +2302,25 @@
             }
         }
 
+        // Swing the chart so a region sits in the middle of the view at a
+        // magnification that makes even a speck-sized country readable.
+        function centreOnFeature(feature, opts) {
+            if (!feature || !svg || !zoomBehavior || !pathGenerator) return;
+            const o = opts || {};
+            const [[x0, y0], [x1, y1]] = pathGenerator.bounds(feature);
+            const W = +svg.attr("width"), H = +svg.attr("height");
+            const bw = Math.max(1e-6, x1 - x0), bh = Math.max(1e-6, y1 - y0);
+            // Fit the region into ~70% of the view; never below 1 (the chart
+            // starts whole) and never past the zoom range's ceiling
+            const fit = 0.7 * Math.min(W / bw, H / bh);
+            const k = Math.max(1, Math.min(o.maxScale || 12, fit));
+            svg.transition().duration(o.duration || 700).call(
+                zoomBehavior.transform,
+                d3.zoomIdentity.translate(W / 2, H / 2).scale(k)
+                    .translate(-(x0 + x1) / 2, -(y0 + y1) / 2)
+            );
+        }
+
         function revealTargetArea(targetId) {
             const targetFeature = findTargetFeature(targetId);
 
@@ -2035,14 +2329,16 @@
                     ? (state.currentTarget.displayName || state.currentTarget.name)
                     : "";
 
-                // Highlight in Red — for whole countries the drawn pieces
-                // (provinces / states) all light up together
-                gMap.selectAll(".map-country")
+                const pieces = gMap.selectAll(".map-country")
                     .filter(d => {
                         const f = featureFid(d);
                         return f === targetId || parentCountryOf(f) === targetId;
-                    })
-                    .classed("guessed-failed", true);
+                    });
+
+                // The answer flares cyan for a beat — impossible to miss —
+                // then settles into the ordinary "revealed" red
+                pieces.classed("guessed-failed", true).classed("reveal-flash", true);
+                setTimeout(() => pieces.classed("reveal-flash", false), 1700);
 
                 // Render area label on map
                 if (state.showLabels) {
@@ -2056,21 +2352,17 @@
                     .select("title")
                     .text(targetName);
 
-                // Auto zoom to target location area so student learns where it is
-                const [[x0, y0], [x1, y1]] = pathGenerator.bounds(targetFeature);
-                svg.transition().duration(800).call(
-                    zoomBehavior.transform,
-                    d3.zoomIdentity
-                        .translate(svg.attr("width") / 2, svg.attr("height") / 2)
-                        .scale(Math.min(7, 0.85 / Math.max((x1 - x0) / svg.attr("width"), (y1 - y0) / svg.attr("height"))))
-                        .translate(-(x0 + x1) / 2, -(y0 + y1) / 2)
-                );
+                // Bring it to the middle of the chart so the student can study it
+                centreOnFeature(targetFeature, { duration: 650, maxScale: 12 });
             }
         }
 
         const LABEL_MAX_FONT = 9;     // user units (px at rest) — cap for region names
-        const LABEL_MIN_FONT = 0.6;    // below this a name is only noise
+        const LABEL_MIN_FONT = 0.35;  // below this a name is only noise
         const LABEL_BOX_PAD = 1.2;     // paper halo + a breath between neighbours
+        const LABEL_MAX_PROBES = 260;  // grid points sampled inside one region
+        const LABEL_TEST_BUDGET = 24000;// fill probes one label may spend
+        const LABEL_SPOT_LIMIT = 45;    // candidate spots tried per font size
 
         // Measure a layout once at font-size 100 and scale arithmetically:
         // SVG text scales linearly with font-size, so one getBBox per variant
@@ -2086,6 +2378,9 @@
                 .style("stroke-width", "0px");
             lines.forEach((ln, i) => {
                 probe.append("tspan")
+                    // An explicit x starts a new centred line; without it the
+                    // tspans run on sideways into one long staircase
+                    .attr("x", 0)
                     .attr("dy", i === 0 ? -((lines.length - 1) / 2) * 115 : 115)
                     .text(ln);
             });
@@ -2124,6 +2419,20 @@
             return cands;
         }
 
+        // A part whose projected box runs right across the chart is not a
+        // landmass at all — it is an island ring split at the antimeridian,
+        // drawn as a sliver from one edge of the map to the other (Fiji).
+        let globeWidthCache = null;
+        function globeWidth() {
+            if (!(globeWidthCache > 0)) {
+                try {
+                    const b = pathGenerator.bounds({ type: "Sphere" });
+                    globeWidthCache = Math.abs(b[1][0] - b[0][0]);
+                } catch (e) { globeWidthCache = 0; }
+            }
+            return globeWidthCache || 700;
+        }
+
         // Anchor on the feature's largest landmass: a mean centroid can fall
         // far outside the country it names (Fiji, Russia, France, the U.S.)
         function largestPartAnchor(feature) {
@@ -2131,6 +2440,7 @@
             if (!geom) return null;
             const polys = geom.type === 'Polygon' ? [geom.coordinates]
                 : geom.type === 'MultiPolygon' ? geom.coordinates : [];
+            const maxPartW = globeWidth() * 0.6;
 
             let best = null;
             polys.forEach(rings => {
@@ -2142,7 +2452,8 @@
                 const b = pathGenerator.bounds(part);
                 const w = Math.abs(b[1][0] - b[0][0]);
                 const h = Math.abs(b[1][1] - b[0][1]);
-                if (!(w > 0) || !(h > 0) || !(w * h > (best ? best.area : 0))) return;
+                if (!(w > 0) || !(h > 0) || w > maxPartW) return;
+                if (!(w * h > (best ? best.area : 0))) return;
                 const c = pathGenerator.centroid(part);
                 if (isNaN(c[0]) || isNaN(c[1])) return;
                 best = { area: w * h, cx: c[0], cy: c[1], w, h, x0: b[0][0], y0: b[0][1] };
@@ -2167,111 +2478,355 @@
             for (const o of labelBoxes.values()) {
                 if (l < o.x + o.w && r > o.x && t < o.y + o.h && b > o.y) return true;
             }
-            for (const o of markerBoxes.values()) {
-                if (l < o.x + o.w && r > o.x && t < o.y + o.h && b > o.y) return true;
-            }
             return false;
         }
 
-        // Find a spot for one label that clears every neighbour, keeping the
-        // type as large as its region allows: shrink first, step off the
-        // shape only if there is truly no room. If even that fails the label
-        // is dropped — the hover tooltip still tells the story.
+        // Breathing room around a name, in proportion to the name itself: a
+        // full 1.2px halo would crowd out a speck-sized caption
+        function padForBox(box) {
+            return Math.min(LABEL_BOX_PAD, Math.max(0.12, Math.min(box.w, box.h) * 0.5));
+        }
+
+        // ------------------------------------------------------------------
+        // LABELS LIVE INSIDE THEIR OWN LAND
+        // A name belongs on the region it names — never in the country next
+        // door. So every candidate spot is tested against the coastline as the
+        // chart actually paints it, and the type shrinks until it fits within.
+        // ------------------------------------------------------------------
+
+        function polygonsOf(feature) {
+            const geom = feature && feature.geometry;
+            if (!geom) return [];
+            if (geom.type === "Polygon") return [geom.coordinates];
+            if (geom.type === "MultiPolygon") return geom.coordinates;
+            return [];
+        }
+
+        // Is this point on the region's own land? Asking the rendered path
+        // beats re-deriving the geometry: it already knows about antimeridian
+        // cuts, islands and holes.
+        function makeInsideTest(feature, node) {
+            if (node && typeof node.isPointInFill === "function") {
+                const useDOMPoint = typeof window.DOMPoint === "function";
+                return function (x, y) {
+                    try {
+                        return node.isPointInFill(useDOMPoint ? new DOMPoint(x, y) : { x: x, y: y });
+                    } catch (e) {
+                        return false;
+                    }
+                };
+            }
+
+            // Fallback for a feature that is not drawn (or an old engine):
+            // containment against the projected rings of its polygons
+            const polys = [];
+            polygonsOf(feature).forEach(rings => {
+                const proj = rings
+                    .map(r => r.map(c => projection([c[0], c[1]]))
+                              .filter(p => p && isFinite(p[0]) && isFinite(p[1])));
+                if (proj.length && proj[0].length > 2) polys.push(proj);
+            });
+            if (!polys.length) return function () { return false; };
+            return function (x, y) {
+                for (const rings of polys) {
+                    if (!d3.polygonContains(rings[0], [x, y])) continue;
+                    let inHole = false;
+                    for (let i = 1; i < rings.length && !inHole; i++) {
+                        inHole = d3.polygonContains(rings[i], [x, y]);
+                    }
+                    if (!inHole) return true;
+                }
+                return false;
+            };
+        }
+
+        // Two-pass chamfer distance: how far each grid sample sits from the
+        // nearest sea sample. Roomiest first is where a name wants to go.
+        function chamferDistance(inside, cols, rows) {
+            const n = cols * rows;
+            const d = new Float64Array(n);
+            const DIAG = 1.41421356;
+            for (let i = 0; i < n; i++) d[i] = inside[i] ? Infinity : 0;
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const i = r * cols + c;
+                    if (d[i] === 0) continue;
+                    if (c > 0 && d[i - 1] + 1 < d[i]) d[i] = d[i - 1] + 1;
+                    if (r > 0) {
+                        const up = i - cols;
+                        if (d[up] + 1 < d[i]) d[i] = d[up] + 1;
+                        if (c > 0 && d[up - 1] + DIAG < d[i]) d[i] = d[up - 1] + DIAG;
+                        if (c < cols - 1 && d[up + 1] + DIAG < d[i]) d[i] = d[up + 1] + DIAG;
+                    }
+                }
+            }
+            for (let r = rows - 1; r >= 0; r--) {
+                for (let c = cols - 1; c >= 0; c--) {
+                    const i = r * cols + c;
+                    if (d[i] === 0) continue;
+                    if (c < cols - 1 && d[i + 1] + 1 < d[i]) d[i] = d[i + 1] + 1;
+                    if (r < rows - 1) {
+                        const dn = i + cols;
+                        if (d[dn] + 1 < d[i]) d[i] = d[dn] + 1;
+                        if (c < cols - 1 && d[dn + 1] + DIAG < d[i]) d[i] = d[dn + 1] + DIAG;
+                        if (c > 0 && d[dn - 1] + DIAG < d[i]) d[i] = d[dn - 1] + DIAG;
+                    }
+                }
+            }
+            // Corners of the grid never met an edge sample — they are simply
+            // "far inside", and rank with the deepest inland spot
+            const far = cols + rows;
+            for (let i = 0; i < n; i++) d[i] = isFinite(d[i]) ? d[i] : far;
+            return d;
+        }
+
+        // Probe the region: which spots fall on its land, and how much room
+        // surrounds each one. Returned roomiest-first. The search is confined
+        // to the anchor landmass — that is where the name belongs — and small
+        // regions are sampled finely (they live or die by fractions of a
+        // pixel) while large ones are sampled coarsely.
+        function probeRegion(feature, node, anchor) {
+            const inside = makeInsideTest(feature, node);
+            const x0 = anchor ? anchor.x0 : 0, y0 = anchor ? anchor.y0 : 0;
+            const bw = anchor ? anchor.w : 0, bh = anchor ? anchor.h : 0;
+            if (!(bw > 0) || !(bh > 0)) return { inside: inside, pts: [] };
+
+            let step = Math.max(0.12, Math.min(0.45, Math.sqrt(Math.max(bw * bh, 1e-6) / LABEL_MAX_PROBES)));
+            let cols = Math.max(2, Math.ceil(bw / step) + 1);
+            let rows = Math.max(2, Math.ceil(bh / step) + 1);
+            if (cols * rows > LABEL_MAX_PROBES * 2) {
+                step *= Math.sqrt((cols * rows) / (LABEL_MAX_PROBES * 2));
+                cols = Math.max(2, Math.ceil(bw / step) + 1);
+                rows = Math.max(2, Math.ceil(bh / step) + 1);
+            }
+
+            const grid = new Uint8Array(cols * rows);
+            let anyLand = false;
+            for (let r = 0; r < rows; r++) {
+                const y = y0 + r * step;
+                for (let c = 0; c < cols; c++) {
+                    if (inside(x0 + c * step, y)) {
+                        grid[r * cols + c] = 1;
+                        anyLand = true;
+                    }
+                }
+            }
+            if (!anyLand) return { inside: inside, pts: [] };
+
+            const dist = chamferDistance(grid, cols, rows);
+            const pts = [];
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const i = r * cols + c;
+                    if (!grid[i]) continue;
+                    pts.push({ x: x0 + c * step, y: y0 + r * step, edt: dist[i] * step });
+                }
+            }
+            pts.sort((p, q) => q.edt - p.edt);
+            return { inside: inside, pts: pts };
+        }
+
+        // The whole drawn name must lie within the coastline: sweep a grid
+        // across its box — edges and middle alike, at a spacing fine enough
+        // to catch a bay cutting through the words.
+        function boxInsideRegion(inside, box, budget) {
+            const nx = Math.max(5, Math.min(20, Math.ceil(box.w / 2)));
+            const ny = Math.max(5, Math.min(10, Math.ceil(box.h / 2)));
+            budget.left -= nx * ny;
+            for (let j = 0; j < ny; j++) {
+                const y = box.y + (box.h * j) / (ny - 1);
+                for (let i = 0; i < nx; i++) {
+                    if (!inside(box.x + (box.w * i) / (nx - 1), y)) return false;
+                }
+            }
+            return true;
+        }
+
+        // Find a spot for one label that lies wholly inside its own region,
+        // keeping the type as large as that region allows. A region too small
+        // to hold its own name (Vatican, Nauru…) is captioned on its own spot
+        // instead — and if even that has no room the label is dropped; the
+        // hover tooltip still tells the story.
         function placeLabel(feature, fid, text) {
             if (!gMap || !feature || !text || !fid || fid === "undefined") return;
             if (labelBoxes.has(fid)) return;
             if (gMap.select(`.map-label[data-label-id="${fid}"]`).size() > 0) return;
 
+            const node = gMap.select('path.map-country[data-id="' + fid + '"]').node() || null;
             const anchor = largestPartAnchor(feature);
             if (!anchor) return;
-            const cx = anchor.cx, cy = anchor.cy, bw = anchor.w, bh = anchor.h,
-                  x0 = anchor.x0, y0 = anchor.y0;
 
-            // Long names wrap onto more lines — bigger type beats a squashed ribbon
-            let chosen = null;
+            const probe = probeRegion(feature, node, anchor);
+            const budget = { left: LABEL_TEST_BUDGET };
+
+            // Every sensible way of breaking the name, at every size it could
+            // plausibly be drawn — the largest type first. Even a speck gets
+            // one try at the smallest size before it is captioned.
+            const variants = [];
             wrapCandidatesFor(text).forEach(lines => {
                 const m = measureLabelLines(text, lines);
-                const fs = Math.min(LABEL_MAX_FONT, (bw * 0.94 / m.w) * 100, (bh * 0.94 / m.h) * 100);
-                if (fs > (chosen ? chosen.fs : 0)) chosen = { lines, m, fs };
-            });
-            if (!chosen || !(chosen.fs > 0)) return;
-
-            // Candidate anchor points: on the shape first, then open water nearby
-            const near = [];
-            [0.1, 0.3, 0.5, 0.7, 0.9].forEach(fx => [0.1, 0.3, 0.5, 0.7, 0.9].forEach(fy => near.push([x0 + fx * bw, y0 + fy * bh])));
-            near.unshift([cx, cy]);
-            const D = Math.hypot(bw, bh);
-            const far = [];
-            // Rings scale with the region, but every region also gets an
-            // absolute floor so a speck-sized target can still step beyond
-            // its own pin and the neighbours crowding it
-            const rings = Array.from(new Set(
-                [0.4 * D, 0.55 * D, 0.7 * D, 0.9 * D, 1.1 * D, 1.4 * D, 6, 9, 12, 16, 21, 27]
-            )).sort((a, b) => a - b);
-            for (const r of rings) {
-                for (let a = 0; a < 360; a += 15) {
-                    far.push([cx + Math.cos(a * Math.PI / 180) * r, cy + Math.sin(a * Math.PI / 180) * r]);
+                let top = Math.min(LABEL_MAX_FONT,
+                    (anchor.w * 0.94 / m.w) * 100,
+                    (anchor.h * 0.94 / m.h) * 100);
+                if (!(top > 0)) top = LABEL_MIN_FONT;
+                let fs = Math.max(top, LABEL_MIN_FONT), guard = 0;
+                while (fs >= LABEL_MIN_FONT && guard++ < 12) {
+                    variants.push({ lines: lines, m: m, fs: fs });
+                    fs *= 0.74;
                 }
-            }
-
-            const fonts = [];
-            [chosen.fs, chosen.fs * 0.66, Math.max(LABEL_MIN_FONT, chosen.fs * 0.42)].forEach(v => {
-                if (v > 0 && (fonts.length === 0 || v < fonts[fonts.length - 1] - 0.01)) fonts.push(v);
             });
+            variants.sort((a, b) => b.fs - a.fs);
+            if (!variants.length) return;
 
-            // Comfortable spacing first; in the tightest corners the halo is
-            // allowed to come closer as long as no two names ever touch
-            const pads = [LABEL_BOX_PAD, 0.6, 0.2];
+            const relFor = v => {
+                const s = v.fs / 100;
+                return { x: v.m.x * s, y: v.m.y * s, w: v.m.w * s, h: v.m.h * s };
+            };
+
+            const realBox = n => {
+                try {
+                    const bb = n.node().getBBox();
+                    if (!(bb.width > 0)) return null;
+                    return { x: bb.x, y: bb.y, w: bb.width, h: bb.height };
+                } catch (e) { return null; }
+            };
+
+            const makeLabelNode = (ax, ay, v, withId) => {
+                const n = gMap.append("text")
+                    .attr("class", "map-label")
+                    .attr("x", ax)
+                    .attr("y", ay)
+                    .style("font-size", v.fs + "px")
+                    .style("stroke-width", Math.max(0.4, v.fs * 0.3) + "px");
+                if (withId) n.attr("data-label-id", fid).attr("data-full-text", text);
+                v.lines.forEach((ln, i) => {
+                    n.append("tspan")
+                        // Each line needs its own x, or the tspan runs on
+                        // sideways instead of starting a new centred line
+                        .attr("x", ax)
+                        .attr("dy", i === 0 ? -((v.lines.length - 1) / 2) * 1.15 * v.fs
+                                            : 1.15 * v.fs)
+                        .text(ln);
+                });
+                return n;
+            };
+
+            // The 100px measurement picks the size, but SVG text does not scale
+            // exactly — small type snaps differently from large — so the box a
+            // label really occupies is measured by drawing it once at that very
+            // size. Everything that follows works from the true rectangle.
+            const realRelFor = v => {
+                if (v.rel) return v.rel;
+                const n = makeLabelNode(0, 0, v, false);
+                const bb = realBox(n);
+                n.remove();
+                v.rel = bb ? { x: bb.x, y: bb.y, w: bb.width, h: bb.height } : relFor(v);
+                return v.rel;
+            };
+
+            // Draw the name so its glyphs land exactly on the measured box
+            const draw = (ax, ay, v) => {
+                const rel = realRelFor(v);
+                const n = makeLabelNode(ax, ay, v, true);
+                const bb = realBox(n);
+                if (bb) {
+                    const dx = (ax + rel.x) - bb.x;
+                    const dy = (ay + rel.y) - bb.y;
+                    if (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01) {
+                        const nX = ax + dx, nY = ay + dy;
+                        n.attr("x", nX).attr("y", nY);
+                        // The tspans carry their own x — move them too
+                        n.selectAll("tspan").attr("x", nX);
+                    }
+                }
+                return n;
+            };
 
             let placed = null;
-            for (const pad of pads) {
-                for (const fs of fonts) {
-                    const s = fs / 100;
-                    const rel = { x: chosen.m.x * s, y: chosen.m.y * s, w: chosen.m.w * s, h: chosen.m.h * s };
-                    for (const pass of [near, far]) {
-                        for (const [ax, ay] of pass) {
-                            const box = { x: ax + rel.x, y: ay + rel.y, w: rel.w, h: rel.h };
-                            if (!labelBoxHits(box, pad)) { placed = { ax, ay, fs, box, lines: chosen.lines }; break; }
+
+            const tryInside = (p, v, rel) => {
+                const box = { x: p.x + rel.x, y: p.y + rel.y, w: rel.w, h: rel.h };
+                if (labelBoxHits(box, padForBox(box))) return false;
+                if (budget.left <= 0) return false;
+                if (!boxInsideRegion(probe.inside, box, budget)) return false;
+                const n = draw(p.x, p.y, v);
+                const real = realBox(n);
+                if (real && boxInsideRegion(probe.inside, real, budget) &&
+                    !labelBoxHits(real, padForBox(real))) {
+                    placed = { node: n, box: real };
+                    return true;
+                }
+                n.remove();
+                return false;
+            };
+
+            for (const v of variants) {
+                const rel = realRelFor(v);
+                const need = Math.min(rel.w, rel.h) / 2;   // box's inscribed circle
+                let tried = 0;
+                for (const p of probe.pts) {               // roomiest spot first
+                    if (p.edt < need) break;               // nothing deeper remains
+                    if (++tried > LABEL_SPOT_LIMIT) break; // the best rooms are first
+                    if (tryInside(p, v, rel)) break;
+                    if (budget.left <= 0) break;
+                }
+                if (placed || budget.left <= 0) break;
+            }
+
+            if (!placed) {
+                // The fallback deserves its own allowance: a stalled attempt
+                // must not starve the caption that follows it
+                budget.left = LABEL_TEST_BUDGET;
+                const roomiest = probe.pts.length ? probe.pts[0].edt : 0;
+                const smallest = variants[variants.length - 1];
+                const sRel = realRelFor(smallest);
+                const canHold = roomiest >= Math.min(sRel.w, sRel.h) / 2;
+
+                if (!canHold || labelRescueUsed.has(fid)) {
+                    // Either the region is far too small to hold its name at
+                    // any magnification (type and land grow together, so
+                    // zooming never helps) or two full passes have come up
+                    // empty — caption it on its own spot, as small as legible.
+                    const step = Math.min(6, Math.max(1, Math.min(anchor.w, anchor.h)));
+                    const ring = [];
+                    [1, 2, 3].forEach(k => {
+                        for (let a = 0; a < 8; a++) {
+                            ring.push({
+                                x: anchor.cx + step * k * Math.cos(a * Math.PI / 4),
+                                y: anchor.cy + step * k * Math.sin(a * Math.PI / 4)
+                            });
+                        }
+                    });
+                    const order = [{ x: anchor.cx, y: anchor.cy }]
+                        .concat(probe.pts.slice(0, 10), ring);
+                    const caption = variants.filter(v => v.fs <= 1.2);
+                    for (const v of (caption.length ? caption : [smallest])) {
+                        const rel = realRelFor(v);
+                        for (const p of order) {
+                            if (budget.left <= 0) break;
+                            const box = { x: p.x + rel.x, y: p.y + rel.y, w: rel.w, h: rel.h };
+                            if (labelBoxHits(box, padForBox(box))) continue;
+                            const n = draw(p.x, p.y, v);
+                            const real = realBox(n);
+                            if (real && !labelBoxHits(real, padForBox(real))) {
+                                placed = { node: n, box: real };
+                                break;
+                            }
+                            n.remove();
                         }
                         if (placed) break;
                     }
-                    if (placed) break;
+                } else {
+                    // The room is there but the neighbours have taken it —
+                    // lay every label out again in one calm pass and try once
+                    // more inside the new arrangement
+                    labelRescueUsed.add(fid);
+                    relayoutMapLabels({ fid: fid, text: text });
+                    return;
                 }
-                if (placed) break;
             }
-            if (!placed) {
-                // Nothing fits in the current arrangement — lay every label
-                // out again in one calm pass (tight spots choose first) and            // give this one another chance inside it
-                relayoutMapLabels({ fid, text });
-                return;
-            }
-
-            const node = gMap.append("text")
-                .attr("class", "map-label")
-                .attr("data-label-id", fid)
-                .attr("data-full-text", text)
-                .attr("x", placed.ax)
-                .attr("y", placed.ay)
-                .style("font-size", placed.fs + "px")
-                .style("stroke-width", Math.max(0.5, placed.fs * 0.3) + "px");
-
-            placed.lines.forEach((ln, i) => {
-                node.append("tspan")
-                    .attr("dy", i === 0 ? -((placed.lines.length - 1) / 2) * 1.15 * placed.fs
-                                        : 1.15 * placed.fs)
-                    .text(ln);
-            });
-
-            // Trust the real layout over the estimate: nudge so the drawn box            // occupies exactly the reserved rectangle
-            try {
-                const bb = node.node().getBBox();
-                if (bb.width > 0) {
-                    const dx = placed.box.x - bb.x, dy = placed.box.y - bb.y;
-                    if (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01) {
-                        node.attr("x", placed.ax + dx).attr("y", placed.ay + dy);
-                    }
-                }
-            } catch (e) { /* keep the estimated placement */ }
+            if (!placed) return;
 
             labelBoxes.set(fid, placed.box);
         }
@@ -2365,9 +2920,210 @@
             }
         }
 
+        // --- slide-to-skip --------------------------------------------------
+        // A skip hands over a point, so it is a deliberate drag rather than a
+        // tap: carry the knob across the track. Once it has fired, the control
+        // locks until the next question so a hurried second gesture can never
+        // burn two answers in a row.
+        let skipDrag = null;
+
+        function skipTravelPx() {
+            const track = document.getElementById('skip-track');
+            const knob = document.getElementById('skip-knob');
+            if (!track || !knob) return 0;
+            return Math.max(1, track.clientWidth - knob.offsetWidth - 6);
+        }
+
+        function resetSkipKnob() {
+            const track = document.getElementById('skip-track');
+            const knob = document.getElementById('skip-knob');
+            if (track) track.classList.remove('dragging');
+            if (knob) knob.style.transform = 'translateX(0px)';
+            skipDrag = null;
+        }
+
+        function initSkipSlider() {
+            const track = document.getElementById('skip-track');
+            const knob = document.getElementById('skip-knob');
+            if (!track || !knob) return;
+
+            const setKnob = x => { knob.style.transform = 'translateX(' + Math.round(x) + 'px)'; };
+
+            const release = () => {
+                if (!skipDrag) return;
+                const done = skipDrag.x >= skipTravelPx() * 0.8;
+                skipDrag = null;
+                track.classList.remove('dragging');
+                setKnob(0);
+                if (done) skipTarget();
+            };
+
+            // The knob only travels when the pointer actually travels: a tap
+            // anywhere on the track leaves it at home and skips nothing.
+            track.addEventListener('pointerdown', e => {
+                if (!state.currentTarget || state.skipLocked) return;
+                e.preventDefault();
+                track.classList.add('dragging');
+                skipDrag = { origin: e.clientX, x: 0 };
+                try { track.setPointerCapture(e.pointerId); } catch (err) {}
+            });
+
+            track.addEventListener('pointermove', e => {
+                if (!skipDrag) return;
+                const travel = skipTravelPx();
+                const x = Math.max(0, Math.min(travel, e.clientX - skipDrag.origin));
+                skipDrag.x = x;
+                setKnob(x);
+                if (x >= travel) release();   // carried the whole way: go at once
+            });
+
+            track.addEventListener('pointerup', release);
+            track.addEventListener('pointercancel', release);
+
+            // Enter / Space is as deliberate as a full drag
+            track.addEventListener('keydown', e => {
+                if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+                    e.preventDefault();
+                    if (state.currentTarget && !state.skipLocked) skipTarget();
+                }
+            });
+        }
+
+        // --- study mode ------------------------------------------------------
+        // Every name in the current selection, laid on the chart at once, so
+        // the map can be read before (or after) it is tested.
+        function toggleStudyMode() {
+            if (state.studyMode) exitStudyMode();
+            else enterStudyMode();
+        }
+
+        function setStudyIndicator() {
+            const txt = document.getElementById('txt-study-status');
+            const btn = document.getElementById('btn-study');
+            if (txt) {
+                txt.innerText = state.studyMode ? "ON" : "OFF";
+                txt.className = state.studyMode ? "text-moss-600" : "text-ink-400";
+            }
+            if (btn) btn.classList.toggle("ring-2", state.studyMode);
+            if (btn) btn.classList.toggle("ring-ochre-500", state.studyMode);
+        }
+
+        function enterStudyMode() {
+            state.studyMode = true;
+            // Reading the chart needs the names, whatever the labels switch says
+            state.showLabels = true;
+            const chk = document.getElementById('chk-show-labels');
+            if (chk) chk.checked = true;
+            const labelStatus = document.getElementById('txt-label-status');
+            if (labelStatus) {
+                labelStatus.innerText = "ON";
+                labelStatus.className = "text-moss-600";
+            }
+            setStudyIndicator();
+            renderSelectionLabels();
+        }
+
+        function exitStudyMode(silent) {
+            state.studyMode = false;
+            setStudyIndicator();
+            if (silent || !gMap) return;
+
+            // Names of anything not yet identified come off the chart again
+            gMap.selectAll(".map-label").each(function () {
+                const fid = this.getAttribute("data-label-id");
+                if (!state.completedTargetIds.has(fid)) {
+                    d3.select(this).remove();
+                    labelBoxes.delete(fid);
+                }
+            });
+            relayoutMapLabels();
+            gMap.selectAll(".map-label").style("display", state.showLabels ? "block" : "none");
+        }
+
+        // Name every area the current selection can ask about
+        function renderSelectionLabels() {
+            if (!gMap || !state.showLabels) return;
+            (state.selection || []).forEach(t => {
+                const f = findTargetFeature(t.id);
+                if (f) placeLabel(f, t.id, t.displayName || t.name);
+            });
+            gMap.selectAll(".map-label").style("display", "block");
+        }
+
+        // --- the opening choice: study, or be tested -------------------------
+        // Every fresh round asks what it is for, and shows exactly what is on
+        // the list before the student commits to either one.
+        function modeEsc(s) {
+            return String(s).replace(/[&<>"']/g, c => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[c]));
+        }
+
+        function renderModeChooser() {
+            const sel = state.selection || [];
+            const groups = [
+                ['Countries', sel.filter(t => !t.isCanadaProvince && !t.isUSState).length],
+                ['Provinces & Territories', sel.filter(t => !!t.isCanadaProvince).length],
+                ['States & D.C.', sel.filter(t => !!t.isUSState).length]
+            ].filter(g => g[1] > 0);
+
+            const chips = document.getElementById('mode-scope');
+            if (chips) {
+                chips.innerHTML = groups.length
+                    ? groups.map(g => '<span class="mode-chip"><b>' + g[1] + '</b> ' + modeEsc(g[0]) + '</span>').join('')
+                    : '<span class="mode-chip">Nothing selected</span>';
+            }
+
+            const count = document.getElementById('mode-count');
+            if (count) count.textContent = sel.length;
+
+            const list = document.getElementById('mode-area-list');
+            if (list) {
+                const names = sel.map(t => t.displayName || t.name)
+                    .sort((a, b) => a.localeCompare(b));
+                list.innerHTML = names.map(n => '<div class="mode-area-name">' + modeEsc(n) + '</div>').join('');
+            }
+        }
+
+        function openModeChooser() {
+            renderModeChooser();
+            hideToast();
+            const m = document.getElementById('modal-mode');
+            if (m) m.classList.remove('hidden');
+        }
+
+        function closeModeChooser() {
+            const m = document.getElementById('modal-mode');
+            if (m) m.classList.add('hidden');
+        }
+
+        // Nothing is played while the opening question is still on the screen
+        function modeChooserOpen() {
+            const m = document.getElementById('modal-mode');
+            return !!(m && !m.classList.contains('hidden'));
+        }
+
+        // The round is already fresh by the time this is answered, so all that
+        // is decided here is whether the names go up now or wait to be earned
+        function chooseMode(mode) {
+            closeModeChooser();
+            if (mode === 'study') {
+                enterStudyMode();
+                showToast('Study mode — every name on the chart');
+            } else {
+                exitStudyMode();
+                showToast('Test mode — names appear as you find them');
+            }
+        }
+
         function skipTarget() {
-            if (!state.currentTarget) return;
-            // A skip counts as a loss: no points, the streak breaks, and the            // area is revealed on the map
+            if (!state.currentTarget || state.skipLocked || state.studyMode || modeChooserOpen()) return;
+            state.skipLocked = true;
+            resetSkipKnob();
+
+            // A skip counts as a loss: no points, the streak breaks, and the
+            // area is revealed — flashed, centred, and left up just long
+            // enough to learn from
             state.streak = 0;
             state.mistakes++;
             state.countRevealed++;
@@ -2383,11 +3139,11 @@
             updateStatsUI();
             setTimeout(() => {
                 nextTarget();
-            }, 1200);
+            }, 900);
         }
 
         function useHint() {
-            if (state.hintsRemaining <= 0 || !state.currentTarget) return;
+            if (state.hintsRemaining <= 0 || !state.currentTarget || state.studyMode || modeChooserOpen()) return;
 
             state.hintsRemaining--;
             document.getElementById('hint-count').innerText = state.hintsRemaining;
@@ -2407,14 +3163,7 @@
                 const targetFeature = findTargetFeature(state.currentTarget.id);
 
                 if (targetFeature) {
-                    const [[x0, y0], [x1, y1]] = pathGenerator.bounds(targetFeature);
-                    svg.transition().duration(1000).call(
-                        zoomBehavior.transform,
-                        d3.zoomIdentity
-                            .translate(svg.attr("width") / 2, svg.attr("height") / 2)
-                            .scale(Math.min(8, 0.9 / Math.max((x1 - x0) / svg.attr("width"), (y1 - y0) / svg.attr("height"))))
-                            .translate(-(x0 + x1) / 2, -(y0 + y1) / 2)
-                    );
+                    centreOnFeature(targetFeature, { duration: 900, maxScale: 10 });
                     hintText.innerText = "Map auto-zoomed to target location area!";
                 }
             }
@@ -2516,13 +3265,35 @@
             return list;
         }
 
-        function openCustomSelectionModal() {
-            const allEntities = getAllAvailableEntities();
+        // What a fresh round asks about: countries always, the sub-divisions
+        // only once they have been switched on in the settings.
+        function naturalSelectionIds() {
+            const subunits = subdivisionsInQuiz();
+            const ids = [];
+            getAllAvailableEntities().forEach(e => {
+                if (e.group === 'CANADA_PROVINCES' && !state.includeCanadaProvinces) return;
+                if (e.group === 'US_STATES' && !state.includeUSStates) return;
+                // The country a student is drilling is not a question of its own
+                if (e.id === '124' && subunits.canada) return;
+                if (e.id === '840' && subunits.us) return;
+                ids.push(e.id);
+            });
+            return ids;
+        }
 
+        function sameIdSet(ids, ref) {
+            if (ids.length !== ref.length) return false;
+            const set = new Set(ids);
+            return ref.every(id => set.has(id));
+        }
+
+        function openCustomSelectionModal() {
+            hideToast();
             if (state.customSelectedIds && state.customSelectedIds.size > 0) {
                 tempSelectedIds = new Set(state.customSelectedIds);
             } else {
-                tempSelectedIds = new Set(allEntities.map(e => e.id));
+                // Start from the round's actual scope — countries only by default
+                tempSelectedIds = new Set(naturalSelectionIds());
             }
 
             document.getElementById('input-country-search').value = '';
@@ -2652,21 +3423,22 @@
             renderCustomSelectionList(document.getElementById('input-country-search').value.trim().toLowerCase());
         }
 
-        function applyCustomSelectionAndRestart() {
-            const allEntities = getAllAvailableEntities();
+        // mode: 'study' or 'test' — the selector asks which it is going to be
+        // as it is closed, rather than leaving it to be asked again
+        function applyCustomSelectionAndRestart(mode) {
             if (tempSelectedIds.size === 0) {
                 alert("Please select at least one country or province to practice!");
                 return;
             }
 
-            if (tempSelectedIds.size === allEntities.length) {
-                state.customSelectedIds = null; // reset to default full set
+            if (sameIdSet([...tempSelectedIds], naturalSelectionIds())) {
+                state.customSelectedIds = null; // back to the standard scope
             } else {
                 state.customSelectedIds = new Set(tempSelectedIds);
             }
 
             closeCustomSelectionModal();
-            restartQuiz();
+            restartQuiz({ mode: (mode === 'study' || mode === 'test') ? mode : undefined });
         }
 
         function toggleSound() {
@@ -2684,7 +3456,10 @@
             document.getElementById('chk-canada-provinces').checked = state.includeCanadaProvinces;
             document.getElementById('chk-us-states').checked = state.includeUSStates;
             document.getElementById('chk-show-labels').checked = state.showLabels;
+            document.getElementById('chk-minimap').checked = state.showMinimap;
+            document.getElementById('chk-stats').checked = state.showStats;
             document.getElementById('select-region').value = state.selectedRegion;
+            hideToast();
             document.getElementById('modal-settings').classList.remove('hidden');
         }
 
@@ -2722,6 +3497,219 @@
             restartQuiz();
         }
 
+        // --- sharing: score text & screenshots --------------------------------
+        let toastTimer = null;
+        function showToast(message) {
+            const t = document.getElementById('toast');
+            if (!t) return;
+            t.innerText = message;
+            t.classList.remove('toast-hidden');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => t.classList.add('toast-hidden'), 2400);
+        }
+
+        // A note should never sit on top of a dialog's buttons
+        function hideToast() {
+            const t = document.getElementById('toast');
+            clearTimeout(toastTimer);
+            if (t) t.classList.add('toast-hidden');
+        }
+
+        function summaryNumbers() {
+            const maxPts = state.totalQuestions * 3;
+            const percentage = maxPts > 0 ? Math.round((state.earnedPoints / maxPts) * 100) : 100;
+            return { percentage: percentage, time: getFormattedElapsedTime() };
+        }
+
+        async function writeClipboard(text) {
+            try {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(text);
+                    return true;
+                }
+            } catch (e) { /* fall through to the legacy route */ }
+            try {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.top = '-1000px';
+                document.body.appendChild(ta);
+                ta.select();
+                const ok = document.execCommand('copy');
+                document.body.removeChild(ta);
+                return ok;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        // Percentage and elapsed time, ready to paste into a marks sheet
+        function copyScoreToClipboard() {
+            const s = summaryNumbers();
+            const text = `${s.percentage}% in ${s.time}`;
+            writeClipboard(text).then(ok => {
+                showToast(ok ? `Copied: ${text}` : "Couldn't reach the clipboard");
+            });
+        }
+
+        function downloadBlob(blob, filename) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 5000);
+        }
+
+        function summaryFilename() {
+            const s = summaryNumbers();
+            return `Know-Thy-World-${s.percentage}pct-${s.time.replace(':', 'm')}s.png`;
+        }
+
+        // Fallback card, drawn by hand: used when html2canvas is unavailable
+        function drawSummaryCard() {
+            const W = 760, H = 470;
+            const c = document.createElement('canvas');
+            c.width = W;
+            c.height = H;
+            const g = c.getContext('2d');
+            const s = summaryNumbers();
+
+            g.fillStyle = '#f6ecd6';
+            g.fillRect(0, 0, W, H);
+            g.strokeStyle = '#a37e4b';
+            g.lineWidth = 6;
+            g.strokeRect(10, 10, W - 20, H - 20);
+            g.strokeStyle = '#d8c093';
+            g.lineWidth = 2;
+            g.strokeRect(24, 24, W - 48, H - 48);
+
+            g.textAlign = 'center';
+            g.fillStyle = '#9a6f30';
+            g.font = '700 22px Georgia, serif';
+            g.fillText('KNOW THY WORLD', W / 2, 78);
+
+            g.fillStyle = '#2a2013';
+            g.font = '700 44px Georgia, serif';
+            g.fillText('Quiz Completed!', W / 2, 136);
+
+            g.fillStyle = '#546a38';
+            g.font = '700 96px Georgia, serif';
+            g.fillText(`${s.percentage}%`, W / 2, 250);
+
+            g.fillStyle = '#3a2c19';
+            g.font = '700 34px Georgia, serif';
+            g.fillText(`${state.score} / ${state.totalQuestions} locations identified`, W / 2, 312);
+
+            g.fillStyle = '#5f4c31';
+            g.font = '600 28px Georgia, serif';
+            g.fillText(`Time ${s.time}   •   Best streak ${state.bestStreak}`, W / 2, 366);
+
+            g.fillStyle = '#7d6844';
+            g.font = 'italic 22px Georgia, serif';
+            g.fillText(`${state.count1stTry} first try · ${state.count2ndTry} second · ${state.count3rdTry} third · ${state.countRevealed} revealed`, W / 2, 412);
+
+            return new Promise(res => {
+                try { c.toBlob(b => res(b), 'image/png'); } catch (e) { res(null); }
+            });
+        }
+
+        // A shared picture should carry the result, not the machinery: the
+        // buttons are lifted out of the copy so what lands in the clipboard
+        // is the score alone, laid out on the card's own paper.
+        function buildShareCard() {
+            const panel = document.getElementById('summary-panel');
+            if (!panel) return null;
+            const clone = panel.cloneNode(true);
+            clone.removeAttribute('id');
+            clone.style.animation = 'none';
+            clone.removeAttribute('onclick');
+            clone.querySelectorAll('[data-share-exclude]').forEach(n => n.remove());
+            clone.querySelectorAll('button, a').forEach(n => n.remove());
+
+            const wrap = document.createElement('div');
+            wrap.id = 'summary-share-card';
+            wrap.setAttribute('aria-hidden', 'true');
+            const w = Math.round(panel.getBoundingClientRect().width) || 448;
+            wrap.style.cssText = 'position:absolute;left:-10000px;top:0;width:' + w +
+                'px;pointer-events:none;background:#f2e6ca;';
+            wrap.appendChild(clone);
+            document.body.appendChild(wrap);
+            return wrap;
+        }
+
+        async function summaryImageBlob() {
+            const wrap = buildShareCard();
+            const panel = wrap ? wrap.firstElementChild : document.getElementById('summary-panel');
+            if (!panel) return null;
+            let blob = null;
+            if (typeof window.html2canvas === 'function') {
+                try {
+                    const canvas = await window.html2canvas(panel, {
+                        backgroundColor: '#f2e6ca',
+                        scale: Math.min(3, Math.max(2, window.devicePixelRatio || 1)),
+                        useCORS: true,
+                        logging: false
+                    });
+                    blob = await new Promise(res => {
+                        try { canvas.toBlob(res, 'image/png'); } catch (e) { res(null); }
+                    });
+                } catch (e) {
+                    console.warn('Modal screenshot failed, drawing it by hand', e);
+                }
+            }
+            if (wrap) wrap.remove();
+            if (blob) return blob;
+            return drawSummaryCard();
+        }
+
+        async function writeImageClipboard(blob) {
+            if (!blob || !window.ClipboardItem || !navigator.clipboard || !navigator.clipboard.write) return false;
+            try {
+                await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+                return true;
+            } catch (e) { /* some engines want the payload as a promise */ }
+            try {
+                await navigator.clipboard.write([new ClipboardItem({ 'image/png': Promise.resolve(blob) })]);
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        async function copySummaryImage() {
+            const blob = await summaryImageBlob();
+            if (!blob) {
+                showToast("Couldn't build the screenshot");
+                return;
+            }
+            if (await writeImageClipboard(blob)) {
+                showToast("Screenshot copied — paste it anywhere");
+                return;
+            }
+            downloadBlob(blob, summaryFilename());
+            showToast("Clipboard unavailable — saved as a PNG instead");
+        }
+
+        async function downloadSummaryImage() {
+            const blob = await summaryImageBlob();
+            if (!blob) {
+                showToast("Couldn't build the screenshot");
+                return;
+            }
+            downloadBlob(blob, summaryFilename());
+            showToast("Screenshot saved");
+        }
+
+        // Close the results and leave the finished chart on the table to read
+        function closeSummaryToStudy() {
+            document.getElementById('modal-summary').classList.add('hidden');
+            enterStudyMode();
+            showToast("Study mode is on — every name is on the chart");
+        }
+
         window.addEventListener('resize', () => {
             if (!svg || !gMap || !projection) return;
             const container = document.getElementById('map-container');
@@ -2733,13 +3721,14 @@
             gMap.selectAll('path.map-country').attr('d', pathGenerator);
             gMap.selectAll('.map-water').attr('d', pathGenerator({type: "Sphere"}));
             gMap.selectAll('.graticule').attr('d', pathGenerator);
-            buildMapMarkers();
             buildMinimap();
             repositionLabels();
         });
 
         window.onload = function() {
             initD3Map();
+            initSkipSlider();
+            setStudyIndicator();
             loadGeographicData();
         };
     </script>
