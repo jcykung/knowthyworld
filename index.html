@@ -317,6 +317,28 @@
             fill: #cfe0da;
         }
 
+        /* A rim around the islands that are easy to lose in the ocean: an
+           inked edge with a lit band inside it, so a pinprick of land reads
+           as a place from across the chart. It sits under every country, so
+           it can never spill onto a neighbour's land, and follows the
+           island's own outline — no circles, no boxes. Strokes do not scale,
+           so the rim keeps its weight on screen at any magnification. */
+        .map-halo {
+            fill: none;
+            stroke-linejoin: round;
+            stroke-linecap: round;
+            pointer-events: none;
+            vector-effect: non-scaling-stroke;
+        }
+        .map-halo-ink {
+            stroke: rgba(122, 95, 58, 0.5);
+            stroke-width: 10px;
+        }
+        .map-halo-lit {
+            stroke: rgba(252, 246, 232, 0.88);
+            stroke-width: 8px;
+        }
+
         .graticule {
             fill: none;
             stroke: #93b3a8;
@@ -409,6 +431,27 @@
             border-radius: 1px;
         }
 
+        /* The edition stamp beside the title: tap it to read what changed */
+        .header-version {
+            vertical-align: middle;
+            margin-left: 8px;
+            padding: 3px 9px;
+            font-family: 'Inter', system-ui, sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            line-height: 1.2;
+            color: #7a5f3a;
+            background: rgba(154, 111, 48, 0.12);
+            border: 1px solid rgba(154, 111, 48, 0.3);
+            border-radius: 999px;
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+        .header-version:hover {
+            background: rgba(154, 111, 48, 0.24);
+            color: #3a2c19;
+        }
+
         /* Slide-to-skip: the words sit clear of where the knob starts, and
            step aside for as long as the knob travels over them */
         .skip-label {
@@ -418,47 +461,13 @@
         }
         #skip-track.dragging .skip-label { opacity: 0; }
 
-        /* The opening choice: what is on the list, and how to work through it */
-        .mode-chip {
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: 0.06em;
-            text-transform: uppercase;
-            padding: 4px 10px;
-            border-radius: 999px;
-            background: rgba(154, 111, 48, 0.12);
-            border: 1px solid rgba(154, 111, 48, 0.3);
-            color: #7d5a26;
-            white-space: nowrap;
+        /* The chart takes the pinch gesture itself, so a two-finger zoom
+           magnifies the map instead of the whole browser window */
+        #map-container,
+        #map-container svg,
+        #svg-map {
+            touch-action: none;
         }
-        .mode-chip b { font-size: 11px; color: #3a2c19; }
-
-        .mode-area-list {
-            max-height: 30vh;
-            overflow-y: auto;
-            padding: 10px 12px;
-            border: 1px solid rgba(163, 126, 75, 0.35);
-            border-radius: 12px;
-            background: rgba(255, 255, 255, 0.35);
-            column-count: 2;
-            column-gap: 18px;
-            font-size: 11px;
-            line-height: 1.75;
-            color: #54462f;
-            text-align: left;
-        }
-        .mode-area-list .mode-area-name {
-            break-inside: avoid;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .mode-area-list .mode-area-name::before {
-            content: "·";
-            color: #a37e4b;
-            margin-right: 5px;
-        }
-        @media (max-width: 480px) { .mode-area-list { column-count: 1; } }
 
         /* --------------------------------------------------------------
            CHART ON A HANDHELD DEVICE
@@ -490,6 +499,8 @@
         @media (pointer: coarse) {
             /* 44px: the smallest target that a thumb can trust */
             button { min-height: 44px; }
+            /* the stamp beside the title keeps its chip shape */
+            button.header-version { min-height: 0; padding: 5px 9px; font-size: 11px; }
             .zoom-controls button { width: 48px; height: 48px; font-size: 16px; }
             .zoom-controls { bottom: 16px; right: 16px; }
             #btn-sound, .zoom-controls button, .header-actions button, #btn-hint { min-width: 44px; }
@@ -513,6 +524,8 @@
             <div class="min-w-0">
                 <h1 class="font-display font-bold text-lg md:text-xl tracking-tight text-ink-900 whitespace-nowrap">
                     Know Thy World
+                    <button id="btn-version" onclick="openChangelog()" class="header-version"
+                            title="What's new in this version">v1.1.0</button>
                 </h1>
                 <a class="header-byline text-xs font-semibold text-moss-700 hover:text-moss-600 transition-colors select-none whitespace-nowrap inline-flex items-center gap-1.5"
                    href="https://ko-fi.com/coolpuddytat" target="_blank" rel="noopener noreferrer" title="Buy me a coffee! on Ko-fi">
@@ -871,14 +884,10 @@
             <div>
                 <h3 class="text-2xl font-bold font-display text-ink-900">Study, or be tested?</h3>
                 <p class="text-xs text-ink-500 mt-1">
-                    <span id="mode-count" class="font-bold text-ink-800">0</span> areas are on the list.
-                    Read them now, or be quizzed on them.
+                    Choose how you'd like to work through the chart.<br>
+                    You'll pick the areas for this round in the next step.
                 </p>
             </div>
-
-            <div id="mode-scope" class="flex flex-wrap justify-center gap-2"></div>
-
-            <div id="mode-area-list" class="mode-area-list text-left" aria-label="Areas in this round"></div>
 
             <div class="grid grid-cols-2 gap-3">
                 <button onclick="chooseMode('study')" class="py-3 rounded-xl bg-ochre-500/15 hover:bg-ochre-500/25 border border-ochre-500/40 text-ochre-800 font-semibold text-sm flex flex-col items-center gap-1 transition-all">
@@ -896,6 +905,30 @@
             <button onclick="closeModeChooser()" class="text-[11px] text-ink-400 hover:text-ink-600 transition-all">
                 Leave the chart as it is
             </button>
+        </div>
+    </div>
+
+    <!-- MODAL: CHANGELOG -->
+    <div id="modal-changelog" class="fixed inset-0 z-50 bg-ink-900/75 backdrop-blur-md flex items-center justify-center p-4 hidden animate-fade-in">
+        <div class="glass-panel w-full max-w-lg rounded-2xl p-5 md:p-6 shadow-2xl border border-parchment-700 animate-scale-up flex flex-col gap-4 max-h-[86vh]">
+            <div class="flex items-start justify-between gap-3 border-b border-parchment-600 pb-3 shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="p-2.5 rounded-xl bg-moss-500/20 text-moss-600">
+                        <i class="fa-solid fa-scroll text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold font-display text-ink-900">What's new</h3>
+                        <p class="text-[10px] uppercase tracking-[0.18em] text-brass-600 font-bold">
+                            Know Thy World &nbsp;·&nbsp; <span id="changelog-version">v1.1.0</span>
+                        </p>
+                    </div>
+                </div>
+                <button onclick="closeChangelog()" class="text-ink-500 hover:text-ink-900 p-2 -m-1 text-lg" aria-label="Close changelog">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div id="changelog-entries" class="overflow-y-auto pr-1 flex flex-col gap-5 text-left"></div>
         </div>
     </div>
 
@@ -1622,23 +1655,40 @@
 
             // The clock starts on the first guess, not a moment sooner
             resetTimer();
-            prepareTargetQueue();
+            const started = prepareTargetQueue();
 
-            // Read it, or be tested on it? Every fresh round asks
-            if (opts && (opts.mode === 'study' || opts.mode === 'test')) chooseMode(opts.mode);
+            // Nothing was selected: send them to the picker rather than
+            // showing a finished round they never played
+            if (!started) {
+                openCustomSelectionModal();
+                return;
+            }
+
+            // Anything the round asks about has to be on the chart first
+            refreshSubdivisionDrawing();
+
+            // Read it, or be tested on it? Every fresh round asks, and then
+            // sends the student to the area picker — unless the caller has
+            // already told us (the picker's own two buttons do exactly that)
+            if (opts && (opts.mode === 'study' || opts.mode === 'test')) applyMode(opts.mode);
             else openModeChooser();
         }
 
         function finishQuiz() {
             stopTimer();
             state.currentTarget = null;
+
+            // A round with no questions was never played — showing a scorecard
+            // for it would hand out a 100% for doing nothing
+            if (state.totalQuestions === 0) return;
+
             // Refresh the HUD now that the final target is gone
             updateStatsUI();
             document.getElementById('target-country-name').innerText = "Quiz Completed!";
             document.getElementById('target-subtext').innerText = "Congratulations on finishing all targets!";
 
             const maxPts = state.totalQuestions * 3;
-            const percentage = maxPts > 0 ? Math.round((state.earnedPoints / maxPts) * 100) : 100;
+            const percentage = maxPts > 0 ? Math.round((state.earnedPoints / maxPts) * 100) : 0;
 
             document.getElementById('summary-mastery-percentage').innerText = `${percentage}%`;
             // How many of the selected locations were identified correctly —            // 197 with countries only, plus provinces/states when those are on
@@ -1891,15 +1941,28 @@
 
             // Sub-divisions replace their parent country's outline, so every
             // click lands on a piece rather than the whole
+            const drawing = wantedSubdivisionDrawing();
             let featuresToDraw = [...state.worldFeatures];
-            if (state.includeCanadaProvinces && state.canadaFeatures.length > 0) {
+            if (drawing.canada && state.canadaFeatures.length > 0) {
                 featuresToDraw = featuresToDraw.filter(f => featureFid(f) !== '124').concat(state.canadaFeatures);
             }
-            if (state.includeUSStates && state.usStatesFeatures.length > 0) {
+            if (drawing.us && state.usStatesFeatures.length > 0) {
                 featuresToDraw = featuresToDraw.filter(f => featureFid(f) !== '840').concat(state.usStatesFeatures);
             }
 
+            // Remember what is actually on the chart, so the next round can
+            // tell whether it needs a redraw
+            state.drawnSubdivisions = {
+                canada: drawing.canada && state.canadaFeatures.length > 0,
+                us: drawing.us && state.usStatesFeatures.length > 0
+            };
+
             state.combinedFeatures = featuresToDraw;
+
+            // Rims first — one ring around each island group — so every
+            // country paints over its own, and the smallest keeps its ring
+            // even where a bigger neighbour's would reach
+            renderIslandHalos();
 
             // Render country paths
             gMap.selectAll("path.map-country")
@@ -1916,6 +1979,131 @@
                 .text("");
 
             buildMinimap();
+        }
+
+        // Rims for the places that are easy to lose in the ocean: the island
+        // states (St. Kitts and Nevis, Nauru, Fiji, the Solomons…) and the
+        // pinprick micro-states. The cut-off is a fraction of the whole chart,
+        // so it means the same thing at any window size, and it stops well
+        // below anything already easy to see (Taiwan, Sri Lanka, Iceland).
+        const ISLAND_HALO_MAX_REL_AREA = 5e-5;
+
+        function islandHaloFeatures(features) {
+            const sphereArea = pathGenerator.area({ type: "Sphere" }) || 1;
+            return features
+                .filter(f => {
+                    const a = pathGenerator.area(f);
+                    return a > 0 && a / sphereArea < ISLAND_HALO_MAX_REL_AREA
+                        && isQuizRegion(featureFid(f));
+                })
+                .sort((a, b) => pathGenerator.area(a) - pathGenerator.area(b));
+        }
+
+        // One ring around the WHOLE group, not one around each island: the
+        // pieces of a country are gathered into clusters (a country split by
+        // the antimeridian, or scattered across an ocean, gets one ring per
+        // real cluster rather than one stretched across the chart), and the
+        // tightest closed shape is drawn around each cluster. The islands
+        // themselves stay on top, inside it, exactly as they are.
+        function haloPathData(f) {
+            const geom = f && f.geometry;
+            if (!geom || !projection) return null;
+            const polys = geom.type === "MultiPolygon" ? geom.coordinates
+                : geom.type === "Polygon" ? [geom.coordinates]
+                : [];
+            if (!polys.length) return null;
+
+            const b = pathGenerator.bounds({ type: "Sphere" });
+            const sphereW = b[1][0] - b[0][0];
+            const seamWidth = sphereW * 0.45;
+
+            const makeGroup = pts => {
+                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                for (let i = 0; i < pts.length; i++) {
+                    const p = pts[i];
+                    if (p[0] < minX) minX = p[0];
+                    if (p[0] > maxX) maxX = p[0];
+                    if (p[1] < minY) minY = p[1];
+                    if (p[1] > maxY) maxY = p[1];
+                }
+                return { pts: pts, box: [minX, minY, maxX, maxY] };
+            };
+
+            // Each ring starts as its own piece — except one that straddles
+            // the antimeridian, which would otherwise hull into a single band
+            // stretched right across the chart: its two halves part company
+            const groups = [];
+            polys.forEach(poly => poly.forEach(ring => {
+                const pts = [];
+                ring.forEach(c => {
+                    const p = projection(c);
+                    if (p && isFinite(p[0]) && isFinite(p[1])) pts.push(p);
+                });
+                if (!pts.length) return;
+                const probe = makeGroup(pts);
+                if (probe.box[2] - probe.box[0] > seamWidth) {
+                    const seam = b[0][0] + sphereW / 2;
+                    const left = pts.filter(p => p[0] < seam);
+                    const right = pts.filter(p => p[0] >= seam);
+                    if (left.length) groups.push(makeGroup(left));
+                    if (right.length) groups.push(makeGroup(right));
+                } else {
+                    groups.push(probe);
+                }
+            }));
+            if (!groups.length) return null;
+
+            // Hang together: pieces whose boxes nearly touch are one cluster
+            const gap = sphereW * 0.05;
+            let merged = true;
+            while (merged) {
+                merged = false;
+                outer:
+                for (let i = 0; i < groups.length; i++) {
+                    for (let j = i + 1; j < groups.length; j++) {
+                        const a = groups[i].box, c = groups[j].box;
+                        const joinedW = Math.max(a[2], c[2]) - Math.min(a[0], c[0]);
+                        if (joinedW <= seamWidth &&
+                            c[0] - a[2] <= gap && a[0] - c[2] <= gap &&
+                            c[1] - a[3] <= gap && a[1] - c[3] <= gap) {
+                            const together = groups[i].pts.concat(groups[j].pts);
+                            groups[i].box = [Math.min(a[0], c[0]), Math.min(a[1], c[1]),
+                                             Math.max(a[2], c[2]), Math.max(a[3], c[3])];
+                            groups[i].pts = together;
+                            groups.splice(j, 1);
+                            merged = true;
+                            break outer;
+                        }
+                    }
+                }
+            }
+
+            const rings = groups.map(g => {
+                const hull = d3.polygonHull(g.pts);
+                if (!hull || hull.length < 3) return null;
+                return "M" + hull.map(p => p[0].toFixed(1) + "," + p[1].toFixed(1)).join("L") + "Z";
+            }).filter(Boolean);
+
+            // Degenerate (a sliver of an island): fall back to its own outline
+            if (!rings.length) return pathGenerator(f);
+            return rings.join(" ");
+        }
+
+        // Halos live beneath every country, so a rim can never cover land —
+        // and they are always re-inserted before the first country path
+        function renderIslandHalos() {
+            if (!gMap || !projection || !state.combinedFeatures.length) return;
+            gMap.selectAll("path.map-halo").remove();
+            islandHaloFeatures(state.combinedFeatures).forEach(f => {
+                const d = haloPathData(f);
+                if (!d) return;
+                gMap.insert("path", "path.map-country")
+                    .attr("class", "map-halo map-halo-ink")
+                    .attr("d", d);
+                gMap.insert("path", "path.map-country")
+                    .attr("class", "map-halo map-halo-lit")
+                    .attr("d", d);
+            });
         }
 
         // --- mini-map (top-right inset) --------------------------------------
@@ -2038,15 +2226,50 @@
             };
         }
 
+        // What the chart has to SHOW: the switches above, plus whatever a
+        // hand-built selection names. A round that asks "Alberta" is a round
+        // with Alberta on the map — otherwise the answer could never be clicked
+        function wantedSubdivisionDrawing() {
+            const custom = (state.customSelectedIds && state.customSelectedIds.size)
+                ? state.customSelectedIds : null;
+            const wants = custom
+                ? prefix => [...custom].some(id => typeof id === "string" && id.indexOf(prefix) === 0)
+                : () => false;
+            return {
+                canada: !!state.includeCanadaProvinces || wants("CA-"),
+                us: !!state.includeUSStates || wants("US-")
+            };
+        }
+
+        // Redraw only when the set of areas on the chart would actually change
+        function refreshSubdivisionDrawing() {
+            if (!gMap) return;
+            const want = wantedSubdivisionDrawing();
+            const have = state.drawnSubdivisions || { canada: false, us: false };
+            if (have.canada === want.canada && have.us === want.us) return;
+            buildMapFeatures();
+        }
+
+        // Returns false when nothing at all was chosen — the round cannot start
         function prepareTargetQueue() {
             let targetList = [];
             const subunits = subdivisionsInQuiz();
 
+            // The picker can name provinces and states even while the header
+            // switches are off. A hand-built selection is the final word, so
+            // any subdivision it mentions is part of the round (otherwise
+            // picking only Alberta would build no targets at all)
+            const custom = (state.customSelectedIds && state.customSelectedIds.size)
+                ? state.customSelectedIds : null;
+            const customWants = custom
+                ? prefix => [...custom].some(id => typeof id === "string" && id.indexOf(prefix) === 0)
+                : null;
+
             // A student drilling the provinces (or the states) should not also
             // be asked for the country they belong to — that question is
             // already answered by every one of them.
-            const provincesInQuiz = subunits.canada;
-            const statesInQuiz = subunits.us;
+            const provincesInQuiz = custom ? !!customWants("CA-") : subunits.canada;
+            const statesInQuiz = custom ? !!customWants("US-") : subunits.us;
 
             // 1. World Countries — 193 UN members + 2 observer states +
             //    2 partially recognized states = 197 nations
@@ -2103,6 +2326,23 @@
                 targetList = targetList.filter(item => state.customSelectedIds.has(item.id));
             }
 
+            // Nothing chosen is not a perfect round: an empty selection must
+            // never be scored, it goes straight back to the area picker
+            if (targetList.length === 0) {
+                state.selection = [];
+                state.targets = [];
+                state.totalQuestions = 0;
+                state.maxPossiblePoints = 0;
+                state.currentTarget = null;
+                state.completedTargetIds.clear();
+                state.guessedMap.clear();
+                updateStatsUI();
+                document.getElementById('target-country-name').innerText = "Choose your areas";
+                document.getElementById('target-subtext').innerText = "Pick at least one place to be asked about.";
+                showToast("Pick at least one area first");
+                return false;
+            }
+
             // Fisher-Yates Shuffle
             for (let i = targetList.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
@@ -2122,6 +2362,7 @@
 
             updateStatsUI();
             nextTarget();
+            return true;
         }
 
         function nextTarget() {
@@ -3050,43 +3291,76 @@
             gMap.selectAll(".map-label").style("display", "block");
         }
 
-        // --- the opening choice: study, or be tested -------------------------
-        // Every fresh round asks what it is for, and shows exactly what is on
-        // the list before the student commits to either one.
-        function modeEsc(s) {
-            return String(s).replace(/[&<>"']/g, c => ({
-                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-            }[c]));
+        // --- what's new -----------------------------------------------------
+        const APP_VERSION = 'v1.1.0';
+
+        const CHANGELOG = [
+            {
+                version: 'v1.1.0',
+                notes: [
+                    'Two-step start: choose Study or Test first, then pick your areas in the selector.',
+                    'Island rims: one light border around each island group (Solomons, Fiji, St. Kitts and Nevis, Nauru…) so they can be found while zoomed out. The islands themselves stay visible inside the ring.',
+                    'Scoring fixes: a round of just Alberta now waits for your answer instead of scoring instantly, and an empty selection is never scored 100%.',
+                    'Pinching the chart zooms the map only — the browser window stays where it is.',
+                    'Header tidied into labelled groups; the mini-map and score-panel switches moved into Quiz Settings.',
+                    'The share image carries the stats and nothing else: no buttons in the picture you paste.',
+                    '"Slide to skip" wording stays clear of the knob while you drag.',
+                    'Scenery regions (Western Sahara, Greenland and other territories) never cost a mistake when clicked.'
+                ]
+            },
+            {
+                version: 'v1.0.0',
+                notes: [
+                    '197 areas: 193 UN members, 2 observer states, Kosovo and Taiwan — with Canadian provinces and U.S. states as opt-ins.',
+                    'Full names fitted inside their own borders, never overlapping; Study mode lays every name on the chart.',
+                    'Skip by drag (a loss, then revealed), three hints, streaks, and a clock that starts on your first click.',
+                    'Mini-map with click-to-jump, score panel, light parchment chart, thumb-sized controls on mobile.',
+                    'Score cards: copy the score, copy the image, or save the results as a PNG.'
+                ]
+            }
+        ];
+
+        function openChangelog() {
+            hideToast();
+            const v = document.getElementById('changelog-version');
+            if (v) v.textContent = APP_VERSION;
+
+            const list = document.getElementById('changelog-entries');
+            if (list) {
+                list.innerHTML = CHANGELOG.map(entry => `
+                    <section>
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-xs font-black text-ink-900 font-display">${entry.version}</span>
+                            <span class="h-px flex-1 bg-parchment-600"></span>
+                        </div>
+                        <ul class="flex flex-col gap-1.5">
+                            ${entry.notes.map(n => `
+                                <li class="text-xs text-ink-600 leading-relaxed flex gap-2">
+                                    <span class="text-ochre-600 font-bold shrink-0">·</span><span>${n}</span>
+                                </li>`).join('')}
+                        </ul>
+                    </section>`).join('');
+            }
+
+            const m = document.getElementById('modal-changelog');
+            if (m) m.classList.remove('hidden');
         }
 
-        function renderModeChooser() {
-            const sel = state.selection || [];
-            const groups = [
-                ['Countries', sel.filter(t => !t.isCanadaProvince && !t.isUSState).length],
-                ['Provinces & Territories', sel.filter(t => !!t.isCanadaProvince).length],
-                ['States & D.C.', sel.filter(t => !!t.isUSState).length]
-            ].filter(g => g[1] > 0);
+        function closeChangelog() {
+            const m = document.getElementById('modal-changelog');
+            if (m) m.classList.add('hidden');
+        }
 
-            const chips = document.getElementById('mode-scope');
-            if (chips) {
-                chips.innerHTML = groups.length
-                    ? groups.map(g => '<span class="mode-chip"><b>' + g[1] + '</b> ' + modeEsc(g[0]) + '</span>').join('')
-                    : '<span class="mode-chip">Nothing selected</span>';
-            }
-
-            const count = document.getElementById('mode-count');
-            if (count) count.textContent = sel.length;
-
-            const list = document.getElementById('mode-area-list');
-            if (list) {
-                const names = sel.map(t => t.displayName || t.name)
-                    .sort((a, b) => a.localeCompare(b));
-                list.innerHTML = names.map(n => '<div class="mode-area-name">' + modeEsc(n) + '</div>').join('');
-            }
+        // --- the opening choice: study, or be tested -------------------------
+        // A round begins in two steps: how do they want to work, and which
+        // areas they will work on. Modal one is the mode; modal two is the
+        // area picker, which follows it immediately.
+        function applyMode(mode) {
+            if (mode === 'study') enterStudyMode();
+            else exitStudyMode();
         }
 
         function openModeChooser() {
-            renderModeChooser();
             hideToast();
             const m = document.getElementById('modal-mode');
             if (m) m.classList.remove('hidden');
@@ -3103,17 +3377,12 @@
             return !!(m && !m.classList.contains('hidden'));
         }
 
-        // The round is already fresh by the time this is answered, so all that
-        // is decided here is whether the names go up now or wait to be earned
+        // The mode goes on straight away, then the picker opens so the round
+        // can be filled with the places they actually want to be asked about
         function chooseMode(mode) {
             closeModeChooser();
-            if (mode === 'study') {
-                enterStudyMode();
-                showToast('Study mode — every name on the chart');
-            } else {
-                exitStudyMode();
-                showToast('Test mode — names appear as you find them');
-            }
+            applyMode(mode);
+            openCustomSelectionModal();
         }
 
         function skipTarget() {
@@ -3719,6 +3988,7 @@
             svg.attr("width", width).attr("height", height);
             projection.scale(width / 5.8).translate([width / 2, height / 1.8]);
             gMap.selectAll('path.map-country').attr('d', pathGenerator);
+            renderIslandHalos();
             gMap.selectAll('.map-water').attr('d', pathGenerator({type: "Sphere"}));
             gMap.selectAll('.graticule').attr('d', pathGenerator);
             buildMinimap();
@@ -3726,6 +3996,8 @@
         });
 
         window.onload = function() {
+            const stamp = document.getElementById('btn-version');
+            if (stamp) stamp.textContent = APP_VERSION;
             initD3Map();
             initSkipSlider();
             setStudyIndicator();
