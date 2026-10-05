@@ -317,26 +317,65 @@
             fill: #cfe0da;
         }
 
-        /* A rim around the islands that are easy to lose in the ocean: an
-           inked edge with a lit band inside it, so a pinprick of land reads
-           as a place from across the chart. It sits under every country, so
-           it can never spill onto a neighbour's land, and follows the
-           island's own outline — no circles, no boxes. Strokes do not scale,
-           so the rim keeps its weight on screen at any magnification. */
-        .map-halo {
-            fill: none;
+        /* A ring around the islands that are easy to lose in the ocean, so a
+           pinprick of land reads as a place from across the chart. It is drawn
+           as an ordinary country path — the same inked edge, the same buff
+           fill, the same weight as every other border on the chart — never a
+           thick white band. It sits beneath every country, so a ring can only
+           ever be hidden by a neighbour's land, never drawn over it, and no
+           ring is wider than a 4px dot at rest. A ring around a scattered
+           group (Solomons, Maldives) has sea inside it: outline only, so no
+           ocean is ever painted as land — not even when the group is later
+           identified, which is why this rule is declared after the guessed
+           fills and outranks them. The rings themselves are left out of the
+           label probe and the resize pass, both of which want the real
+           coastline rather than the outline drawn around it. */
+        .map-country.map-island-line {
+            fill: none !important;
             stroke-linejoin: round;
-            stroke-linecap: round;
-            pointer-events: none;
-            vector-effect: non-scaling-stroke;
         }
-        .map-halo-ink {
-            stroke: rgba(122, 95, 58, 0.5);
-            stroke-width: 10px;
+
+        /* The two ways to play. Whichever is in force is filled in with ink,
+           so the mode is read off the header at a glance. */
+        .mode-btn {
+            background: rgba(239, 224, 192, 0.85);
+            border: 1px solid rgba(122, 95, 55, 0.5);
+            color: #4a3a24;
+            transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
         }
-        .map-halo-lit {
-            stroke: rgba(252, 246, 232, 0.88);
-            stroke-width: 8px;
+        .mode-btn:hover {
+            background: #e6d3a8;
+            color: #2a2013;
+        }
+        .mode-btn.is-active {
+            color: #fbf6e9;
+            border-color: rgba(58, 44, 25, 0.55);
+            box-shadow: 0 6px 14px rgba(74, 56, 30, 0.30);
+        }
+        #btn-mode-study.is-active { background: #bd9130; }   /* ochre-500 */
+        #btn-mode-test.is-active  { background: #546a38; }   /* moss-600  */
+        #btn-mode-study.is-active:hover { background: #9c7524; color: #fbf6e9; }
+        #btn-mode-test.is-active:hover  { background: #3f5029; color: #fbf6e9; }
+
+        /* The one button that starts the round, tinted to match the mode the
+           header picked so what is about to happen is never in doubt. */
+        .mode-start { color: #fbf6e9; background: #546a38; }
+        .mode-start.is-study { background: #bd9130; }
+        .mode-start.is-test  { background: #546a38; }
+        .mode-start.is-study:hover { background: #9c7524; transform: translateY(-1px); }
+        .mode-start.is-test:hover  { background: #3f5029; transform: translateY(-1px); }
+        .mode-start:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        /* The mode chip beside the modal title, and the active header button,
+           agree with each other at all times. */
+        #chip-picker-mode.is-study { background: rgba(189, 145, 48, 0.18); color: #7a5f16; border-color: rgba(189, 145, 48, 0.55); }
+        #chip-picker-mode.is-test  { background: rgba(84, 106, 56, 0.16); color: #3f5029; border-color: rgba(84, 106, 56, 0.55); }
+
+        /* Study mode is reading, not playing: the question, the score, the
+           clock and everything else that belongs to a test come off the chart.
+           Anything carrying .game-only is a game element by definition. */
+        body.study-mode .game-only {
+            display: none !important;
         }
 
         .graticule {
@@ -525,7 +564,7 @@
                 <h1 class="font-display font-bold text-lg md:text-xl tracking-tight text-ink-900 whitespace-nowrap">
                     Know Thy World
                     <button id="btn-version" onclick="openChangelog()" class="header-version"
-                            title="What's new in this version">v1.1.0</button>
+                            title="What's new in this version">v1.2.0</button>
                 </h1>
                 <a class="header-byline text-xs font-semibold text-moss-700 hover:text-moss-600 transition-colors select-none whitespace-nowrap inline-flex items-center gap-1.5"
                    href="https://ko-fi.com/coolpuddytat" target="_blank" rel="noopener noreferrer" title="Buy me a coffee! on Ko-fi">
@@ -535,9 +574,27 @@
             </div>
         </div>
 
-        <!-- Right Header Action Controls — grouped by what they are for -->
+        <!-- Right Header Action Controls — grouped by what they are for.
+             The two ways to play come first: they say what mode is in force,
+             and on a phone the header scrolls sideways, so they must be the
+             ones you reach without scrolling -->
         <div class="header-actions flex items-center gap-2 md:gap-3">
-            <!-- Looking at the chart: sound, names, study -->
+            <!-- Which round to play: each one opens the area list, and the
+                 Start button down there runs it in that mode -->
+            <div class="flex items-center gap-2" role="group" aria-label="Choose how to practise">
+                <button id="btn-mode-study" onclick="openCustomSelectionModal('study')" class="mode-btn px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2" title="Choose areas, then study the chart with every name on it">
+                    <i class="fa-solid fa-book-open"></i>
+                    <span>Study</span>
+                </button>
+                <button id="btn-mode-test" onclick="openCustomSelectionModal('test')" class="mode-btn px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2" title="Choose areas, then be tested on them">
+                    <i class="fa-solid fa-stopwatch"></i>
+                    <span>Test</span>
+                </button>
+            </div>
+
+            <span class="header-divider" aria-hidden="true"></span>
+
+            <!-- Looking at the chart: sound, names -->
             <div class="flex items-center gap-2" role="group" aria-label="Chart display">
                 <button id="btn-sound" onclick="toggleSound()" class="px-2.5 py-2 rounded-xl bg-parchment-400/80 hover:bg-parchment-500 text-ink-700 hover:text-ink-900 transition-all border border-parchment-700/60" title="Toggle Sound FX">
                     <i id="icon-sound" class="fa-solid fa-volume-high"></i>
@@ -546,11 +603,6 @@
                 <button id="btn-toggle-labels" onclick="toggleLabelsFromHeader()" class="px-3 py-2 rounded-xl bg-parchment-400/80 hover:bg-parchment-500 text-ink-700 hover:text-ink-900 border border-parchment-700/60 text-xs font-semibold flex items-center gap-2 transition-all" title="Toggle On-Map Area Labels">
                     <i class="fa-solid fa-tag text-ochre-600"></i>
                     <span class="hidden md:inline">Labels: <span id="txt-label-status" class="text-moss-600">ON</span></span>
-                </button>
-
-                <button id="btn-study" onclick="toggleStudyMode()" class="px-3 py-2 rounded-xl bg-ochre-500/10 hover:bg-ochre-500/20 text-ochre-700 border border-ochre-500/30 text-xs font-semibold flex items-center gap-2 transition-all" title="Show the name of every area in the current selection">
-                    <i class="fa-solid fa-book-open text-ochre-600"></i>
-                    <span class="hidden md:inline">Study: <span id="txt-study-status" class="text-ink-400">OFF</span></span>
                 </button>
             </div>
 
@@ -569,14 +621,6 @@
                     <span class="hidden md:inline">Quiz Settings</span>
                 </button>
             </div>
-
-            <span class="header-divider" aria-hidden="true"></span>
-
-            <!-- Start over -->
-            <button onclick="restartQuiz()" class="px-3 py-2 rounded-xl bg-gradient-to-r from-brass-600 to-sea-600 hover:from-brass-500 hover:to-sea-500 text-parchment-50 text-xs font-semibold shadow-md shadow-ink-900/20 transition-all flex items-center gap-2" title="Restart the quiz">
-                <i class="fa-solid fa-rotate-right"></i>
-                <span>Restart</span>
-            </button>
         </div>
     </header>
 
@@ -584,7 +628,7 @@
     <div class="relative flex-1 w-full h-full overflow-hidden flex flex-col md:flex-row">
         
         <!-- TARGET QUESTION HUD OVERLAY (TOP CENTER) -->
-        <div class="absolute top-4 left-1/2 -translate-x-1/2 z-10 w-11/12 max-w-xl pointer-events-auto">
+        <div class="game-only absolute top-4 left-1/2 -translate-x-1/2 z-10 w-11/12 max-w-xl pointer-events-auto">
             <div class="glass-panel rounded-2xl p-4 shadow-2xl border border-ink-900/15 flex flex-col sm:flex-row items-center justify-between gap-4">
                 
                 <div class="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-start">
@@ -635,8 +679,19 @@
             </div>
         </div>
 
+        <!-- STUDY MODE CARD (TOP CENTER) — the only thing up there while reading -->
+        <div id="study-banner" class="hidden absolute top-4 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
+            <div class="glass-panel rounded-2xl px-5 py-3 shadow-2xl border border-ochre-500/40 flex items-center gap-3">
+                <span class="p-2 rounded-xl bg-ochre-500/20 text-ochre-700"><i class="fa-solid fa-book-open"></i></span>
+                <div class="leading-tight">
+                    <div class="text-[10px] uppercase tracking-[0.2em] font-bold text-ochre-700">Study mode</div>
+                    <div class="text-xs text-ink-500">Every area in your selection is named on the chart</div>
+                </div>
+            </div>
+        </div>
+
         <!-- STATS & PROGRESS HUD (TOP LEFT) -->
-        <div id="stats-hud" class="absolute top-4 left-4 z-10 hidden lg:flex flex-col gap-2 pointer-events-auto">
+        <div id="stats-hud" class="game-only absolute top-4 left-4 z-10 hidden lg:flex flex-col gap-2 pointer-events-auto">
             <div class="glass-card rounded-xl p-3 flex items-center gap-3 border border-parchment-700/50 min-w-[170px]">
                 <div class="p-2 bg-moss-500/20 text-moss-600 rounded-lg">
                     <i class="fa-solid fa-trophy text-lg"></i>
@@ -670,7 +725,7 @@
 
         <!-- RIGHT OVERLAY COLUMN: advanced badge + mini-map inset -->
         <div class="absolute top-4 right-4 z-10 flex flex-col items-end gap-2 pointer-events-auto">
-            <div id="badge-advanced-mode" class="hidden glass-card rounded-xl px-3 py-1.5 border border-ochre-500/40 text-ochre-700 text-xs font-bold flex items-center gap-2">
+            <div id="badge-advanced-mode" class="hidden game-only glass-card rounded-xl px-3 py-1.5 border border-ochre-500/40 text-ochre-700 text-xs font-bold flex items-center gap-2">
                 <i class="fa-solid fa-brain text-ochre-600"></i>
                 <span>ADVANCED MODE (No Map Highlighting)</span>
             </div>
@@ -776,8 +831,8 @@
             </span>
         </div>
 
-        <!-- Timer / Stopwatch -->
-        <div class="flex items-center space-x-2 font-mono text-ink-700 bg-parchment-200/80 px-3 py-1 rounded-lg border border-parchment-600">
+        <!-- Timer / Stopwatch: a clock belongs to a test, not to reading -->
+        <div class="game-only flex items-center space-x-2 font-mono text-ink-700 bg-parchment-200/80 px-3 py-1 rounded-lg border border-parchment-600">
             <i class="fa-regular fa-clock text-brass-600"></i>
             <span id="quiz-timer">00:00</span>
         </div>
@@ -874,40 +929,6 @@
         </div>
     </div>
 
-    <!-- MODAL: CHOOSE STUDY OR TEST -->
-    <div id="modal-mode" class="fixed inset-0 z-50 bg-ink-900/75 backdrop-blur-md flex items-center justify-center p-4 hidden animate-fade-in">
-        <div class="glass-panel w-full max-w-lg rounded-2xl p-6 shadow-2xl border border-parchment-700 flex flex-col gap-4 text-center">
-            <div class="w-14 h-14 bg-gradient-to-tr from-brass-600 to-ink-700 rounded-2xl mx-auto flex items-center justify-center text-2xl text-parchment-50 shadow-lg shadow-ink-900/20">
-                <i class="fa-solid fa-compass"></i>
-            </div>
-
-            <div>
-                <h3 class="text-2xl font-bold font-display text-ink-900">Study, or be tested?</h3>
-                <p class="text-xs text-ink-500 mt-1">
-                    Choose how you'd like to work through the chart.<br>
-                    You'll pick the areas for this round in the next step.
-                </p>
-            </div>
-
-            <div class="grid grid-cols-2 gap-3">
-                <button onclick="chooseMode('study')" class="py-3 rounded-xl bg-ochre-500/15 hover:bg-ochre-500/25 border border-ochre-500/40 text-ochre-800 font-semibold text-sm flex flex-col items-center gap-1 transition-all">
-                    <i class="fa-solid fa-book-open text-lg"></i>
-                    <span>Study the Map</span>
-                    <span class="text-[10px] font-normal text-ink-500">Every name shown at once</span>
-                </button>
-                <button onclick="chooseMode('test')" class="py-3 rounded-xl bg-moss-600/15 hover:bg-moss-600/25 border border-moss-500/40 text-moss-800 font-semibold text-sm flex flex-col items-center gap-1 transition-all">
-                    <i class="fa-solid fa-stopwatch text-lg"></i>
-                    <span>Take the Test</span>
-                    <span class="text-[10px] font-normal text-ink-500">Names appear as you find them</span>
-                </button>
-            </div>
-
-            <button onclick="closeModeChooser()" class="text-[11px] text-ink-400 hover:text-ink-600 transition-all">
-                Leave the chart as it is
-            </button>
-        </div>
-    </div>
-
     <!-- MODAL: CHANGELOG -->
     <div id="modal-changelog" class="fixed inset-0 z-50 bg-ink-900/75 backdrop-blur-md flex items-center justify-center p-4 hidden animate-fade-in">
         <div class="glass-panel w-full max-w-lg rounded-2xl p-5 md:p-6 shadow-2xl border border-parchment-700 animate-scale-up flex flex-col gap-4 max-h-[86vh]">
@@ -919,7 +940,7 @@
                     <div>
                         <h3 class="text-lg font-bold font-display text-ink-900">What's new</h3>
                         <p class="text-[10px] uppercase tracking-[0.18em] text-brass-600 font-bold">
-                            Know Thy World &nbsp;·&nbsp; <span id="changelog-version">v1.1.0</span>
+                            Know Thy World &nbsp;·&nbsp; <span id="changelog-version">v1.2.0</span>
                         </p>
                     </div>
                 </div>
@@ -945,9 +966,14 @@
                         </div>
                         <div>
                             <h3 class="text-lg font-bold text-ink-900 font-display flex items-center gap-2">
-                                Custom Location Selector
+                                Choose your areas
+                                <!-- Which round Start will run. Not a choice: the Study
+                                     and Test buttons in the header already made it. -->
+                                <span id="chip-picker-mode" class="text-[10px] uppercase tracking-[0.14em] font-black px-2 py-1 rounded-md border">
+                                    Test
+                                </span>
                             </h3>
-                            <p class="text-xs text-ink-500">Choose specific UN countries, observer states, Canadian regions or U.S. states to test yourself on</p>
+                            <p class="text-xs text-ink-500">Tick what you want on the chart, then press Start</p>
                         </div>
                     </div>
                     <button onclick="closeCustomSelectionModal()" class="text-ink-500 hover:text-ink-900 p-2 text-lg"><i class="fa-solid fa-xmark"></i></button>
@@ -982,18 +1008,17 @@
                 <!-- Dynamic Continent Accordions rendered via JS -->
             </div>
 
-            <!-- Modal Footer -->
-            <div class="flex items-center justify-between border-t border-parchment-600 pt-3 shrink-0">
-                <div class="text-xs text-ink-500">
-                    <span id="txt-custom-selection-status">Practice active for selected locations</span>
+            <!-- Modal Footer. One Start button: the Study or Test button in the
+                 header already said which round this is, so there is nothing
+                 left to choose here but when to begin. -->
+            <div class="flex items-center justify-between gap-4 border-t border-parchment-600 pt-4 shrink-0">
+                <div class="text-xs text-ink-500 max-w-[55%]">
+                    <span id="txt-custom-selection-status">Pick the areas you want to work on</span>
                 </div>
-                <div class="flex items-center gap-2">
-                    <button onclick="closeCustomSelectionModal()" class="px-4 py-2 rounded-xl bg-parchment-400 hover:bg-parchment-500 text-ink-700 text-xs font-semibold transition-all">Cancel</button>
-                    <button onclick="applyCustomSelectionAndRestart('study')" class="px-4 py-2 rounded-xl bg-ochre-500/15 hover:bg-ochre-500/25 text-ochre-800 border border-ochre-500/40 text-xs font-bold transition-all flex items-center gap-2" title="Show the name of every area you have picked">
-                        <i class="fa-solid fa-book-open"></i> Study these
-                    </button>
-                    <button onclick="applyCustomSelectionAndRestart('test')" class="px-5 py-2 rounded-xl bg-moss-600 hover:bg-moss-500 text-parchment-50 text-xs font-bold shadow-lg shadow-ink-900/20 transition-all flex items-center gap-2" title="Start the quiz on the areas you have picked">
-                        <i class="fa-solid fa-play"></i> Test me on these
+                <div class="flex items-center gap-3">
+                    <button onclick="closeCustomSelectionModal()" class="px-4 py-3 rounded-xl bg-parchment-300/70 hover:bg-parchment-400 text-ink-600 text-xs font-semibold border border-parchment-700/50 transition-all">Cancel</button>
+                    <button id="btn-picker-start" onclick="startFromPicker()" class="mode-start px-10 py-4 rounded-xl text-base font-black shadow-xl shadow-ink-900/30 transition-all flex items-center gap-3 tracking-wide" title="Begin the round on the areas you have picked">
+                        <i class="fa-solid fa-play text-lg"></i> Start
                     </button>
                 </div>
             </div>
@@ -1066,9 +1091,9 @@
                 <div class="glass-card p-2 rounded-lg">Best Streak: <span id="summary-streak" class="font-bold text-ochre-600">0 🔥</span></div>
             </div>
 
-            <!-- Actions: play again, close to study, or hand in the score -->
+            <!-- Actions: play the same round again, close to study, or hand in the score -->
             <div class="flex flex-col gap-2" data-share-exclude>
-                <button onclick="restartQuiz()" class="w-full py-3 rounded-xl bg-gradient-to-r from-brass-600 to-ink-700 hover:from-brass-500 hover:to-ink-600 text-parchment-50 font-semibold text-sm shadow-lg transition-all">
+                <button onclick="restartQuiz({ mode: state.studyMode ? 'study' : 'test' })" class="w-full py-3 rounded-xl bg-gradient-to-r from-brass-600 to-ink-700 hover:from-brass-500 hover:to-ink-600 text-parchment-50 font-semibold text-sm shadow-lg transition-all">
                     <i class="fa-solid fa-rotate-right mr-1.5"></i>Play Again
                 </button>
                 <button onclick="closeSummaryToStudy()" class="w-full py-3 rounded-xl bg-parchment-300 hover:bg-parchment-400 text-ink-800 font-semibold text-sm border border-parchment-700 transition-all">
@@ -1619,12 +1644,17 @@
         }
 
         // QUIZ LIFECYCLE CONTROLS
-        // opts.mode: 'study' | 'test' — answer the opening question for the
-        // caller (the selector's two buttons do this). Otherwise the choice
-        // is put to the student, as it is on a fresh page.
+        // opts.mode: 'study' | 'test' — which round this is. The header's two
+        // buttons say so; a round begun some other way keeps the mode it
+        // already had and opens the list of areas to fill it in.
         function restartQuiz(opts) {
             const summaryModal = document.getElementById('modal-summary');
             if (summaryModal) summaryModal.classList.add('hidden');
+
+            const wanted = (opts && (opts.mode === 'study' || opts.mode === 'test'))
+                ? opts.mode
+                : (state.studyMode ? 'study' : 'test');
+
             exitStudyMode(true);
             resetSkipKnob();
 
@@ -1660,18 +1690,23 @@
             // Nothing was selected: send them to the picker rather than
             // showing a finished round they never played
             if (!started) {
-                openCustomSelectionModal();
+                openCustomSelectionModal(wanted);
                 return;
             }
 
             // Anything the round asks about has to be on the chart first
             refreshSubdivisionDrawing();
 
-            // Read it, or be tested on it? Every fresh round asks, and then
-            // sends the student to the area picker — unless the caller has
-            // already told us (the picker's own two buttons do exactly that)
-            if (opts && (opts.mode === 'study' || opts.mode === 'test')) applyMode(opts.mode);
-            else openModeChooser();
+            applyMode(wanted);
+
+            // A fresh round begins at the list of areas: they choose what goes
+            // on the chart, and the Start button down there runs it in the mode
+            // named by the header. The one exception is a round that has just
+            // been picked or replayed (the Start button, "Play again") — that
+            // one already knows both answers and must not ask again.
+            if (!(opts && (opts.mode === 'study' || opts.mode === 'test'))) {
+                openCustomSelectionModal(wanted);
+            }
         }
 
         function finishQuiz() {
@@ -1959,13 +1994,8 @@
 
             state.combinedFeatures = featuresToDraw;
 
-            // Rims first — one ring around each island group — so every
-            // country paints over its own, and the smallest keeps its ring
-            // even where a bigger neighbour's would reach
-            renderIslandHalos();
-
             // Render country paths
-            gMap.selectAll("path.map-country")
+            gMap.selectAll("path.map-country:not(.map-island-ring)")
                 .data(featuresToDraw)
                 .enter()
                 .append("path")
@@ -1978,6 +2008,11 @@
                 .append("title")
                 .text("");
 
+            // Rims go on afterwards and are slid in beneath the countries, so
+            // every country paints over its own ring and a ring can never land
+            // on a neighbour's land or across its border line
+            renderIslandRings();
+
             buildMinimap();
         }
 
@@ -1986,36 +2021,50 @@
         // pinprick micro-states. The cut-off is a fraction of the whole chart,
         // so it means the same thing at any window size, and it stops well
         // below anything already easy to see (Taiwan, Sri Lanka, Iceland).
-        const ISLAND_HALO_MAX_REL_AREA = 5e-5;
+        const ISLAND_RING_MAX_REL_AREA = 5e-5;
+        // A ring may never make a place bigger than a 4px dot at the chart's
+        // resting size — about as big as Singapore reads once the chart is
+        // magnified a little. Anything already that large is left alone: its
+        // own coastline is the border it needs.
+        const ISLAND_RING_TARGET_REL_AREA = 1.48e-5;
+        // How closely a hull has to hug the land inside it before it may be
+        // filled in as a bigger version of that land. A loose hull (a chain
+        // strung across an ocean) is only ever outlined, so no sea is ever
+        // painted as land.
+        const ISLAND_RING_TIGHT_RATIO = 1.6;
 
-        function islandHaloFeatures(features) {
+        function islandRingFeatures(features) {
             const sphereArea = pathGenerator.area({ type: "Sphere" }) || 1;
-            return features
-                .filter(f => {
-                    const a = pathGenerator.area(f);
-                    return a > 0 && a / sphereArea < ISLAND_HALO_MAX_REL_AREA
-                        && isQuizRegion(featureFid(f));
-                })
-                .sort((a, b) => pathGenerator.area(a) - pathGenerator.area(b));
+            return features.filter(f => {
+                const a = pathGenerator.area(f);
+                return a > 0 && a / sphereArea < ISLAND_RING_MAX_REL_AREA
+                    && isQuizRegion(featureFid(f));
+            });
         }
 
-        // One ring around the WHOLE group, not one around each island: the
-        // pieces of a country are gathered into clusters (a country split by
-        // the antimeridian, or scattered across an ocean, gets one ring per
-        // real cluster rather than one stretched across the chart), and the
-        // tightest closed shape is drawn around each cluster. The islands
-        // themselves stay on top, inside it, exactly as they are.
-        function haloPathData(f) {
+        // One ring around each CLUSTER of islands, not one around each island
+        // and not one stretched across an ocean: the pieces of a country are
+        // gathered into clusters that are never wider than the ring is meant
+        // to be, so Kiribati and French Polynesia become a handful of small
+        // rings sitting on real land rather than one big outline drawn across
+        // empty sea. The tightest closed shape is drawn around each cluster,
+        // and the islands themselves stay on top, inside it, exactly as they
+        // are. 9 × the target is a ring about 10px across at rest: clearly a
+        // place, never a patch of ocean.
+        const ISLAND_RING_MAX_CLUSTER = 9;
+
+        function islandRingPaths(f, targetArea) {
             const geom = f && f.geometry;
-            if (!geom || !projection) return null;
+            if (!geom || !projection) return [];
             const polys = geom.type === "MultiPolygon" ? geom.coordinates
                 : geom.type === "Polygon" ? [geom.coordinates]
                 : [];
-            if (!polys.length) return null;
+            if (!polys.length) return [];
 
             const b = pathGenerator.bounds({ type: "Sphere" });
             const sphereW = b[1][0] - b[0][0];
             const seamWidth = sphereW * 0.45;
+            const planarArea = pts => Math.abs(d3.polygonArea(pts));
 
             const makeGroup = pts => {
                 let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -2026,7 +2075,7 @@
                     if (p[1] < minY) minY = p[1];
                     if (p[1] > maxY) maxY = p[1];
                 }
-                return { pts: pts, box: [minX, minY, maxX, maxY] };
+                return { pts: pts, land: planarArea(pts), box: [minX, minY, maxX, maxY] };
             };
 
             // Each ring starts as its own piece — except one that straddles
@@ -2039,22 +2088,26 @@
                     const p = projection(c);
                     if (p && isFinite(p[0]) && isFinite(p[1])) pts.push(p);
                 });
-                if (!pts.length) return;
+                if (pts.length < 3) return;
                 const probe = makeGroup(pts);
                 if (probe.box[2] - probe.box[0] > seamWidth) {
                     const seam = b[0][0] + sphereW / 2;
                     const left = pts.filter(p => p[0] < seam);
                     const right = pts.filter(p => p[0] >= seam);
-                    if (left.length) groups.push(makeGroup(left));
-                    if (right.length) groups.push(makeGroup(right));
+                    if (left.length > 2) groups.push(makeGroup(left));
+                    if (right.length > 2) groups.push(makeGroup(right));
                 } else {
                     groups.push(probe);
                 }
             }));
-            if (!groups.length) return null;
+            if (!groups.length) return [];
 
-            // Hang together: pieces whose boxes nearly touch are one cluster
+            // Hang together: pieces whose boxes nearly touch are one cluster —
+            // but never into a shape bigger than a ring is meant to be, so a
+            // scattered nation keeps its separate little rings instead of
+            // growing one outline right across the chart
             const gap = sphereW * 0.05;
+            const maxClusterArea = targetArea * ISLAND_RING_MAX_CLUSTER;
             let merged = true;
             while (merged) {
                 merged = false;
@@ -2062,14 +2115,16 @@
                 for (let i = 0; i < groups.length; i++) {
                     for (let j = i + 1; j < groups.length; j++) {
                         const a = groups[i].box, c = groups[j].box;
-                        const joinedW = Math.max(a[2], c[2]) - Math.min(a[0], c[0]);
+                        const jx0 = Math.min(a[0], c[0]), jy0 = Math.min(a[1], c[1]);
+                        const jx1 = Math.max(a[2], c[2]), jy1 = Math.max(a[3], c[3]);
+                        const joinedW = jx1 - jx0;
                         if (joinedW <= seamWidth &&
+                            (jx1 - jx0) * (jy1 - jy0) <= maxClusterArea &&
                             c[0] - a[2] <= gap && a[0] - c[2] <= gap &&
                             c[1] - a[3] <= gap && a[1] - c[3] <= gap) {
-                            const together = groups[i].pts.concat(groups[j].pts);
-                            groups[i].box = [Math.min(a[0], c[0]), Math.min(a[1], c[1]),
-                                             Math.max(a[2], c[2]), Math.max(a[3], c[3])];
-                            groups[i].pts = together;
+                            groups[i].land += groups[j].land;
+                            groups[i].pts = groups[i].pts.concat(groups[j].pts);
+                            groups[i].box = [jx0, jy0, jx1, jy1];
                             groups.splice(j, 1);
                             merged = true;
                             break outer;
@@ -2078,33 +2133,99 @@
                 }
             }
 
-            const rings = groups.map(g => {
+            const rings = [];
+            groups.forEach(g => {
                 const hull = d3.polygonHull(g.pts);
-                if (!hull || hull.length < 3) return null;
-                return "M" + hull.map(p => p[0].toFixed(1) + "," + p[1].toFixed(1)).join("L") + "Z";
-            }).filter(Boolean);
+                if (!hull || hull.length < 3) return;
+                const hullArea = planarArea(hull);
+                if (!(hullArea > 0)) return;
 
-            // Degenerate (a sliver of an island): fall back to its own outline
-            if (!rings.length) return pathGenerator(f);
-            return rings.join(" ");
+                // A hull that hugs its land may be filled in as a bigger
+                // version of that land; a loose one is only ever outlined
+                const tight = hullArea <= g.land * ISLAND_RING_TIGHT_RATIO;
+
+                let shape = hull, grew = false;
+                if (hullArea < targetArea) {
+                    // About its own middle, so the islands never move — the
+                    // ring simply reaches a little further out
+                    const k = Math.sqrt(targetArea / hullArea);
+                    let cx = 0, cy = 0;
+                    hull.forEach(p => { cx += p[0]; cy += p[1]; });
+                    cx /= hull.length; cy /= hull.length;
+                    shape = hull.map(p => [cx + (p[0] - cx) * k, cy + (p[1] - cy) * k]);
+                    grew = true;
+                } else if (tight) {
+                    // Already a findable size of its own
+                    return;
+                }
+
+                // Degenerate (a sliver of an island): skipped above, since a
+                // hull needs three points to close
+                rings.push({
+                    d: "M" + shape.map(p => p[0].toFixed(1) + "," + p[1].toFixed(1)).join("L") + "Z",
+                    fill: tight && grew,
+                    area: hullArea,
+                    land: g.land
+                });
+            });
+            return rings;
         }
 
-        // Halos live beneath every country, so a rim can never cover land —
-        // and they are always re-inserted before the first country path
-        function renderIslandHalos() {
+        // Rings live beneath every country, so a ring can only ever be covered
+        // by a neighbour's land, never drawn on top of it. The outlines are
+        // laid down first and the filled rings last: where two rings meet, the
+        // later fill masks the earlier line, so no two rings cross.
+        function renderIslandRings() {
             if (!gMap || !projection || !state.combinedFeatures.length) return;
-            gMap.selectAll("path.map-halo").remove();
-            islandHaloFeatures(state.combinedFeatures).forEach(f => {
-                const d = haloPathData(f);
-                if (!d) return;
-                gMap.insert("path", "path.map-country")
-                    .attr("class", "map-halo map-halo-ink")
-                    .attr("d", d);
-                gMap.insert("path", "path.map-country")
-                    .attr("class", "map-halo map-halo-lit")
-                    .attr("d", d);
+
+            // A ring answers for its island, so it wears the island's colours:
+            // carry whatever state it had across the redraw (a resize, say)
+            const carried = new Map();
+            gMap.selectAll("path.map-island-ring").each(function () {
+                carried.set(this.getAttribute("data-id"), this.getAttribute("class") || "");
+            });
+            gMap.selectAll("path.map-island-ring").remove();
+            const refNode = gMap.select("path.map-country:not(.map-island-ring)").node();
+            if (!refNode) return;
+
+            const sphereArea = pathGenerator.area({ type: "Sphere" }) || 1;
+            const targetArea = ISLAND_RING_TARGET_REL_AREA * sphereArea;
+
+            const outlines = [], fills = [];
+            islandRingFeatures(state.combinedFeatures).forEach(f => {
+                const fid = featureFid(f);
+                islandRingPaths(f, targetArea).forEach(r => {
+                    (r.fill ? fills : outlines).push({
+                        d: r.d, fid: fid, area: r.area, land: r.land, fill: r.fill
+                    });
+                });
+            });
+
+            // Broad hulls at the bottom; of the filled rings, the smallest
+            // speck ends up on top, so it keeps its whole rim
+            outlines.sort((a, b) => b.area - a.area);
+            fills.sort((a, b) => b.land - a.land);
+
+            const CARRIED_STATES = ["guessed-correct", "guessed-1st", "guessed-2nd",
+                                    "guessed-3rd", "guessed-failed", "reveal-flash"];
+
+            outlines.concat(fills).forEach(r => {
+                let cls = "map-country map-island-ring" + (r.fill ? "" : " map-island-line");
+                const was = carried.get(r.fid);
+                if (was) {
+                    CARRIED_STATES.forEach(s => { if (was.split(/\s+/).indexOf(s) >= 0) cls += " " + s; });
+                }
+                // d3 wants a selector or a function here, not a bare node
+                gMap.insert("path", () => refNode)
+                    .attr("class", cls)
+                    .attr("data-id", r.fid)
+                    .attr("d", r.d)
+                    // A ring is the same place as the island it surrounds, so
+                    // it answers for it — a pinprick is far easier to hit
+                    .on("click", handleCountryClick);
             });
         }
+
 
         // --- mini-map (top-right inset) --------------------------------------
         const MINI_W = 158, MINI_H = 96;
@@ -2406,9 +2527,9 @@
 
         function handleCountryClick(event, d) {
             if (!state.currentTarget) return;
-            if (modeChooserOpen()) return;
+            if (pickerOpen()) return;
             if (state.studyMode) {
-                showToast("Study mode is on — switch it off to keep playing.");
+                showToast("Study mode — press Test in the header to be asked about these areas.");
                 return;
             }
 
@@ -2435,7 +2556,8 @@
             // The player has made a real move: the clock may start now
             ensureTimerStarted();
 
-            const element = d3.select(this);
+            // The island and the ring drawn around it take every mark together
+            const element = gMap.selectAll('.map-country[data-id="' + clickedId + '"]');
 
             if (answersTarget) {
                 // CORRECT GUESS
@@ -2894,7 +3016,9 @@
             if (labelBoxes.has(fid)) return;
             if (gMap.select(`.map-label[data-label-id="${fid}"]`).size() > 0) return;
 
-            const node = gMap.select('path.map-country[data-id="' + fid + '"]').node() || null;
+            // The real coastline, never the ring drawn around it: a label
+            // belongs on the land it names
+            const node = gMap.select('path.map-country:not(.map-island-ring)[data-id="' + fid + '"]').node() || null;
             const anchor = largestPartAnchor(feature);
             if (!anchor) return;
 
@@ -3232,23 +3356,9 @@
 
         // --- study mode ------------------------------------------------------
         // Every name in the current selection, laid on the chart at once, so
-        // the map can be read before (or after) it is tested.
-        function toggleStudyMode() {
-            if (state.studyMode) exitStudyMode();
-            else enterStudyMode();
-        }
-
-        function setStudyIndicator() {
-            const txt = document.getElementById('txt-study-status');
-            const btn = document.getElementById('btn-study');
-            if (txt) {
-                txt.innerText = state.studyMode ? "ON" : "OFF";
-                txt.className = state.studyMode ? "text-moss-600" : "text-ink-400";
-            }
-            if (btn) btn.classList.toggle("ring-2", state.studyMode);
-            if (btn) btn.classList.toggle("ring-ochre-500", state.studyMode);
-        }
-
+        // the map can be read before (or after) it is tested. Nothing that
+        // belongs to a test is on screen while this is on: the question, the
+        // score, the streak and the clock all come away with body.study-mode.
         function enterStudyMode() {
             state.studyMode = true;
             // Reading the chart needs the names, whatever the labels switch says
@@ -3260,13 +3370,20 @@
                 labelStatus.innerText = "ON";
                 labelStatus.className = "text-moss-600";
             }
-            setStudyIndicator();
+            document.body.classList.add('study-mode');
+            const banner = document.getElementById('study-banner');
+            if (banner) banner.classList.remove('hidden');
+            setModeIndicator('study');
             renderSelectionLabels();
+            updateStatsUI(); // the footer counts the set, not a test of it
         }
 
         function exitStudyMode(silent) {
             state.studyMode = false;
-            setStudyIndicator();
+            document.body.classList.remove('study-mode');
+            const banner = document.getElementById('study-banner');
+            if (banner) banner.classList.add('hidden');
+            setModeIndicator('test');
             if (silent || !gMap) return;
 
             // Names of anything not yet identified come off the chart again
@@ -3292,9 +3409,22 @@
         }
 
         // --- what's new -----------------------------------------------------
-        const APP_VERSION = 'v1.1.0';
+        const APP_VERSION = 'v1.2.0';
 
         const CHANGELOG = [
+            {
+                version: 'v1.2.0',
+                notes: [
+                    'Study and Test replace Restart — and the "Study, or be tested?" window with them: press either one in the header and the list of areas opens; the single Start button at its foot runs that round in that mode.',
+                    'Study mode carries no game: no question, no score, no streak and no clock — only the chart with every name in your selection laid on it, and a card saying which mode you are in.',
+                    'Whichever mode is in force is filled in on the header, and the two buttons come first in the bar so a phone reaches them without scrolling.',
+                    'Canada and the United States head the list of areas, each folding its 13 provinces or 51 states away behind a chevron so the list starts short.',
+                    'A country and its pieces are never both ticked: the side you tick last is the side the round takes, so every province plus Japan and China is asked without Canada as well — and the row says why.',
+                    'Searching opens the row it lands in: type a province and its panel unfolds around it, while a country with no match steps out of the way.',
+                    'Island rims redrawn as an ordinary border: the same thin inked edge a nation already has, grown to a 4px dot and never clustered wider than about 9px, so Nauru, Singapore and Kiribati are findable with no white band — and no triangle — across the ocean.',
+                    'A finished round replays the same areas at once, and closing the scorecard leaves the chart up to study.'
+                ]
+            },
             {
                 version: 'v1.1.0',
                 notes: [
@@ -3351,42 +3481,59 @@
             if (m) m.classList.add('hidden');
         }
 
-        // --- the opening choice: study, or be tested -------------------------
-        // A round begins in two steps: how do they want to work, and which
-        // areas they will work on. Modal one is the mode; modal two is the
-        // area picker, which follows it immediately.
+        // --- which round, and which areas -----------------------------------
+        // Study and Test are the two ways to play, and both live in the header.
+        // Pressing one says how the round is to run and opens the list of areas
+        // for it; the single Start button at the foot of that list begins it.
+        let pickerMode = 'test';
+
         function applyMode(mode) {
+            // Both of these say which mode is in force, header included
             if (mode === 'study') enterStudyMode();
             else exitStudyMode();
         }
 
-        function openModeChooser() {
-            hideToast();
-            const m = document.getElementById('modal-mode');
-            if (m) m.classList.remove('hidden');
-        }
-
-        function closeModeChooser() {
-            const m = document.getElementById('modal-mode');
-            if (m) m.classList.add('hidden');
-        }
-
-        // Nothing is played while the opening question is still on the screen
-        function modeChooserOpen() {
-            const m = document.getElementById('modal-mode');
+        // Nothing is played while the list of areas is still on the screen
+        function pickerOpen() {
+            const m = document.getElementById('modal-custom-selection');
             return !!(m && !m.classList.contains('hidden'));
         }
 
-        // The mode goes on straight away, then the picker opens so the round
-        // can be filled with the places they actually want to be asked about
-        function chooseMode(mode) {
-            closeModeChooser();
-            applyMode(mode);
-            openCustomSelectionModal();
+        // The header buttons, the modal's chip and its Start button all tell the
+        // same story about which round is in force, so the mode is never a
+        // matter of guessing.
+        function setModeIndicator(mode) {
+            const m = (mode === 'study' || mode === 'test') ? mode : (state.studyMode ? 'study' : 'test');
+            const s = document.getElementById('btn-mode-study');
+            const t = document.getElementById('btn-mode-test');
+            if (s) s.classList.toggle('is-active', m === 'study');
+            if (t) t.classList.toggle('is-active', m === 'test');
+
+            const chip = document.getElementById('chip-picker-mode');
+            if (chip) {
+                chip.classList.toggle('is-study', m === 'study');
+                chip.classList.toggle('is-test', m === 'test');
+                chip.innerText = m === 'study' ? 'Study' : 'Test';
+            }
+
+            const start = document.getElementById('btn-picker-start');
+            if (start) {
+                start.classList.toggle('is-study', m === 'study');
+                start.classList.toggle('is-test', m === 'test');
+                start.title = m === 'study'
+                    ? 'Lay every name in your selection on the chart'
+                    : 'Begin the test on the areas you have picked';
+            }
+        }
+
+        // What the Start button will run: the mode the header button just named,
+        // or the mode already in force when the list is opened another way.
+        function startFromPicker() {
+            applyCustomSelectionAndRestart(pickerMode);
         }
 
         function skipTarget() {
-            if (!state.currentTarget || state.skipLocked || state.studyMode || modeChooserOpen()) return;
+            if (!state.currentTarget || state.skipLocked || state.studyMode || pickerOpen()) return;
             state.skipLocked = true;
             resetSkipKnob();
 
@@ -3412,7 +3559,7 @@
         }
 
         function useHint() {
-            if (state.hintsRemaining <= 0 || !state.currentTarget || state.studyMode || modeChooserOpen()) return;
+            if (state.hintsRemaining <= 0 || !state.currentTarget || state.studyMode || pickerOpen()) return;
 
             state.hintsRemaining--;
             document.getElementById('hint-count').innerText = state.hintsRemaining;
@@ -3476,7 +3623,11 @@
                 : `Scope: ${state.selectedRegion.replace('_', ' ')}`;
 
             document.getElementById('label-region-mode').innerText = regionLabel;
-            document.getElementById('label-total-targets').innerText = `${state.totalQuestions} Total | Remaining: ${state.targets.length + (state.currentTarget ? 1 : 0)}`;
+            // "Remaining" is a question about a test; while studying there is
+            // only the size of the set to read
+            document.getElementById('label-total-targets').innerText = state.studyMode
+                ? `${state.totalQuestions} areas in this set`
+                : `${state.totalQuestions} Total | Remaining: ${state.targets.length + (state.currentTarget ? 1 : 0)}`;
         }
 
         // CUSTOM COUNTRY SELECTION SYSTEM logic
@@ -3520,7 +3671,9 @@
                 });
             }
 
-            // UN World Countries — observers and partially recognized states            // gather in their own selector categories
+            // UN World Countries — observers and partially recognized states
+            // Canada and the United States come with them; which of them and
+            // their pieces is actually ticked is settled by reconcileSubdivisions
             for (const [iso, meta] of Object.entries(ISO_COUNTRY_NAMES)) {
                 list.push({
                     id: iso,
@@ -3556,8 +3709,90 @@
             return ref.every(id => set.has(id));
         }
 
-        function openCustomSelectionModal() {
+        // The two countries that are usually drilled as pieces rather than as a
+        // whole. They head the list instead of sitting inside the North America
+        // card, and each folds its provinces or states away behind a chevron so
+        // the list starts short.
+        const PINNED_COUNTRIES = [
+            { id: '124', name: 'Canada', flag: '🇨🇦', group: 'CANADA_PROVINCES', open: 'canada', pieces: 'provinces & territories', sub: 'canada' },
+            { id: '840', name: 'United States', flag: '🇺🇸', group: 'US_STATES', open: 'us', pieces: 'states & D.C.', sub: 'us' }
+        ];
+        const PINNED_IDS = new Set(PINNED_COUNTRIES.map(p => p.id));
+        // Which panels are unfolded, kept across re-renders so a tick inside a
+        // panel does not fold it shut under the student's hand
+        const subdivisionsOpen = { canada: false, us: false };
+
+        // A ticked box in the list: country, province or state
+        function buildItemRow(item) {
+            const isChecked = tempSelectedIds.has(item.id);
+            const label = document.createElement('label');
+            label.className = `p-2 rounded-lg border flex items-center gap-2 cursor-pointer transition-all ${
+                isChecked
+                    ? 'bg-moss-500/25 border-moss-500/60 text-ink-900 font-medium'
+                    : 'bg-parchment-50/70 border-parchment-600/60 text-ink-500 hover:text-ink-800'
+            }`;
+
+            label.innerHTML = `
+                <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleIndividualCountry('${item.id}', this.checked)" class="w-3.5 h-3.5 rounded text-moss-600 bg-parchment-200 border-parchment-700 focus:ring-moss-500 focus:ring-offset-parchment-100">
+                <span class="truncate" title="${item.name}">${item.name}</span>
+            `;
+            return label;
+        }
+
+        // One of the two rows at the top: the country on the left with its
+        // checkbox, the chevron on the right folding its pieces in and out
+        function buildPinnedCard(pin, country, pieces, shown, open) {
+            const sub = subdivisionsInQuiz();
+            const blocked = !!sub[pin.sub];      // pieces are what gets drawn
+            const ticked = tempSelectedIds.has(pin.id);
+            const piecesTicked = pieces.filter(p => tempSelectedIds.has(p.id)).length;
+
+            const card = document.createElement('div');
+            card.className = 'glass-card rounded-xl border border-parchment-600/80 overflow-hidden';
+
+            const header = document.createElement('div');
+            header.className = 'px-4 py-3 bg-parchment-200/80 flex items-center justify-between gap-3 border-b border-parchment-600 select-none';
+
+            const note = blocked
+                ? `<span class="text-[10px] text-ochre-700 shrink-0" title="Quiz Settings has these switched on, so the country is drawn as its pieces and cannot be asked as a whole">switched on in settings</span>`
+                : piecesTicked > 0
+                ? `<span class="text-[10px] text-ochre-700 shrink-0">${piecesTicked} ticked</span>`
+                : '';
+
+            header.innerHTML = `
+                <label class="flex items-center gap-2.5 min-w-0 cursor-pointer" title="${blocked ? 'The pieces are drawn instead of the country — turn them off in Quiz Settings to ask for it as a whole' : 'Ask for the country as a whole'}">
+                    <input type="checkbox" ${ticked ? 'checked' : ''} ${blocked ? 'disabled' : ''} onchange="toggleIndividualCountry('${pin.id}', this.checked)" class="w-3.5 h-3.5 shrink-0 rounded text-moss-600 bg-parchment-200 border-parchment-700 focus:ring-moss-500 focus:ring-offset-parchment-100 disabled:opacity-40 disabled:cursor-not-allowed">
+                    <span class="text-sm leading-none shrink-0">${pin.flag}</span>
+                    <span class="font-bold text-xs text-ink-900 shrink-0">${pin.name}</span>
+                    <span class="text-[10px] text-ink-500 bg-parchment-400 px-2 py-0.5 rounded-full shrink-0">${pieces.length}</span>
+                    ${note}
+                </label>
+                <button onclick="toggleSubdivisionPanel('${pin.open}')" aria-expanded="${open}" class="flex items-center gap-2 text-[11px] font-semibold text-moss-700 hover:text-moss-900 px-2 py-1.5 rounded-lg bg-parchment-400 border border-parchment-700/60 shrink-0 transition-all">
+                    <span>${pin.pieces}</span>
+                    <i class="fa-solid fa-chevron-${open ? 'up' : 'down'}"></i>
+                </button>
+            `;
+            card.appendChild(header);
+
+            // The pieces themselves, folded away until the chevron is pressed
+            const grid = document.createElement('div');
+            grid.className = 'p-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 text-xs';
+            if (!open) grid.classList.add('hidden');
+            shown.sort((a, b) => a.name.localeCompare(b.name)).forEach(piece => grid.appendChild(buildItemRow(piece)));
+            card.appendChild(grid);
+
+            return card;
+        }
+
+        function openCustomSelectionModal(mode) {
             hideToast();
+
+            // Which round Start will run: the mode the header button named, or
+            // the one already in force when the list is opened another way
+            pickerMode = (mode === 'study' || mode === 'test')
+                ? mode
+                : (state.studyMode ? 'study' : 'test');
+
             if (state.customSelectedIds && state.customSelectedIds.size > 0) {
                 tempSelectedIds = new Set(state.customSelectedIds);
             } else {
@@ -3565,17 +3800,100 @@
                 tempSelectedIds = new Set(naturalSelectionIds());
             }
 
+            reconcileSubdivisions();
             document.getElementById('input-country-search').value = '';
+            setModeIndicator(pickerMode);
             renderCustomSelectionList();
             document.getElementById('modal-custom-selection').classList.remove('hidden');
         }
 
         function closeCustomSelectionModal() {
             document.getElementById('modal-custom-selection').classList.add('hidden');
+            // Nothing was started, so the header goes back to naming the round
+            // that is actually running
+            setModeIndicator(state.studyMode ? 'study' : 'test');
+        }
+
+        // --- one country or its pieces, never both --------------------------
+        // Canada and its provinces are the same ground asked two ways: a round
+        // that had both would ask for Canada and then ask for every piece of
+        // Canada again. Whichever side was ticked last is the one that stays.
+        function dropPrefixed(prefix) {
+            [...tempSelectedIds].forEach(id => {
+                if (typeof id === 'string' && id.indexOf(prefix) === 0) tempSelectedIds.delete(id);
+            });
+        }
+
+        function countPrefixed(prefix) {
+            return [...tempSelectedIds].filter(id => typeof id === 'string' && id.indexOf(prefix) === 0).length;
+        }
+
+        function reconcileSubdivisions(side) {
+            if (side === '124') dropPrefixed('CA-');
+            else if (side === '840') dropPrefixed('US-');
+            else if (side === 'CA-') tempSelectedIds.delete('124');
+            else if (side === 'US-') tempSelectedIds.delete('840');
+            else {
+                // No side was named — select all, or a set read back in: the
+                // smaller pieces win, as they do in the round itself
+                if (countPrefixed('CA-') > 0) tempSelectedIds.delete('124');
+                if (countPrefixed('US-') > 0) tempSelectedIds.delete('840');
+            }
+
+            // While Quiz Settings has a country handed over to its pieces, the
+            // country itself is not drawn — so it can never be a target either
+            const sub = subdivisionsInQuiz();
+            if (sub.canada) tempSelectedIds.delete('124');
+            if (sub.us) tempSelectedIds.delete('840');
+        }
+
+        // The footer says why a country is left out, rather than leaving an
+        // unticked box to be puzzled over
+        function updateSelectionStatus() {
+            const el = document.getElementById('txt-custom-selection-status');
+            if (!el) return;
+            const prov = countPrefixed('CA-');
+            const states = countPrefixed('US-');
+            if (prov > 0) {
+                el.innerHTML = `<span class="text-ochre-700 font-semibold">Canada is left out while ${prov} of its provinces are ticked</span> — the same ground, asked twice.`;
+            } else if (states > 0) {
+                el.innerHTML = `<span class="text-ochre-700 font-semibold">The United States is left out while ${states} of its states are ticked</span> — the same ground, asked twice.`;
+            } else {
+                el.textContent = 'Tick the areas you want on the chart, then press Start.';
+            }
+        }
+
+        function syncSelectionCount() {
+            const counter = document.getElementById('txt-selected-count');
+            if (counter) counter.innerText = tempSelectedIds.size;
+            updateSelectionStatus();
+
+            // An empty set has nothing to start, so the button says as much
+            const start = document.getElementById('btn-picker-start');
+            if (start) start.disabled = tempSelectedIds.size === 0;
         }
 
         function handleCustomSearch(query) {
             renderCustomSelectionList(query.trim().toLowerCase());
+        }
+
+        // The chevron beside each of the two big countries: their provinces and
+        // states are folded away by default so the list starts short
+        function toggleSubdivisionPanel(key) {
+            subdivisionsOpen[key] = !subdivisionsOpen[key];
+            renderCustomSelectionList(currentListQuery());
+        }
+
+        function currentListQuery() {
+            const input = document.getElementById('input-country-search');
+            return input ? input.value.trim().toLowerCase() : '';
+        }
+
+        // One tick anywhere in the list: recount, and redraw so the country /
+        // pieces rule shows up in both places at once
+        function renderAfterTick() {
+            syncSelectionCount();
+            renderCustomSelectionList(currentListQuery());
         }
 
         function renderCustomSelectionList(filterQuery = '') {
@@ -3583,24 +3901,42 @@
             container.innerHTML = '';
 
             const allEntities = getAllAvailableEntities();
-            
-            // Group entities by continent
+            const matches = item => !filterQuery || item.name.toLowerCase().includes(filterQuery);
+
+            // --- Canada and the United States head the list ----------------
+            PINNED_COUNTRIES.forEach(pin => {
+                const country = allEntities.find(e => e.id === pin.id);
+                if (!country) return;
+                const pieces = allEntities.filter(e => e.group === pin.group);
+                // A search filters these rows the same way it filters the
+                // continents: a country's own name brings the whole row with
+                // it, a piece's name brings just that piece
+                const countryMatches = matches(country);
+                const shown = (!filterQuery || countryMatches) ? pieces : pieces.filter(matches);
+                if (filterQuery && !countryMatches && shown.length === 0) return;
+
+                // A search that lands inside a folded panel opens it: finding
+                // "Manitoba" must not leave Manitoba hidden behind a chevron
+                const open = subdivisionsOpen[pin.open] || !!filterQuery;
+                container.appendChild(buildPinnedCard(pin, country, pieces, shown, open));
+            });
+
+            // --- the rest of the world, by continent ------------------------
             const grouped = {};
-            for (const key of Object.keys(CONTINENT_META)) {
-                grouped[key] = [];
-            }
+            for (const key of Object.keys(CONTINENT_META)) grouped[key] = [];
 
             allEntities.forEach(item => {
-                if (!filterQuery || item.name.toLowerCase().includes(filterQuery)) {
+                // The two above own their provinces and states, and are never
+                // part of the North America card as well
+                if (item.group === 'CANADA_PROVINCES' || item.group === 'US_STATES') return;
+                if (PINNED_IDS.has(item.id)) return;
+                if (matches(item)) {
                     const groupKey = item.group || item.continent;
-                    if (grouped[groupKey]) {
-                        grouped[groupKey].push(item);
-                    }
+                    if (grouped[groupKey]) grouped[groupKey].push(item);
                 }
             });
 
-            // Update header selection counter
-            document.getElementById('txt-selected-count').innerText = tempSelectedIds.size;
+            syncSelectionCount();
 
             // Render Accordion Sections per Continent
             for (const [contKey, meta] of Object.entries(CONTINENT_META)) {
@@ -3634,23 +3970,7 @@
                 const grid = document.createElement('div');
                 grid.className = 'p-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 text-xs';
 
-                items.forEach(item => {
-                    const isChecked = tempSelectedIds.has(item.id);
-
-                    const label = document.createElement('label');
-                    label.className = `p-2 rounded-lg border flex items-center gap-2 cursor-pointer transition-all ${
-                        isChecked 
-                            ? 'bg-moss-500/25 border-moss-500/60 text-ink-900 font-medium' 
-                            : 'bg-parchment-50/70 border-parchment-600/60 text-ink-500 hover:text-ink-800'
-                    }`;
-
-                    label.innerHTML = `
-                        <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleIndividualCountry('${item.id}', this.checked)" class="w-3.5 h-3.5 rounded text-moss-600 bg-parchment-200 border-parchment-700 focus:ring-moss-500 focus:ring-offset-parchment-100">
-                        <span class="truncate">${item.name}</span>
-                    `;
-
-                    grid.appendChild(label);
-                });
+                items.forEach(item => grid.appendChild(buildItemRow(item)));
 
                 groupCard.appendChild(groupHeader);
                 groupCard.appendChild(grid);
@@ -3659,13 +3979,24 @@
         }
 
         function toggleIndividualCountry(id, checked) {
+            // While the settings switch hands a country over to its pieces, the
+            // country itself is not on the chart — there is nothing to tick
+            const sub = subdivisionsInQuiz();
+            if ((id === '124' && sub.canada) || (id === '840' && sub.us)) {
+                renderAfterTick();
+                return;
+            }
+
             if (checked) {
                 tempSelectedIds.add(id);
+                // Ticking either side of the pair lets the other out of the round
+                if (id === '124' || id === '840' || id.indexOf('CA-') === 0 || id.indexOf('US-') === 0) {
+                    reconcileSubdivisions(id === '124' || id === '840' ? id : id.substr(0, 3));
+                }
             } else {
                 tempSelectedIds.delete(id);
             }
-            document.getElementById('txt-selected-count').innerText = tempSelectedIds.size;
-            renderCustomSelectionList(document.getElementById('input-country-search').value.trim().toLowerCase());
+            renderAfterTick();
         }
 
         function toggleContinentGroup(continentKey, selectAll) {
@@ -3679,24 +4010,28 @@
                     }
                 }
             });
-            renderCustomSelectionList(document.getElementById('input-country-search').value.trim().toLowerCase());
+            reconcileSubdivisions();
+            renderAfterTick();
         }
 
         function selectAllCustomCountries(selectAll) {
             const allEntities = getAllAvailableEntities();
             if (selectAll) {
                 tempSelectedIds = new Set(allEntities.map(e => e.id));
+                // Selecting every piece of a country and the country too would
+                // ask the same ground twice, so the pieces keep it
+                reconcileSubdivisions();
             } else {
                 tempSelectedIds.clear();
             }
-            renderCustomSelectionList(document.getElementById('input-country-search').value.trim().toLowerCase());
+            renderAfterTick();
         }
 
-        // mode: 'study' or 'test' — the selector asks which it is going to be
-        // as it is closed, rather than leaving it to be asked again
+        // The Start button at the foot of the list: it runs the round in the
+        // mode the header picked, and never asks which one that was
         function applyCustomSelectionAndRestart(mode) {
             if (tempSelectedIds.size === 0) {
-                alert("Please select at least one country or province to practice!");
+                showToast("Tick at least one area first");
                 return;
             }
 
@@ -3976,7 +4311,7 @@
         function closeSummaryToStudy() {
             document.getElementById('modal-summary').classList.add('hidden');
             enterStudyMode();
-            showToast("Study mode is on — every name is on the chart");
+            showToast("Study mode — every name in your selection is on the chart");
         }
 
         window.addEventListener('resize', () => {
@@ -3987,8 +4322,10 @@
 
             svg.attr("width", width).attr("height", height);
             projection.scale(width / 5.8).translate([width / 2, height / 1.8]);
-            gMap.selectAll('path.map-country').attr('d', pathGenerator);
-            renderIslandHalos();
+            // Rings carry a path of their own, so they are redrawn rather
+            // than re-projected
+            gMap.selectAll('path.map-country:not(.map-island-ring)').attr('d', pathGenerator);
+            renderIslandRings();
             gMap.selectAll('.map-water').attr('d', pathGenerator({type: "Sphere"}));
             gMap.selectAll('.graticule').attr('d', pathGenerator);
             buildMinimap();
@@ -4000,7 +4337,7 @@
             if (stamp) stamp.textContent = APP_VERSION;
             initD3Map();
             initSkipSlider();
-            setStudyIndicator();
+            setModeIndicator('test'); // the mode the first round will open in
             loadGeographicData();
         };
     </script>
