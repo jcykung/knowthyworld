@@ -318,18 +318,17 @@
         }
 
         /* A ring around the islands that are easy to lose in the ocean, so a
-           pinprick of land reads as a place from across the chart. It is drawn
-           as an ordinary country path — the same inked edge, the same buff
-           fill, the same weight as every other border on the chart — never a
-           thick white band. It sits beneath every country, so a ring can only
-           ever be hidden by a neighbour's land, never drawn over it, and no
-           ring is wider than a 4px dot at rest. A ring around a scattered
-           group (Solomons, Maldives) has sea inside it: outline only, so no
-           ocean is ever painted as land — not even when the group is later
-           identified, which is why this rule is declared after the guessed
-           fills and outranks them. The rings themselves are left out of the
-           label probe and the resize pass, both of which want the real
-           coastline rather than the outline drawn around it. */
+           pinprick of land reads as a place from across the chart. Every ring
+           is an outline drawn as an ordinary country path — the same inked
+           edge, the same weight as every other border on the chart — and
+           nothing else: the sea it gathers keeps its own colour, so no ocean
+           is ever painted as land, not even when the group is later
+           identified (which is why this rule is declared after the guessed
+           fills and outranks them). It sits beneath every country, so a ring
+           can only ever be hidden by a neighbour's land, never drawn over
+           it. The rings themselves are left out of the label probe and the
+           resize pass, both of which want the real coastline rather than the
+           outline drawn around it. */
         .map-country.map-island-line {
             fill: none !important;
             stroke-linejoin: round;
@@ -352,10 +351,13 @@
             border-color: rgba(58, 44, 25, 0.55);
             box-shadow: 0 6px 14px rgba(74, 56, 30, 0.30);
         }
-        #btn-mode-study.is-active { background: #bd9130; }   /* ochre-500 */
-        #btn-mode-test.is-active  { background: #546a38; }   /* moss-600  */
-        #btn-mode-study.is-active:hover { background: #9c7524; color: #fbf6e9; }
-        #btn-mode-test.is-active:hover  { background: #3f5029; color: #fbf6e9; }
+        /* The same two buttons appear twice — in the header and at the top of
+           the list of areas — so the colour lives on the mode itself, not on
+           where the button happens to sit. */
+        .mode-btn.is-study.is-active { background: #bd9130; }   /* ochre-500 */
+        .mode-btn.is-test.is-active  { background: #546a38; }   /* moss-600  */
+        .mode-btn.is-study.is-active:hover { background: #9c7524; color: #fbf6e9; }
+        .mode-btn.is-test.is-active:hover  { background: #3f5029; color: #fbf6e9; }
 
         /* The one button that starts the round, tinted to match the mode the
            header picked so what is about to happen is never in doubt. */
@@ -365,11 +367,6 @@
         .mode-start.is-study:hover { background: #9c7524; transform: translateY(-1px); }
         .mode-start.is-test:hover  { background: #3f5029; transform: translateY(-1px); }
         .mode-start:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
-
-        /* The mode chip beside the modal title, and the active header button,
-           agree with each other at all times. */
-        #chip-picker-mode.is-study { background: rgba(189, 145, 48, 0.18); color: #7a5f16; border-color: rgba(189, 145, 48, 0.55); }
-        #chip-picker-mode.is-test  { background: rgba(84, 106, 56, 0.16); color: #3f5029; border-color: rgba(84, 106, 56, 0.55); }
 
         /* Study mode is reading, not playing: the question, the score, the
            clock and everything else that belongs to a test come off the chart.
@@ -564,7 +561,7 @@
                 <h1 class="font-display font-bold text-lg md:text-xl tracking-tight text-ink-900 whitespace-nowrap">
                     Know Thy World
                     <button id="btn-version" onclick="openChangelog()" class="header-version"
-                            title="What's new in this version">v1.2.0</button>
+                            title="What's new in this version">v1.3.0</button>
                 </h1>
                 <a class="header-byline text-xs font-semibold text-moss-700 hover:text-moss-600 transition-colors select-none whitespace-nowrap inline-flex items-center gap-1.5"
                    href="https://ko-fi.com/coolpuddytat" target="_blank" rel="noopener noreferrer" title="Buy me a coffee! on Ko-fi">
@@ -582,11 +579,11 @@
             <!-- Which round to play: each one opens the area list, and the
                  Start button down there runs it in that mode -->
             <div class="flex items-center gap-2" role="group" aria-label="Choose how to practise">
-                <button id="btn-mode-study" onclick="openCustomSelectionModal('study')" class="mode-btn px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2" title="Choose areas, then study the chart with every name on it">
+                <button id="btn-mode-study" data-mode="study" onclick="openCustomSelectionModal('study')" class="mode-btn is-study px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2" title="Choose areas, then study the chart with every name on it">
                     <i class="fa-solid fa-book-open"></i>
                     <span>Study</span>
                 </button>
-                <button id="btn-mode-test" onclick="openCustomSelectionModal('test')" class="mode-btn px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2" title="Choose areas, then be tested on them">
+                <button id="btn-mode-test" data-mode="test" onclick="openCustomSelectionModal('test')" class="mode-btn is-test px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2" title="Choose areas, then be tested on them">
                     <i class="fa-solid fa-stopwatch"></i>
                     <span>Test</span>
                 </button>
@@ -940,7 +937,7 @@
                     <div>
                         <h3 class="text-lg font-bold font-display text-ink-900">What's new</h3>
                         <p class="text-[10px] uppercase tracking-[0.18em] text-brass-600 font-bold">
-                            Know Thy World &nbsp;·&nbsp; <span id="changelog-version">v1.2.0</span>
+                            Know Thy World &nbsp;·&nbsp; <span id="changelog-version">v1.3.0</span>
                         </p>
                     </div>
                 </div>
@@ -965,18 +962,30 @@
                             <i class="fa-solid fa-earth-americas text-xl"></i>
                         </div>
                         <div>
-                            <h3 class="text-lg font-bold text-ink-900 font-display flex items-center gap-2">
-                                Choose your areas
-                                <!-- Which round Start will run. Not a choice: the Study
-                                     and Test buttons in the header already made it. -->
-                                <span id="chip-picker-mode" class="text-[10px] uppercase tracking-[0.14em] font-black px-2 py-1 rounded-md border">
-                                    Test
-                                </span>
-                            </h3>
+                            <h3 class="text-lg font-bold text-ink-900 font-display">Choose your areas</h3>
                             <p class="text-xs text-ink-500">Tick what you want on the chart, then press Start</p>
                         </div>
                     </div>
                     <button onclick="closeCustomSelectionModal()" class="text-ink-500 hover:text-ink-900 p-2 text-lg"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+
+                <!-- Study, or be tested — asked right here instead of in a
+                     window of its own. The two buttons in the header land on
+                     this same pair and press one of them, so whichever way the
+                     list was opened, one of the two is always pressed in and
+                     Start runs the round it is showing. Test unless they say
+                     otherwise. -->
+                <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+                    <div class="flex items-center gap-2">
+                        <span class="text-[10px] uppercase tracking-[0.18em] font-bold text-ink-500">Round</span>
+                        <button id="picker-mode-study" data-mode="study" onclick="setPickerMode('study')" class="mode-btn is-study px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2" title="Lay every name in your selection on the chart">
+                            <i class="fa-solid fa-book-open"></i><span>Study</span>
+                        </button>
+                        <button id="picker-mode-test" data-mode="test" onclick="setPickerMode('test')" class="mode-btn is-test px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2" title="Be asked to find each area in turn">
+                            <i class="fa-solid fa-stopwatch"></i><span>Test</span>
+                        </button>
+                    </div>
+                    <span id="txt-mode-hint" class="text-[11px] text-ink-500"></span>
                 </div>
 
                 <!-- Filter & Quick Action Bar -->
@@ -1008,8 +1017,8 @@
                 <!-- Dynamic Continent Accordions rendered via JS -->
             </div>
 
-            <!-- Modal Footer. One Start button: the Study or Test button in the
-                 header already said which round this is, so there is nothing
+            <!-- Modal Footer. One Start button: the pair at the top of this
+                 list already said which round this is, so there is nothing
                  left to choose here but when to begin. -->
             <div class="flex items-center justify-between gap-4 border-t border-parchment-600 pt-4 shrink-0">
                 <div class="text-xs text-ink-500 max-w-[55%]">
@@ -1568,6 +1577,28 @@
         // A region gets one full re-layout as a rescue; never twice for the
         // same name, so a stubborn label can't stall the game.
         let labelRescueUsed = new Set();
+        // Where every name was finally set, for the chart it was set on. A
+        // round that has been laid out once finds its names where it left
+        // them instead of searching the whole region again, which is what
+        // makes coming back to a set snappy rather than a wait.
+        const labelPlacementCache = new Map();
+        // Bumped whenever the projection is rebuilt (a resize), because that
+        // moves every coordinate the cache is holding
+        let labelPlacementStamp = 0;
+        // Names are laid out a few at a time so the chart appears at once and
+        // fills in over the next moment; a new round cancels the old pass.
+        let labelJob = 0;
+
+        // A typeface that arrives after the first measurement makes every
+        // measurement taken without it wrong — so start again when it lands
+        if (document.fonts && document.fonts.ready) {
+            document.fonts.ready.then(() => {
+                labelMeasureCache.clear();
+                labelPlacementCache.clear();
+                labelPlacementStamp++;
+                relayoutMapLabels();
+            });
+        }
 
         // Chart decoration: sea titles pinned to real coordinates, stacked in
         // two lines like an engraved chart. Ornament only — never quiz targets.
@@ -1754,6 +1785,9 @@
                 .translate([width / 2, height / 1.8]);
 
             pathGenerator = d3.geoPath().projection(projection);
+
+            // Every coordinate the label layout is holding has just moved
+            labelPlacementStamp++;
 
             zoomBehavior = d3.zoom()
                 .scaleExtent([1, 18])
@@ -2028,10 +2062,18 @@
         // own coastline is the border it needs.
         const ISLAND_RING_TARGET_REL_AREA = 1.48e-5;
         // How closely a hull has to hug the land inside it before it may be
-        // filled in as a bigger version of that land. A loose hull (a chain
-        // strung across an ocean) is only ever outlined, so no sea is ever
-        // painted as land.
+        // left to stand on its own. A hull this tight already reads as the
+        // outline of a place (Taiwan, Sri Lanka); a second line would only
+        // echo the coastline it sits on.
         const ISLAND_RING_TIGHT_RATIO = 1.6;
+        // ONE ARCHIPELAGO, ONE OUTLINE. The pieces of a country are gathered
+        // until the shape that would surround them grows past this share of
+        // the whole chart, so Fiji and the Solomons are each a single border
+        // running round every island they own — never a few separate lines
+        // cutting the group into pieces. A nation strung clear across an
+        // ocean (Kiribati, French Polynesia) keeps one outline per group
+        // rather than a triangle ruled across empty sea.
+        const ISLAND_RING_MAX_CLUSTER_REL_AREA = 3e-3;
 
         function islandRingFeatures(features) {
             const sphereArea = pathGenerator.area({ type: "Sphere" }) || 1;
@@ -2042,18 +2084,150 @@
             });
         }
 
-        // One ring around each CLUSTER of islands, not one around each island
-        // and not one stretched across an ocean: the pieces of a country are
-        // gathered into clusters that are never wider than the ring is meant
-        // to be, so Kiribati and French Polynesia become a handful of small
-        // rings sitting on real land rather than one big outline drawn across
-        // empty sea. The tightest closed shape is drawn around each cluster,
-        // and the islands themselves stay on top, inside it, exactly as they
-        // are. 9 × the target is a ring about 10px across at rest: clearly a
-        // place, never a patch of ocean.
-        const ISLAND_RING_MAX_CLUSTER = 9;
+        // One ring around each group of islands: the tightest closed shape
+        // that gathers them, grown only so a speck of land reads as a place
+        // from across the chart. Never filled — the sea inside keeps its own
+        // colour, whatever else happens to the ring.
 
-        function islandRingPaths(f, targetArea) {
+        // How a group of islands is really shaped. Not a triangle ruled
+        // between the outermost three — the border follows the archipelago,
+        // dipping in where the islands crowd together and reaching out only
+        // where they themselves are far apart, and it is opened up no further
+        // than it must be to come out as ONE closed line (an atoll keeps its
+        // lagoon as a hole inside that line). Anything too small or too
+        // strange to triangulate falls back to the plain convex shape.
+        function archipelagoShape(pts) {
+            if (!pts || pts.length < 4) return d3.polygonHull(pts);
+            // The coastline data repeats vertices wherever its pieces meet. A
+            // repeated point is not another place, and the triangulation has
+            // no use for a place that sits exactly on top of a neighbour.
+            const seen = new Set();
+            const src = [];
+            for (let i = 0; i < pts.length; i++) {
+                const k = pts[i][0] + "," + pts[i][1];
+                if (seen.has(k)) continue;
+                seen.add(k);
+                src.push(pts[i]);
+            }
+            if (src.length < 4) return d3.polygonHull(pts);
+            let tris;
+            try { tris = d3.Delaunay.from(src).triangles; }
+            catch (e) { return d3.polygonHull(pts); }
+            if (!tris || tris.length < 3) return d3.polygonHull(pts);
+
+            const radii = new Float64Array(tris.length / 3);
+            for (let t = 0, i = 0; t < tris.length; t += 3, i++) {
+                radii[i] = edgeSpan(src[tris[t]], src[tris[t + 1]], src[tris[t + 2]]);
+            }
+
+            // Open up from a reach no bigger than the ordinary spacing of the
+            // islands, widening until the whole group is one outline
+            const sorted = Float64Array.from(radii).sort();
+            let reach = Math.max(sorted[Math.floor(sorted.length / 4)], 0.5);
+            for (let tries = 0; tries < 16; tries++, reach *= 1.7) {
+                const loops = shapeLoops(src, tris, radii, reach);
+                if (!loops.length) continue;
+                loops.sort((a, b) => Math.abs(d3.polygonArea(b)) - Math.abs(d3.polygonArea(a)));
+                const outer = loops[0];
+                if (outer.length < 4) continue;
+                let whole = true;
+                for (let i = 1; i < loops.length; i++) {
+                    // Holes are fine; a second outline outside the first
+                    // means the group came apart, so widen and try again
+                    if (!d3.polygonContains(outer, loops[i][0])) { whole = false; break; }
+                }
+                if (whole && outsideOf(outer, src) < 0) return outer;
+            }
+            return d3.polygonHull(pts);
+        }
+
+        // Index of the first of the group's points left outside the line, or
+        // -1 when every one is inside it. A point standing on the line counts
+        // as enclosed: the ray cast cannot see a border it is standing on,
+        // and a chain's islands do sit on the line drawn round them.
+        function outsideOf(loop, pts) {
+            const on = new Set(loop);
+            for (let i = 0; i < pts.length; i++) {
+                const p = pts[i];
+                if (on.has(p)) continue;
+                if (d3.polygonContains(loop, p)) continue;
+                if (nearLoop(loop, p)) return i;
+            }
+            return -1;
+        }
+
+        function nearLoop(loop, p) {
+            for (let i = 0, j = loop.length - 1; i < loop.length; j = i++) {
+                const a = loop[j], b = loop[i];
+                const dx = b[0] - a[0], dy = b[1] - a[1];
+                const len2 = dx * dx + dy * dy;
+                let t = len2 ? ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / len2 : 0;
+                t = t < 0 ? 0 : t > 1 ? 1 : t;
+                const ex = a[0] + t * dx - p[0], ey = a[1] + t * dy - p[1];
+                if (ex * ex + ey * ey <= 1) return true;   // within a pixel
+            }
+            return false;
+        }
+
+        // The widest side of a triangle of the group: how far it has to
+        // reach. Small for triangles tucked between near neighbours, long
+        // for one stretched across open sea — and, unlike a circumcircle, it
+        // stays honest along a chain, where every triangle is nearly flat.
+        // A flat triangle in the middle of an archipelago has to be allowed;
+        // one ruled clear across it must not be.
+        function edgeSpan(a, b, c) {
+            return Math.max(Math.hypot(b[0] - a[0], b[1] - a[1]),
+                            Math.hypot(c[0] - b[0], c[1] - b[1]),
+                            Math.hypot(a[0] - c[0], a[1] - c[1]));
+        }
+
+        // The border of the shape kept at this reach: every edge belonging to
+        // just one kept triangle, walked round into closed lines
+        function shapeLoops(pts, tris, radii, reach) {
+            const n = pts.length;
+            const flat = [];
+            for (let t = 0, i = 0; t < tris.length; t += 3, i++) {
+                if (radii[i] > reach) continue;
+                flat.push(tris[t], tris[t + 1], tris[t + 1], tris[t + 2], tris[t + 2], tris[t]);
+            }
+            const counts = new Map();
+            for (let e = 0; e < flat.length; e += 2) {
+                const a = flat[e], b = flat[e + 1];
+                const k = a < b ? a * n + b : b * n + a;
+                counts.set(k, (counts.get(k) || 0) + 1);
+            }
+            const out = new Map();
+            for (let e = 0; e < flat.length; e += 2) {
+                const a = flat[e], b = flat[e + 1];
+                const k = a < b ? a * n + b : b * n + a;
+                if (counts.get(k) !== 1) continue;
+                if (!out.has(a)) out.set(a, []);
+                out.get(a).push(b);
+            }
+
+            const loops = [];
+            const walked = new Set();
+            out.forEach((tos, from) => {
+                tos.forEach(to => {
+                    if (walked.has(from * n + to)) return;
+                    const loop = [];
+                    let a = from, b = to;
+                    for (;;) {
+                        walked.add(a * n + b);
+                        loop.push(pts[a]);
+                        const nexts = out.get(b);
+                        const next = nexts && nexts.find(c => !walked.has(b * n + c));
+                        if (next === undefined) break;
+                        a = b; b = next;
+                        if (a === from && b === to) break;
+                    }
+                    if (loop.length >= 3) loops.push(loop);
+                });
+            });
+            return loops;
+        }
+
+        function islandRingPaths(f, targetArea, maxClusterArea) {
             const geom = f && f.geometry;
             if (!geom || !projection) return [];
             const polys = geom.type === "MultiPolygon" ? geom.coordinates
@@ -2102,12 +2276,13 @@
             }));
             if (!groups.length) return [];
 
-            // Hang together: pieces whose boxes nearly touch are one cluster —
-            // but never into a shape bigger than a ring is meant to be, so a
-            // scattered nation keeps its separate little rings instead of
-            // growing one outline right across the chart
+            // Hang together: islands whose boxes nearly touch are one
+            // archipelago — and a cluster may grow only while the shape that
+            // would surround it stays inside the chart's share for a single
+            // outline. That is what makes Fiji one border running round all
+            // of its islands, while the far-flung groups of Kiribati stay
+            // each their own place.
             const gap = sphereW * 0.05;
-            const maxClusterArea = targetArea * ISLAND_RING_MAX_CLUSTER;
             let merged = true;
             while (merged) {
                 merged = false;
@@ -2117,64 +2292,94 @@
                         const a = groups[i].box, c = groups[j].box;
                         const jx0 = Math.min(a[0], c[0]), jy0 = Math.min(a[1], c[1]);
                         const jx1 = Math.max(a[2], c[2]), jy1 = Math.max(a[3], c[3]);
-                        const joinedW = jx1 - jx0;
-                        if (joinedW <= seamWidth &&
-                            (jx1 - jx0) * (jy1 - jy0) <= maxClusterArea &&
-                            c[0] - a[2] <= gap && a[0] - c[2] <= gap &&
-                            c[1] - a[3] <= gap && a[1] - c[3] <= gap) {
-                            groups[i].land += groups[j].land;
-                            groups[i].pts = groups[i].pts.concat(groups[j].pts);
-                            groups[i].box = [jx0, jy0, jx1, jy1];
-                            groups.splice(j, 1);
-                            merged = true;
-                            break outer;
-                        }
+                        if (jx1 - jx0 > seamWidth ||
+                            c[0] - a[2] > gap || a[0] - c[2] > gap ||
+                            c[1] - a[3] > gap || a[1] - c[3] > gap) continue;
+
+                        const joined = groups[i].pts.concat(groups[j].pts);
+                        const hull = d3.polygonHull(joined);
+                        if (!hull || hull.length < 3 || planarArea(hull) > maxClusterArea) continue;
+
+                        groups[i].land += groups[j].land;
+                        groups[i].pts = joined;
+                        groups[i].box = [jx0, jy0, jx1, jy1];
+                        groups.splice(j, 1);
+                        merged = true;
+                        break outer;
                     }
                 }
             }
 
             const rings = [];
             groups.forEach(g => {
-                const hull = d3.polygonHull(g.pts);
+                // The shape of the group as it is actually drawn: one closed
+                // line that follows the archipelago rather than a straight
+                // edge ruled across the sea between its outermost islands
+                const hull = archipelagoShape(g.pts);
                 if (!hull || hull.length < 3) return;
                 const hullArea = planarArea(hull);
                 if (!(hullArea > 0)) return;
 
-                // A hull that hugs its land may be filled in as a bigger
-                // version of that land; a loose one is only ever outlined
+                // A hull that hugs its land is already the outline of a
+                // place — its own coastline does the finding. A loose one (a
+                // chain strung across the sea) or a speck too small to see
+                // gets the ring.
                 const tight = hullArea <= g.land * ISLAND_RING_TIGHT_RATIO;
 
-                let shape = hull, grew = false;
+                let shape = hull;
                 if (hullArea < targetArea) {
                     // About its own middle, so the islands never move — the
-                    // ring simply reaches a little further out
-                    const k = Math.sqrt(targetArea / hullArea);
-                    let cx = 0, cy = 0;
-                    hull.forEach(p => { cx += p[0]; cy += p[1]; });
-                    cx /= hull.length; cy /= hull.length;
-                    shape = hull.map(p => [cx + (p[0] - cx) * k, cy + (p[1] - cy) * k]);
-                    grew = true;
+                    // ring simply reaches a little further out. Only the
+                    // convex line may be grown: it is the one certain to
+                    // keep every island of the group inside it afterwards.
+                    const base = d3.polygonHull(g.pts);
+                    const baseArea = base && base.length >= 3 ? planarArea(base) : 0;
+                    if (baseArea > 0 && baseArea < targetArea) {
+                        const k = Math.sqrt(targetArea / baseArea);
+                        let cx = 0, cy = 0;
+                        base.forEach(p => { cx += p[0]; cy += p[1]; });
+                        cx /= base.length; cy /= base.length;
+                        shape = base.map(p => [cx + (p[0] - cx) * k, cy + (p[1] - cy) * k]);
+                    }
+                    // The islands already spread wider than a ring would —
+                    // the line that follows them is answer enough
                 } else if (tight) {
                     // Already a findable size of its own
                     return;
                 }
 
+                // Where the cluster sits and how far it reaches, so its own
+                // name can be set from the middle of it
+                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                shape.forEach(p => {
+                    if (p[0] < minX) minX = p[0];
+                    if (p[0] > maxX) maxX = p[0];
+                    if (p[1] < minY) minY = p[1];
+                    if (p[1] > maxY) maxY = p[1];
+                });
+
                 // Degenerate (a sliver of an island): skipped above, since a
                 // hull needs three points to close
                 rings.push({
                     d: "M" + shape.map(p => p[0].toFixed(1) + "," + p[1].toFixed(1)).join("L") + "Z",
-                    fill: tight && grew,
                     area: hullArea,
-                    land: g.land
+                    land: g.land,
+                    pts: shape,
+                    box: [minX, minY, maxX, maxY],
+                    cx: (minX + maxX) / 2,
+                    cy: (minY + maxY) / 2
                 });
             });
             return rings;
         }
 
+        // The cluster each island state is named from: its biggest ring, kept
+        // as it is drawn so a label may stretch to the border of the group
+        let islandRingAnchors = new Map();
+
         // Rings live beneath every country, so a ring can only ever be covered
-        // by a neighbour's land, never drawn on top of it. The outlines are
-        // laid down first and the filled rings last: where two rings meet, the
-        // later fill masks the earlier line, so no two rings cross.
+        // by a neighbour's land, never drawn on top of it — and every ring is
+        // an outline, so the sea it gathers keeps its own colour throughout.
         function renderIslandRings() {
             if (!gMap || !projection || !state.combinedFeatures.length) return;
 
@@ -2186,31 +2391,38 @@
             });
             gMap.selectAll("path.map-island-ring").remove();
             const refNode = gMap.select("path.map-country:not(.map-island-ring)").node();
-            if (!refNode) return;
+            if (!refNode) { islandRingAnchors = new Map(); return; }
 
             const sphereArea = pathGenerator.area({ type: "Sphere" }) || 1;
             const targetArea = ISLAND_RING_TARGET_REL_AREA * sphereArea;
+            const maxClusterArea = ISLAND_RING_MAX_CLUSTER_REL_AREA * sphereArea;
 
-            const outlines = [], fills = [];
+            const rings = [];
             islandRingFeatures(state.combinedFeatures).forEach(f => {
                 const fid = featureFid(f);
-                islandRingPaths(f, targetArea).forEach(r => {
-                    (r.fill ? fills : outlines).push({
-                        d: r.d, fid: fid, area: r.area, land: r.land, fill: r.fill
-                    });
+                islandRingPaths(f, targetArea, maxClusterArea).forEach(r => {
+                    rings.push({ d: r.d, fid: fid, feature: f, area: r.area, box: r.box,
+                                 cx: r.cx, cy: r.cy, pts: r.pts });
                 });
             });
 
-            // Broad hulls at the bottom; of the filled rings, the smallest
-            // speck ends up on top, so it keeps its whole rim
-            outlines.sort((a, b) => b.area - a.area);
-            fills.sort((a, b) => b.land - a.land);
+            // Broad hulls at the bottom, so a little one laid afterwards never
+            // masks the line of a bigger neighbour it happens to cross
+            rings.sort((a, b) => b.area - a.area);
+
+            // The cluster an island state is named from: its biggest ring
+            const anchors = new Map();
+            rings.forEach(r => {
+                const was = anchors.get(r.fid);
+                if (!was || r.area > was.area) anchors.set(r.fid, r);
+            });
+            islandRingAnchors = anchors;
 
             const CARRIED_STATES = ["guessed-correct", "guessed-1st", "guessed-2nd",
                                     "guessed-3rd", "guessed-failed", "reveal-flash"];
 
-            outlines.concat(fills).forEach(r => {
-                let cls = "map-country map-island-ring" + (r.fill ? "" : " map-island-line");
+            rings.forEach(r => {
+                let cls = "map-country map-island-ring map-island-line";
                 const was = carried.get(r.fid);
                 if (was) {
                     CARRIED_STATES.forEach(s => { if (was.split(/\s+/).indexOf(s) >= 0) cls += " " + s; });
@@ -2722,6 +2934,17 @@
 
         const LABEL_MAX_FONT = 9;     // user units (px at rest) — cap for region names
         const LABEL_MIN_FONT = 0.35;  // below this a name is only noise
+        // An island cluster is named from the middle of its own ring and may
+        // stretch as far as that ring, so its type is capped by the cluster
+        // rather than by a country's coastline — and set a size bigger, or a
+        // name on a pinprick of land would be no bigger than a speck
+        const ISLAND_LABEL_MAX_FONT = 14;
+        // …and floored, for the same reason: a chain of islands is thin, so
+        // the biggest name that fits inside it sideways is microscopic. A
+        // cluster name is worth more than the few pixels it would otherwise
+        // get — it may run out over the sea beside its ring, but never over
+        // another name.
+        const ISLAND_LABEL_FLOOR = 4;
         const LABEL_BOX_PAD = 1.2;     // paper halo + a breath between neighbours
         const LABEL_MAX_PROBES = 260;  // grid points sampled inside one region
         const LABEL_TEST_BUDGET = 24000;// fill probes one label may spend
@@ -2868,6 +3091,45 @@
         // Is this point on the region's own land? Asking the rendered path
         // beats re-deriving the geometry: it already knows about antimeridian
         // cuts, islands and holes.
+
+        // The path this region is drawn as. Ids are not always one region
+        // each in the source data — a territory can carry its country's
+        // number (Australia and the Ashmore and Cartier Islands both come
+        // through as 036) — so when several paths wear the same id, the one
+        // whose bounds are this region's own is the one to ask, and never a
+        // pinprick beside a continent.
+        function countryPathFor(fid, feature) {
+            const nodes = gMap
+                .selectAll('path.map-country:not(.map-island-ring)[data-id="' + fid + '"]')
+                .nodes();
+            if (nodes.length <= 1) return nodes[0] || null;
+            const b = pathGenerator.bounds(feature);
+            const fw = b[1][0] - b[0][0], fh = b[1][1] - b[0][1];
+            let best = null, bestErr = Infinity;
+            nodes.forEach(n => {
+                let r = null;
+                try { r = n.getBBox(); } catch (e) { return; }
+                const err = Math.abs(r.x - b[0][0]) + Math.abs(r.y - b[0][1]) +
+                            Math.abs(r.width - fw) + Math.abs(r.height - fh);
+                if (err < bestErr) { bestErr = err; best = n; }
+            });
+            return best || nodes[0];
+        }
+
+        // The ring this feature is named from. Rings are indexed by the id
+        // they were drawn under, which may belong to more than one place, so
+        // a feature may only claim a ring it drew itself — or, if the objects
+        // have been rebuilt since, one that reaches over it.
+        function ownRingAnchor(fid, feature) {
+            const a = islandRingAnchors.get(fid);
+            if (!a) return null;
+            if (a.feature === feature) return a;
+            const b = pathGenerator.bounds(feature);
+            const rw = a.box[2] - a.box[0], rh = a.box[3] - a.box[1];
+            const fw = b[1][0] - b[0][0], fh = b[1][1] - b[0][1];
+            return (rw >= fw * 0.5 && rh >= fh * 0.5) ? a : null;
+        }
+
         function makeInsideTest(feature, node) {
             if (node && typeof node.isPointInFill === "function") {
                 const useDOMPoint = typeof window.DOMPoint === "function";
@@ -2948,9 +3210,10 @@
         // surrounds each one. Returned roomiest-first. The search is confined
         // to the anchor landmass — that is where the name belongs — and small
         // regions are sampled finely (they live or die by fractions of a
-        // pixel) while large ones are sampled coarsely.
-        function probeRegion(feature, node, anchor) {
-            const inside = makeInsideTest(feature, node);
+        // pixel) while large ones are sampled coarsely. `inside` says what
+        // counts as the region: its own coast, or the ring drawn round an
+        // island cluster.
+        function probeRegion(feature, inside, anchor) {
             const x0 = anchor ? anchor.x0 : 0, y0 = anchor ? anchor.y0 : 0;
             const bw = anchor ? anchor.w : 0, bh = anchor ? anchor.h : 0;
             if (!(bw > 0) || !(bh > 0)) return { inside: inside, pts: [] };
@@ -2990,17 +3253,33 @@
             return { inside: inside, pts: pts };
         }
 
-        // The whole drawn name must lie within the coastline: sweep a grid
-        // across its box — edges and middle alike, at a spacing fine enough
-        // to catch a bay cutting through the words.
-        function boxInsideRegion(inside, box, budget) {
-            const nx = Math.max(5, Math.min(20, Math.ceil(box.w / 2)));
-            const ny = Math.max(5, Math.min(10, Math.ceil(box.h / 2)));
+        // The whole drawn name must lie within the coastline. The border gets
+        // the dense sweep: a bay cutting through the edge of the name is the
+        // usual way out, and a coarse interior grid walks right past it. The
+        // arithmetic pre-filter samples a little more roughly — it only has to
+        // rule out the hopeless; the name that is really drawn is checked
+        // down to the pixel.
+        function boxInsideRegion(inside, box, budget, dense) {
+            const px = dense ? 0.9 : 1.4;
+            const ix = dense ? 2 : 3;
+            const nx = Math.max(5, Math.min(dense ? 48 : 26, Math.ceil(box.w / px)));
+            const ny = Math.max(5, Math.min(dense ? 32 : 16, Math.ceil(box.h / px)));
             budget.left -= nx * ny;
+            for (let i = 0; i < nx; i++) {
+                const x = box.x + (box.w * i) / (nx - 1);
+                if (!inside(x, box.y) || !inside(x, box.y + box.h)) return false;
+            }
             for (let j = 0; j < ny; j++) {
                 const y = box.y + (box.h * j) / (ny - 1);
-                for (let i = 0; i < nx; i++) {
-                    if (!inside(box.x + (box.w * i) / (nx - 1), y)) return false;
+                if (!inside(box.x, y) || !inside(box.x + box.w, y)) return false;
+            }
+            const jx = Math.max(4, Math.min(dense ? 24 : 14, Math.ceil(box.w / ix)));
+            const jy = Math.max(4, Math.min(dense ? 16 : 9, Math.ceil(box.h / ix)));
+            budget.left -= jx * jy;
+            for (let j = 0; j < jy; j++) {
+                const y = box.y + (box.h * j) / (jy - 1);
+                for (let i = 0; i < jx; i++) {
+                    if (!inside(box.x + (box.w * i) / (jx - 1), y)) return false;
                 }
             }
             return true;
@@ -3010,39 +3289,14 @@
         // keeping the type as large as that region allows. A region too small
         // to hold its own name (Vatican, Nauru…) is captioned on its own spot
         // instead — and if even that has no room the label is dropped; the
-        // hover tooltip still tells the story.
+        // hover tooltip still tells the story. An island cluster is the one
+        // exception: it is named from the middle of the ring that gathers its
+        // islands, and the name may stretch to that ring's border, because
+        // the ring is what says where the place is.
         function placeLabel(feature, fid, text) {
             if (!gMap || !feature || !text || !fid || fid === "undefined") return;
             if (labelBoxes.has(fid)) return;
             if (gMap.select(`.map-label[data-label-id="${fid}"]`).size() > 0) return;
-
-            // The real coastline, never the ring drawn around it: a label
-            // belongs on the land it names
-            const node = gMap.select('path.map-country:not(.map-island-ring)[data-id="' + fid + '"]').node() || null;
-            const anchor = largestPartAnchor(feature);
-            if (!anchor) return;
-
-            const probe = probeRegion(feature, node, anchor);
-            const budget = { left: LABEL_TEST_BUDGET };
-
-            // Every sensible way of breaking the name, at every size it could
-            // plausibly be drawn — the largest type first. Even a speck gets
-            // one try at the smallest size before it is captioned.
-            const variants = [];
-            wrapCandidatesFor(text).forEach(lines => {
-                const m = measureLabelLines(text, lines);
-                let top = Math.min(LABEL_MAX_FONT,
-                    (anchor.w * 0.94 / m.w) * 100,
-                    (anchor.h * 0.94 / m.h) * 100);
-                if (!(top > 0)) top = LABEL_MIN_FONT;
-                let fs = Math.max(top, LABEL_MIN_FONT), guard = 0;
-                while (fs >= LABEL_MIN_FONT && guard++ < 12) {
-                    variants.push({ lines: lines, m: m, fs: fs });
-                    fs *= 0.74;
-                }
-            });
-            variants.sort((a, b) => b.fs - a.fs);
-            if (!variants.length) return;
 
             const relFor = v => {
                 const s = v.fs / 100;
@@ -3077,22 +3331,76 @@
                 return n;
             };
 
-            // The 100px measurement picks the size, but SVG text does not scale
-            // exactly — small type snaps differently from large — so the box a
-            // label really occupies is measured by drawing it once at that very
-            // size. Everything that follows works from the true rectangle.
-            const realRelFor = v => {
-                if (v.rel) return v.rel;
-                const n = makeLabelNode(0, 0, v, false);
-                const bb = realBox(n);
-                n.remove();
-                v.rel = bb ? { x: bb.x, y: bb.y, w: bb.width, h: bb.height } : relFor(v);
-                return v.rel;
-            };
+            // A name that has found its place once finds it again: no probe,
+            // no measuring, just the name put back where it was. The key
+            // carries the projection's stamp, so a resize starts afresh.
+            const cacheKey = labelPlacementStamp + "\u0000" + fid + "\u0000" + text;
+            const cached = labelPlacementCache.get(cacheKey);
+            if (cached) {
+                const box = { x: cached.x + cached.rel.x, y: cached.y + cached.rel.y,
+                              w: cached.rel.w, h: cached.rel.h };
+                if (!labelBoxHits(box, padForBox(box))) {
+                    makeLabelNode(cached.x, cached.y, cached.v, true);
+                    labelBoxes.set(fid, box);
+                    return;
+                }
+                // A neighbour has moved into that spot since — search again
+            }
 
-            // Draw the name so its glyphs land exactly on the measured box
+            // An island cluster is named from the middle of its ring; every
+            // other place is named on the land it is drawn from, ring or no
+            const ring = ownRingAnchor(fid, feature);
+            const anchor = ring ? ringAnchor(ring) : largestPartAnchor(feature);
+            if (!anchor) return;
+            const inside = ring
+                ? ((x, y) => d3.polygonContains(ring.pts, [x, y]))
+                : makeInsideTest(feature, countryPathFor(fid, feature));
+            const maxFont = ring ? ISLAND_LABEL_MAX_FONT : LABEL_MAX_FONT;
+
+            const probe = probeRegion(feature, inside, anchor);
+            // A chain so thin the line falls between its sample points: the
+            // cluster is still where its name belongs, so sample the box the
+            // ring reaches over instead
+            if (ring && probe.pts.length < 3) {
+                const b = ring.box;
+                probe = probeRegion(feature,
+                    (x, y) => x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3], anchor);
+            }
+            // A cluster is named from the middle of the group first — that is
+            // where its name belongs — and only looks further afield if
+            // something else is already standing there
+            if (ring) probe.pts.unshift({ x: anchor.cx, y: anchor.cy, edt: Infinity });
+            const budget = { left: LABEL_TEST_BUDGET };
+
+            // Every sensible way of breaking the name, at every size it could
+            // plausibly be drawn — the largest type first. Even a speck gets
+            // one try at the smallest size before it is captioned.
+            const variants = [];
+            wrapCandidatesFor(text).forEach(lines => {
+                const m = measureLabelLines(text, lines);
+                let top = Math.min(maxFont,
+                    (anchor.w * 0.94 / m.w) * 100,
+                    (anchor.h * 0.94 / m.h) * 100);
+                // A cluster's name is never allowed to dwindle to a speck: a
+                // chain of islands is narrower than any word
+                if (ring && top > 0 && top < ISLAND_LABEL_FLOOR) top = ISLAND_LABEL_FLOOR;
+                if (!(top > 0)) top = LABEL_MIN_FONT;
+                let fs = Math.max(top, LABEL_MIN_FONT), guard = 0;
+                while (fs >= LABEL_MIN_FONT && guard++ < 12) {
+                    variants.push({ lines: lines, m: m, fs: fs });
+                    fs *= 0.74;
+                }
+            });
+            variants.sort((a, b) => b.fs - a.fs);
+            if (!variants.length) return;
+
+            // Draw the name so its glyphs land exactly on the box planned for
+            // them: SVG text does not scale exactly (small type snaps
+            // differently from large), so the real rectangle is measured once
+            // and the name nudged onto its mark — then that rectangle, not
+            // the plan, is what the rest of the pass works from.
             const draw = (ax, ay, v) => {
-                const rel = realRelFor(v);
+                const rel = relFor(v);
                 const n = makeLabelNode(ax, ay, v, true);
                 const bb = realBox(n);
                 if (bb) {
@@ -3110,16 +3418,34 @@
 
             let placed = null;
 
-            const tryInside = (p, v, rel) => {
+            // The whole search runs on the planned box alone — arithmetic,
+            // no DOM — so a name costs a handful of measurements rather than
+            // a hundred. Only a spot that has earned it is ever drawn.
+            // A cluster's name is judged by its middle and by the names
+            // around it, never by the ring's edge: a chain is narrower than
+            // any word, so the name is set in the middle of the group and
+            // runs out over the sea beside it.
+            const relaxRegion = !!ring;
+            const fits = (p, rel) => {
                 const box = { x: p.x + rel.x, y: p.y + rel.y, w: rel.w, h: rel.h };
                 if (labelBoxHits(box, padForBox(box))) return false;
                 if (budget.left <= 0) return false;
-                if (!boxInsideRegion(probe.inside, box, budget)) return false;
+                if (!relaxRegion && !boxInsideRegion(inside, box, budget)) return false;
+                return true;
+            };
+
+            const commit = (p, v, keepRegion) => {
                 const n = draw(p.x, p.y, v);
                 const real = realBox(n);
-                if (real && boxInsideRegion(probe.inside, real, budget) &&
-                    !labelBoxHits(real, padForBox(real))) {
-                    placed = { node: n, box: real };
+                const ok = real && !labelBoxHits(real, padForBox(real)) &&
+                           (!keepRegion || boxInsideRegion(inside, real, budget, true));
+                if (ok) {
+                    const at = +n.attr("x"), ay = +n.attr("y");
+                    placed = {
+                        node: n, box: real,
+                        at: { x: at, y: ay, v: v,
+                              rel: { x: real.x - at, y: real.y - ay, w: real.w, h: real.h } }
+                    };
                     return true;
                 }
                 n.remove();
@@ -3127,13 +3453,17 @@
             };
 
             for (const v of variants) {
-                const rel = realRelFor(v);
-                const need = Math.min(rel.w, rel.h) / 2;   // box's inscribed circle
+                const rel = relFor(v);
+                // A cluster name needs no room inside itself — its spot is
+                // the middle of the group; anything else earns its place the
+                // old way, by fitting wholly on the land
+                const need = relaxRegion ? 0 : Math.min(rel.w, rel.h) / 2;
                 let tried = 0;
                 for (const p of probe.pts) {               // roomiest spot first
                     if (p.edt < need) break;               // nothing deeper remains
                     if (++tried > LABEL_SPOT_LIMIT) break; // the best rooms are first
-                    if (tryInside(p, v, rel)) break;
+                    if (!fits(p, rel)) continue;
+                    if (commit(p, v, !relaxRegion)) break;
                     if (budget.left <= 0) break;
                 }
                 if (placed || budget.left <= 0) break;
@@ -3145,8 +3475,9 @@
                 budget.left = LABEL_TEST_BUDGET;
                 const roomiest = probe.pts.length ? probe.pts[0].edt : 0;
                 const smallest = variants[variants.length - 1];
-                const sRel = realRelFor(smallest);
-                const canHold = roomiest >= Math.min(sRel.w, sRel.h) / 2;
+                const sRel = relFor(smallest);
+                const canHold = relaxRegion ||
+                    roomiest >= Math.min(sRel.w, sRel.h) / 2;
 
                 if (!canHold || labelRescueUsed.has(fid)) {
                     // Either the region is far too small to hold its name at
@@ -3154,31 +3485,24 @@
                     // zooming never helps) or two full passes have come up
                     // empty — caption it on its own spot, as small as legible.
                     const step = Math.min(6, Math.max(1, Math.min(anchor.w, anchor.h)));
-                    const ring = [];
+                    const spokes = [];
                     [1, 2, 3].forEach(k => {
                         for (let a = 0; a < 8; a++) {
-                            ring.push({
+                            spokes.push({
                                 x: anchor.cx + step * k * Math.cos(a * Math.PI / 4),
                                 y: anchor.cy + step * k * Math.sin(a * Math.PI / 4)
                             });
                         }
                     });
                     const order = [{ x: anchor.cx, y: anchor.cy }]
-                        .concat(probe.pts.slice(0, 10), ring);
+                        .concat(probe.pts.slice(0, 10), spokes);
                     const caption = variants.filter(v => v.fs <= 1.2);
                     for (const v of (caption.length ? caption : [smallest])) {
-                        const rel = realRelFor(v);
+                        const rel = relFor(v);
                         for (const p of order) {
                             if (budget.left <= 0) break;
-                            const box = { x: p.x + rel.x, y: p.y + rel.y, w: rel.w, h: rel.h };
-                            if (labelBoxHits(box, padForBox(box))) continue;
-                            const n = draw(p.x, p.y, v);
-                            const real = realBox(n);
-                            if (real && !labelBoxHits(real, padForBox(real))) {
-                                placed = { node: n, box: real };
-                                break;
-                            }
-                            n.remove();
+                            if (!fits(p, rel)) continue;
+                            if (commit(p, v, false)) break;
                         }
                         if (placed) break;
                     }
@@ -3194,6 +3518,15 @@
             if (!placed) return;
 
             labelBoxes.set(fid, placed.box);
+            if (placed.at) labelPlacementCache.set(cacheKey, placed.at);
+        }
+
+        // The middle of an island cluster, and how far it reaches: the anchor
+        // its name is set from and the size that name may grow to
+        function ringAnchor(ring) {
+            const w = ring.box[2] - ring.box[0], h = ring.box[3] - ring.box[1];
+            return { area: w * h, cx: ring.cx, cy: ring.cy, w: w, h: h,
+                     x0: ring.box[0], y0: ring.box[1] };
         }
 
         // Re-place every label from scratch — used after a resize, when the
@@ -3379,6 +3712,8 @@
         }
 
         function exitStudyMode(silent) {
+            // Whatever pass of name-laying was under way is over now
+            labelJob++;
             state.studyMode = false;
             document.body.classList.remove('study-mode');
             const banner = document.getElementById('study-banner');
@@ -3398,20 +3733,50 @@
             gMap.selectAll(".map-label").style("display", state.showLabels ? "block" : "none");
         }
 
-        // Name every area the current selection can ask about
+        // Name every area the current selection can ask about — a few names
+        // per frame, so the chart itself is up at once and the names arrive
+        // behind it instead of holding the page hostage to a wait
         function renderSelectionLabels() {
             if (!gMap || !state.showLabels) return;
+            const job = ++labelJob;
+            const items = [];
             (state.selection || []).forEach(t => {
                 const f = findTargetFeature(t.id);
-                if (f) placeLabel(f, t.id, t.displayName || t.name);
+                if (f) items.push({ feature: f, fid: t.id, text: t.displayName || t.name });
             });
-            gMap.selectAll(".map-label").style("display", "block");
+
+            let i = 0;
+            const step = () => {
+                if (job !== labelJob) return;   // a new round has begun without it
+                const t0 = performance.now();
+                while (i < items.length && performance.now() - t0 < 8) {
+                    const it = items[i++];
+                    placeLabel(it.feature, it.fid, it.text);
+                }
+                if (i < items.length) {
+                    requestAnimationFrame(step);
+                    return;
+                }
+                gMap.selectAll(".map-label").style("display", "block");
+            };
+            step();
         }
 
         // --- what's new -----------------------------------------------------
-        const APP_VERSION = 'v1.2.0';
+        const APP_VERSION = 'v1.3.0';
 
         const CHANGELOG = [
+            {
+                version: 'v1.3.0',
+                notes: [
+                    'Select all and Clear all at the head of the provinces and states panels, so a country\'s thirteen provinces or fifty-one states are one press rather than one at a time.',
+                    'Study opens straight away: the names are laid out in whatever spare moment each frame has instead of one long wait at the start, the measurements are remembered afterwards, and the second round is quicker than the first.',
+                    'One border for a whole island group: the line follows the archipelago itself — closing round the Solomons, running the length of the Bahamas — instead of ruling a triangle across open sea, and the sea inside keeps its own colour.',
+                    'An island group is named in the middle of the group and never shrinks to a speck, so Fiji, Kiribati, the Maldives and Nauru read from across the chart.',
+                    'No name runs past its own border: every label is checked against the coastline, down to the pixel, before it is drawn.',
+                    'A country is named from its own land — a territory that happens to share its number can no longer lend it a ring.'
+                ]
+            },
             {
                 version: 'v1.2.0',
                 notes: [
@@ -3499,21 +3864,24 @@
             return !!(m && !m.classList.contains('hidden'));
         }
 
-        // The header buttons, the modal's chip and its Start button all tell the
-        // same story about which round is in force, so the mode is never a
-        // matter of guessing.
+        // The header's two buttons and the pair at the top of the list, plus
+        // the Start button below them, all tell the same story about which
+        // round is in force — so the mode is never a matter of guessing.
         function setModeIndicator(mode) {
             const m = (mode === 'study' || mode === 'test') ? mode : (state.studyMode ? 'study' : 'test');
-            const s = document.getElementById('btn-mode-study');
-            const t = document.getElementById('btn-mode-test');
-            if (s) s.classList.toggle('is-active', m === 'study');
-            if (t) t.classList.toggle('is-active', m === 'test');
 
-            const chip = document.getElementById('chip-picker-mode');
-            if (chip) {
-                chip.classList.toggle('is-study', m === 'study');
-                chip.classList.toggle('is-test', m === 'test');
-                chip.innerText = m === 'study' ? 'Study' : 'Test';
+            // Every Study and Test button on the screen presses in together
+            document.querySelectorAll('[data-mode]').forEach(btn => {
+                const on = btn.getAttribute('data-mode') === m;
+                btn.classList.toggle('is-active', on);
+                btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+            });
+
+            const hint = document.getElementById('txt-mode-hint');
+            if (hint) {
+                hint.textContent = m === 'study'
+                    ? 'Every area in your selection is named on the chart.'
+                    : 'Names appear as you find them.';
             }
 
             const start = document.getElementById('btn-picker-start');
@@ -3524,6 +3892,14 @@
                     ? 'Lay every name in your selection on the chart'
                     : 'Begin the test on the areas you have picked';
             }
+        }
+
+        // Change the round from inside the list itself. It only says what
+        // Start will run — the round under way waits for it to be started.
+        function setPickerMode(mode) {
+            if (mode !== 'study' && mode !== 'test') return;
+            pickerMode = mode;
+            setModeIndicator(mode);
         }
 
         // What the Start button will run: the mode the header button just named,
@@ -3739,6 +4115,36 @@
             return label;
         }
 
+        // The pieces a pinned country's panel shows: everything when nothing
+        // is being searched for — or when the country's own name is what
+        // matched — and only the pieces that match otherwise. Used by the
+        // panel and by the buttons above it, so the two always agree.
+        function shownPiecesFor(pin, query, all) {
+            const entities = all || getAllAvailableEntities();
+            const country = entities.find(e => e.id === pin.id);
+            const pieces = entities.filter(e => e.group === pin.group);
+            if (!query) return pieces;
+            if (country && country.name.toLowerCase().includes(query)) return pieces;
+            return pieces.filter(p => p.name.toLowerCase().includes(query));
+        }
+
+        // Every province, or every state, in one press: the panel holds 13 or
+        // 51 boxes and ticking them one at a time is a chore. The pieces win
+        // the country, as they do everywhere else in the list.
+        function toggleAllPieces(groupKey, selectAll) {
+            const pin = PINNED_COUNTRIES.find(p => p.group === groupKey);
+            if (!pin) return;
+            const shown = shownPiecesFor(pin, currentListQuery());
+            if (!shown.length) return;
+
+            shown.forEach(piece => {
+                if (selectAll) tempSelectedIds.add(piece.id);
+                else tempSelectedIds.delete(piece.id);
+            });
+            if (selectAll) reconcileSubdivisions();
+            renderAfterTick();
+        }
+
         // One of the two rows at the top: the country on the left with its
         // checkbox, the chevron on the right folding its pieces in and out
         function buildPinnedCard(pin, country, pieces, shown, open) {
@@ -3777,7 +4183,23 @@
             // The pieces themselves, folded away until the chevron is pressed
             const grid = document.createElement('div');
             grid.className = 'p-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 text-xs';
-            if (!open) grid.classList.add('hidden');
+            if (!open) {
+                grid.classList.add('hidden');
+            } else {
+                // One press for the whole panel: tick or untick everything
+                // this country has to offer without going down the list
+                const bar = document.createElement('div');
+                bar.className = 'col-span-full flex items-center justify-between gap-3 text-[11px] pb-0.5';
+                bar.innerHTML = `
+                    <button onclick="toggleAllPieces('${pin.group}', true)" title="Tick every one of the ${pieces.length}" class="font-semibold text-moss-700 hover:text-moss-900 underline underline-offset-2 decoration-dotted transition-colors">
+                        Select all
+                    </button>
+                    <button onclick="toggleAllPieces('${pin.group}', false)" title="Untick every one of the ${pieces.length}" class="font-semibold text-ink-500 hover:text-ink-800 underline underline-offset-2 decoration-dotted transition-colors">
+                        Clear all
+                    </button>
+                `;
+                grid.appendChild(bar);
+            }
             shown.sort((a, b) => a.name.localeCompare(b.name)).forEach(piece => grid.appendChild(buildItemRow(piece)));
             card.appendChild(grid);
 
@@ -3912,7 +4334,7 @@
                 // continents: a country's own name brings the whole row with
                 // it, a piece's name brings just that piece
                 const countryMatches = matches(country);
-                const shown = (!filterQuery || countryMatches) ? pieces : pieces.filter(matches);
+                const shown = shownPiecesFor(pin, filterQuery, allEntities);
                 if (filterQuery && !countryMatches && shown.length === 0) return;
 
                 // A search that lands inside a folded panel opens it: finding
