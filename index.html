@@ -166,14 +166,13 @@
             cursor: pointer;
         }
 
-        /* Candle-lit highlight while pointing at a coastline.
-           NOTE: this only tints the shape — never reveals the place name. */
-        .map-country:hover {
-            fill: #f6e3ae !important;
-            stroke: #2a2013;
-            stroke-width: calc(var(--map-stroke, 0.6px) * 1.9);
-            filter: drop-shadow(0 0 5px rgba(154, 111, 48, 0.55));
-        }
+        /* Pointing at a coastline lights it hot pink — and the chart lights
+           every other piece of the same place at the same moment, so one
+           island brings its whole archipelago up together (the class is set
+           by the chart below, because CSS cannot reach a country's
+           siblings). NOTE: this only tints the shape — it never reveals the
+           place name. The rule lives with the other full-strength fills
+           further down, so a hover always reads over an answered colour. */
 
         /* Brief swell of the pen when a region is struck */
         .map-country.pulse-tight {
@@ -259,6 +258,11 @@
             background: rgba(247, 238, 218, 0.85);
             border-radius: 0.5rem;
             cursor: crosshair;
+            /* The browser must keep its hands off: one finger jumps the
+               chart, two fingers pinch it in or out */
+            touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
         }
 
         #minimap .minimap-land {
@@ -273,6 +277,53 @@
             stroke: #c2703a;
             stroke-width: 1.2;
             pointer-events: none;
+        }
+
+        /* The bar at the inset's foot magnifies the chart: one control, in
+           plain sight, instead of a gesture somebody has to be told about.
+           Its travel is even while the chart's magnification is not, so each
+           doubling of the chart takes the same stretch of the bar. */
+        .minimap-zoombar {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 5px 2px;
+        }
+        .minimap-zoombar i {
+            font-size: 9px;
+            color: #7a5f3a;
+        }
+        #minimap-zoom {
+            -webkit-appearance: none;
+            appearance: none;
+            flex: 1 1 auto;
+            width: 124px;
+            height: 4px;
+            border-radius: 999px;
+            background: rgba(122, 95, 58, 0.32);
+            outline: none;
+            cursor: pointer;
+        }
+        #minimap-zoom::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 13px;
+            height: 13px;
+            border-radius: 50%;
+            background: #c2703a;
+            border: 2px solid #f7eeda;
+            box-shadow: 0 1px 2px rgba(47, 35, 18, 0.35);
+        }
+        #minimap-zoom::-moz-range-thumb {
+            width: 13px;
+            height: 13px;
+            border-radius: 50%;
+            background: #c2703a;
+            border: 2px solid #f7eeda;
+            box-shadow: 0 1px 2px rgba(47, 35, 18, 0.35);
+        }
+        #minimap-zoom:focus-visible {
+            box-shadow: 0 0 0 2px rgba(194, 112, 58, 0.35);
         }
 
         /* Advanced mode disables persistent green fill */
@@ -313,44 +364,49 @@
             to   { fill: #0ea5bd; }
         }
 
+        /* HOT PINK ON HOVER — and one glow for a whole place. The chart
+           sets .is-hovered on every piece carrying the same id, so pointing
+           at any island of an archipelago lights all of them at once; CSS
+           alone could never reach a country's siblings. Declared after every
+           fill above (and beside the advanced-mode overrides) so a hover
+           always reads over an answered colour, and never over a name. */
+        .map-country.is-hovered,
+        .advanced-mode .map-country.is-hovered {
+            fill: #ff2e93 !important;
+            stroke: #b8005e !important;
+            stroke-width: calc(var(--map-stroke, 0.6px) * 2);
+            filter: drop-shadow(0 0 5px rgba(255, 46, 147, 0.85));
+            transition: none;
+        }
+
         .map-water {
             fill: #cfe0da;
         }
 
-        /* A ring around the islands that are easy to lose in the ocean, so a
-           pinprick of land reads as a place from across the chart. Every ring
-           is an outline drawn as an ordinary country path — the same inked
-           edge, the same weight as every other border on the chart — and the
-           sea it gathers keeps its own colour: no ocean is ever painted as
-           land. The shape is filled only while it is pointed at, or named
-           once it has been found, and then only with a wash thin enough to
-           read the islands through. `transparent` rather than `none` is what
-           lets the whole shape — the sea between the islands, not just the
-           line — answer the pointer. It sits beneath every country, so a ring
-           can only ever be hidden by a neighbour's land, never drawn over it.
-           The rings themselves are left out of the label probe and the
-           resize pass, both of which want the real coastline rather than the
-           outline drawn around it. */
+        /* The gather round an island group — St. Kitts and Nevis, Nauru,
+           Fiji — exists so a pinprick of land can still be found, pointed at
+           and answered for. It is drawn with NO border of its own: no ruled
+           line round the cluster, and no wash while it is merely pointed at.
+           What it carries instead is a hit area (so the sea a group gathers
+           answers the pointer too) and the wash that says the place has been
+           named — the islands themselves, and the glow they share on hover,
+           do the rest. It sits beneath every country, so a gather can only
+           ever be hidden by a neighbour's land, never drawn over it: Mayotte
+           under French paint is never lit by the Comoros beside it.
+           `transparent` rather than `none` is what lets the whole shape
+           answer the pointer. */
         .map-country.map-island-line {
             fill: transparent !important;
+            stroke: none !important;
             pointer-events: all;
-            stroke-linejoin: round;
-        }
-
-        /* Pointing anywhere over the cluster — an island or the water it
-           gathers — lights the whole shape, translucently, the way a country
-           lights on land. */
-        .map-country.map-island-line:hover {
-            fill: rgba(246, 227, 174, 0.62) !important;
-            stroke: #2a2013;
-            stroke-width: calc(var(--map-stroke, 0.6px) * 1.9);
-            filter: drop-shadow(0 0 5px rgba(154, 111, 48, 0.55));
         }
 
         /* Once the place is named, the verdict washes over the whole cluster
            at the same transparency — the islands beneath stay readable
-           through it. Declared after the plain guesses so these tint the ring
-           rather than being painted over by them. */
+           through it, and so does any foreign island the gather happens to
+           reach, since every country paints over it. Declared after the
+           plain guesses so these tint the gather rather than being painted
+           over by them. */
         .map-country.map-island-line.guessed-correct,
         .map-country.map-island-line.guessed-1st { fill: rgba(124, 154, 85, 0.45) !important; }
         .map-country.map-island-line.guessed-2nd { fill: rgba(216, 176, 74, 0.45) !important; }
@@ -569,7 +625,7 @@
             .settings-row { min-height: 44px; }
             /* iOS magnifies any field under 16px on focus — keep it calm */
             input[type="text"], select { font-size: 16px; }
-            .map-country:hover { filter: none; }
+            .map-country.is-hovered { filter: none; }
         }
     </style>
 </head>
@@ -585,7 +641,7 @@
                 <h1 class="font-display font-bold text-lg md:text-xl tracking-tight text-ink-900 whitespace-nowrap">
                     Know Thy World
                     <button id="btn-version" onclick="openChangelog()" class="header-version"
-                            title="What's new in this version">v1.4.0</button>
+                            title="What's new in this version">v1.5.0</button>
                 </h1>
                 <a class="header-byline text-xs font-semibold text-moss-700 hover:text-moss-600 transition-colors select-none whitespace-nowrap inline-flex items-center gap-1.5"
                    href="https://ko-fi.com/coolpuddytat" target="_blank" rel="noopener noreferrer" title="Buy me a coffee! on Ko-fi">
@@ -700,17 +756,6 @@
             </div>
         </div>
 
-        <!-- STUDY MODE CARD (TOP CENTER) — the only thing up there while reading -->
-        <div id="study-banner" class="hidden absolute top-4 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
-            <div class="glass-panel rounded-2xl px-5 py-3 shadow-2xl border border-ochre-500/40 flex items-center gap-3">
-                <span class="p-2 rounded-xl bg-ochre-500/20 text-ochre-700"><i class="fa-solid fa-book-open"></i></span>
-                <div class="leading-tight">
-                    <div class="text-[10px] uppercase tracking-[0.2em] font-bold text-ochre-700">Study mode</div>
-                    <div class="text-xs text-ink-500">Every area in your selection is named on the chart</div>
-                </div>
-            </div>
-        </div>
-
         <!-- STATS & PROGRESS HUD (TOP LEFT) -->
         <div id="stats-hud" class="game-only absolute top-4 left-4 z-10 hidden lg:flex flex-col gap-2 pointer-events-auto">
             <div class="glass-card rounded-xl p-3 flex items-center gap-3 border border-parchment-700/50 min-w-[170px]">
@@ -751,9 +796,16 @@
                 <span>ADVANCED MODE (No Map Highlighting)</span>
             </div>
 
-            <!-- Mini-map: click or drag to jump the main chart -->
+            <!-- Mini-map: click or drag to jump, slide the bar to magnify -->
             <div id="minimap-wrap" class="glass-panel rounded-xl p-1.5 border border-parchment-700/60 shadow-xl">
                 <svg id="minimap" width="158" height="96" class="block select-none" title="Click or drag to jump"></svg>
+                <div class="minimap-zoombar">
+                    <i class="fa-solid fa-magnifying-glass-minus" aria-hidden="true"></i>
+                    <input type="range" id="minimap-zoom" min="0" max="100" step="0.5" value="0"
+                           aria-label="Chart magnification"
+                           title="Slide to magnify the chart">
+                    <i class="fa-solid fa-magnifying-glass-plus" aria-hidden="true"></i>
+                </div>
             </div>
         </div>
 
@@ -941,7 +993,7 @@
                     <div>
                         <h3 class="text-lg font-bold font-display text-ink-900">What's new</h3>
                         <p class="text-[10px] uppercase tracking-[0.18em] text-brass-600 font-bold">
-                            Know Thy World &nbsp;·&nbsp; <span id="changelog-version">v1.4.0</span>
+                            Know Thy World &nbsp;·&nbsp; <span id="changelog-version">v1.5.0</span>
                         </p>
                     </div>
                 </div>
@@ -1809,13 +1861,19 @@
             labelPlacementStamp++;
 
             zoomBehavior = d3.zoom()
-                .scaleExtent([1, 18])
+                // Deep enough that the smallest places on the chart can be
+                // brought up to something a cursor can land on: Vatican City
+                // is under a twentieth of a pixel wide at rest, and only
+                // past 200x does it become a target rather than a dot.
+                .scaleExtent([1, 300])
                 .on("zoom", (event) => {
                     gMap.attr("transform", event.transform);
                     gOcean.attr("transform", event.transform);
-                    // Coastlines and rhumb lines thin out as the chart is
-                    // magnified, like finer and finer pen work
-                    svg.style("--map-stroke", (0.6 * Math.pow(event.transform.k, -1.5)) + "px");
+                    // Borders keep the same fine line on the paper however
+                    // far the chart is magnified: a line that thinned away
+                    // with the zoom would leave the smallest places with no
+                    // edge to point along just when their edges matter most
+                    svg.style("--map-stroke", (0.6 / event.transform.k) + "px");
                     updateMinimapViewport();
                     // Sea titles keep their on-screen size and line spacing,
                     // as if printed on the paper itself rather than drawn on it
@@ -1827,11 +1885,17 @@
                             d3.select(this).selectAll("tspan")
                                 .each(function (d, i) { d3.select(this).attr("dy", i === 0 ? 0 : dy); });
                         });
+                    // …and so do the names of countries: they hold their
+                    // place on the chart and their size on the paper, never
+                    // ballooning into a banner as the land beneath them grows
+                    scaleMapLabels(event.transform.k);
                 });
 
             svg.call(zoomBehavior);
 
             gMap = svg.append("g");
+            // Every piece of a place answers for the whole of it on hover
+            initHoverGlow();
             // Sea titles live in their own layer above the land, so a coastline
             // never chops a word in half
             gOcean = svg.append("g");
@@ -2024,8 +2088,50 @@
             }
         }
 
+        // --- the glow one place shares -------------------------------------
+        // A country drawn as a scatter of islands is one place to the
+        // student: point at any one of them and every piece wearing that id
+        // lights hot pink together. CSS can never reach a country's
+        // siblings, so the chart moves the class itself, from the map's own
+        // pointer events — and still never lets a hover reveal a name.
+        let glowFid = null;
+
+        function countryFidOf(node) {
+            const path = node && node.closest ? node.closest("path.map-country") : null;
+            return path ? path.getAttribute("data-id") : null;
+        }
+
+        function setHoverGlow(fid) {
+            if (fid === glowFid) return;
+            // The gather drawn round a cluster answers the pointer for its
+            // islands, but it is never itself painted: the islands glow.
+            if (glowFid) {
+                gMap.selectAll('path.map-country[data-id="' + glowFid + '"]:not(.map-island-ring)')
+                    .classed("is-hovered", false);
+            }
+            glowFid = fid;
+            if (fid) {
+                gMap.selectAll('path.map-country[data-id="' + fid + '"]:not(.map-island-ring)')
+                    .classed("is-hovered", true);
+            }
+        }
+
+        function clearHoverGlow() { setHoverGlow(null); }
+
+        function initHoverGlow() {
+            if (!gMap) return;
+            gMap.on("pointerover.mapglow", e => setHoverGlow(countryFidOf(e.target)));
+            gMap.on("pointerout.mapglow", e => setHoverGlow(countryFidOf(e.relatedTarget)));
+            gMap.on("pointerleave.mapglow", clearHoverGlow);
+            // A finger lights a place only while it is pressed — the glow
+            // follows the touch and lets go with it
+            gMap.on("pointerup.mapglow pointercancel.mapglow",
+                    e => { if (e.pointerType === "touch") clearHoverGlow(); });
+        }
+
         function buildMapFeatures() {
             gMap.selectAll(".map-country").remove(); // paths and pins both
+            glowFid = null;
 
             // Sub-divisions replace their parent country's outline, so every
             // click lands on a piece rather than the whole
@@ -2045,6 +2151,15 @@
                 us: drawing.us && state.usStatesFeatures.length > 0
             };
 
+            // Smallest last, so a speck still paints over the land it sits
+            // in: Vatican City, San Marino, Monaco, Lesotho and Gambia are
+            // all drawn inside another country, and only by coming last can
+            // they be pointed at — otherwise the country around them answers
+            // for their ground however far the chart is magnified. Sorted by
+            // real size on the globe, so the projection never decides which
+            // of two places is the bigger.
+            featuresToDraw = featuresToDraw.slice()
+                .sort((a, b) => d3.geoArea(b) - d3.geoArea(a));
             state.combinedFeatures = featuresToDraw;
 
             // Render country paths
@@ -2459,132 +2574,18 @@
             return Math.sqrt(best);
         }
 
-        // What the border has to be able to hold: the name of the place, set
-        // at the smallest size worth drawing. Broken over two lines a name is
-        // narrower but far taller, and a border grows outwards around its
-        // islands rather than up through them — so it is the straight name
-        // that is asked for, and a wrap that happens to fit is a bonus later.
-        function ringNameBox(name) {
-            const text = String(name || '').trim();
-            if (!text || !gMap) return null;
-            const m = measureLabelLines(text, [text]);
-            if (!(m.w > 0) || !(m.h > 0)) return null;
-            return { w: m.w * ISLAND_LABEL_FLOOR / 100,
-                     h: m.h * ISLAND_LABEL_FLOOR / 100 };
-        }
-
-        // The same name broken over two or three lines: narrower, taller, and
-        // the last claim a border will hear. A chain drawn on the diagonal —
-        // Saint Vincent, Saint Kitts — can never hold a name set straight
-        // across it, however far the line is pushed out; a broken name fits
-        // the bend, so the border grows just enough for one of these instead
-        // of stretching to its limit for a room it can never make.
-        function ringWrapBoxes(name) {
-            const text = String(name || '').trim();
-            if (!text || !gMap) return null;
-            const boxes = [];
-            wrapCandidatesFor(text).slice(1).forEach(lines => {
-                const m = measureLabelLines(text, lines);
-                if (!(m.w > 0) || !(m.h > 0)) return;
-                boxes.push({ w: m.w * ISLAND_LABEL_FLOOR / 100,
-                             h: m.h * ISLAND_LABEL_FLOOR / 100 });
-            });
-            return boxes.length ? boxes : null;
-        }
-
-        // Does the segment cut through the box: an end inside it, or any of
-        // its four sides crossed?
-        function segHitsBox(a, b, box) {
-            const l = box.x, r = box.x + box.w, t = box.y, bo = box.y + box.h;
-            if (a[0] >= l && a[0] <= r && a[1] >= t && a[1] <= bo) return true;
-            if (b[0] >= l && b[0] <= r && b[1] >= t && b[1] <= bo) return true;
-            return segCrosses(a, b, [l, t], [r, t]) ||
-                   segCrosses(a, b, [r, t], [r, bo]) ||
-                   segCrosses(a, b, [r, bo], [l, bo]) ||
-                   segCrosses(a, b, [l, bo], [l, t]);
-        }
-
-        // The whole box lies inside the line: its middle is inside, and no
-        // edge of the line cuts through it — for a closed line that is the
-        // whole question, answered in one pass down its outline.
-        function boxInLoop(loop, box) {
-            if (!d3.polygonContains(loop, [box.x + box.w / 2, box.y + box.h / 2])) return false;
-            for (let i = 0, j = loop.length - 1; i < loop.length; j = i++) {
-                if (segHitsBox(loop[j], loop[i], box)) return false;
-            }
-            return true;
-        }
-
-        // Somewhere inside the border, and clear of every island it gathers,
-        // a box of the name's size lies whole — the exact bargain the label
-        // strikes later, asked of the border while the border is drawn, so
-        // that the border can be grown until the name has a home. The place
-        // found here is kept: the label is told where its home is instead of
-        // left to guess at it, and the two can never disagree.
-        function ringHoldsBox(ringPts, islandPts, wants, isLand) {
-            const list = Array.isArray(wants) ? wants : [wants];
-            const holdsFor = want => {
-                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-                for (let i = 0; i < ringPts.length; i++) {
-                    const p = ringPts[i];
-                    if (p[0] < minX) minX = p[0];
-                    if (p[0] > maxX) maxX = p[0];
-                    if (p[1] < minY) minY = p[1];
-                    if (p[1] > maxY) maxY = p[1];
-                }
-                if (maxX - minX < want.w + 2 || maxY - minY < want.h + 2) return null;
-                // Positions are searched at half the box's short side: fine
-                // enough that a spot in a band of water is not stepped over
-                const step = Math.max(1.5, Math.min(want.w, want.h) * 0.5);
-                const cols = Math.max(7, Math.min(16, Math.round((maxX - minX) / step)));
-                const rows = Math.max(7, Math.min(16, Math.round((maxY - minY) / step)));
-                const dummy = { left: 1e9 };
-                const land = typeof isLand === 'function' ? isLand : () => false;
-                let denseTries = 0;
-                for (let j = 0; j < rows; j++) {
-                    const y = minY + (maxY - minY) * (j + 0.5) / rows;
-                    for (let i = 0; i < cols; i++) {
-                        const x = minX + (maxX - minX) * (i + 0.5) / cols;
-                        const box = { x: x - want.w / 2, y: y - want.h / 2,
-                                      w: want.w, h: want.h };
-                        if (!boxInLoop(ringPts, box)) continue;
-                        if (!boxClearOfIslands(land, islandPts, box, dummy, false)) continue;
-                        // The label measures itself to the pixel once drawn, so
-                        // the stricter pass has to hold too — though only a few
-                        // places may be put to that expense
-                        if (denseTries++ < 3 &&
-                            !boxClearOfIslands(land, islandPts, box, dummy, true)) continue;
-                        return { x: x, y: y };
-                    }
-                }
-                return null;
-            };
-            // The straight name is asked first: a border grows outwards
-            // around its islands rather than up through them, and one line
-            // reads better than a stack
-            for (let i = 0; i < list.length; i++) {
-                const want = list[i];
-                if (!want || !(want.w > 0) || !(want.h > 0)) continue;
-                const spot = holdsFor(want);
-                if (spot) return spot;
-            }
-            return null;
-        }
-
-        // The group's border: shaped, rounded, pushed clear, and judged. The
+        // The group's gather: shaped, rounded, pushed clear, and judged. The
         // push widens for two reasons — the line still standing too near the
         // land, or having no room inside it for the name that gathers here —
         // and narrows when a notch too narrow to push apart folds the line
         // over itself. The plain convex outline of the group takes over if
         // the shape of the archipelago never settles.
-        function ringAroundShape(shape, islandPts, nameBox, wrapBoxes, isLand) {
+        function ringAroundShape(shape, islandPts) {
             const hull = d3.polygonHull(islandPts);
             const bases = [];
             if (shape && shape.length >= 3 && !crossesItself(shape)) bases.push(shape);
             if (hull && hull.length >= 3 && !crossesItself(hull)) bases.push(hull);
 
-            let held = null, heldClear = -Infinity;   // line with room for the name
-            let wrapped = null;                       // room for it broken over lines
             let clear = null, clearBest = -Infinity;  // clearest line of them all
             for (const base of bases) {
                 const coarse = simplifyRing(base, ISLAND_RING_SMOOTH);
@@ -2603,31 +2604,13 @@
                     if (crossesItself(grown)) { push *= 0.6; continue; }
                     const cd = ringClearance(grown, islandPts);
                     if (cd > clearBest) { clearBest = cd; clear = grown; }
-                    const spot = nameBox
-                        ? ringHoldsBox(grown, islandPts, nameBox, isLand) : null;
-                    const holds = !nameBox || !!spot;
-                    if (holds) grown.nameSpot = spot;
-                    if (holds && cd > heldClear) { heldClear = cd; held = grown; }
-                    // A name broken over lines gets the line at the smallest
-                    // size it is content with — but only ever behind the
-                    // straight name, which asks first at every size
-                    if (nameBox && !spot && wrapBoxes && !wrapped &&
-                        cd >= ISLAND_RING_MIN_GAP) {
-                        const ws = ringHoldsBox(grown, islandPts, wrapBoxes, isLand);
-                        if (ws) { wrapped = grown; grown.nameSpot = ws; }
-                    }
-                    if (cd >= ISLAND_RING_MIN_GAP && holds) return grown;
+                    if (cd >= ISLAND_RING_MIN_GAP) return grown;
                     let next = cd < ISLAND_RING_MIN_GAP ? push * 1.5 : push * 1.45 + 0.5;
                     if (next > cap) next = cap;
                     if (next <= push) break;
                     push = next;
                 }
-                if (held && heldClear >= ISLAND_RING_MIN_GAP) return held;
             }
-            if (held && heldClear >= ISLAND_RING_MIN_GAP * 0.75) return held;
-            // Never the widest line the search wandered out to: a border
-            // grown for a name it never found is a border in a neighbour's way
-            if (wrapped) return wrapped;
             return clearBest >= ISLAND_RING_MIN_GAP * 0.75 ? clear : null;
         }
 
@@ -2718,18 +2701,6 @@
                 }
             }
 
-            // What every border drawn here has to make room for: the name of
-            // the place, at the smallest size worth drawing it — measured
-            // once, since it is the same name on every island of the group,
-            // and the same name the label will be set in
-            const name = featureLabelName(f);
-            const nameBox = ringNameBox(name);
-            const wrapBoxes = nameBox ? ringWrapBoxes(name) : null;
-            // ...and the land itself, asked the same way the label will ask
-            // it later, so a room found now is a room found again then
-            const isLand = nameBox
-                ? makeInsideTest(f, countryPathFor(featureFid(f), f)) : null;
-
             const rings = [];
             groups.forEach(g => {
                 // The shape of the group as it actually is: one closed line
@@ -2740,16 +2711,16 @@
                 const hullArea = planarArea(hull);
                 if (!(hullArea > 0)) return;
 
-                // The border itself: simplified into the general shape the
+                // The gather itself: simplified into the general shape the
                 // group makes, pushed out a breath of sea, rounded into one
-                // flowing line — and grown, if need be, until it has room to
-                // carry the name it gathers. A group no such line can be found for is
-                // left with its own coast alone rather than a bad guess.
-                const shape = ringAroundShape(hull, g.pts, nameBox, wrapBoxes, isLand);
+                // flowing line — grown only until it stands a clean breath
+                // clear of every island it gathers. A group no such line can
+                // be found for is left with its own coast alone rather than a
+                // bad guess.
+                const shape = ringAroundShape(hull, g.pts);
                 if (!shape || shape.length < 3) return;
 
-                // Where the cluster sits and how far it reaches, so its own
-                // name can be set from the middle of it
+                // Where the cluster sits and how far it reaches
                 let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
                 shape.forEach(p => {
                     if (p[0] < minX) minX = p[0];
@@ -2764,8 +2735,6 @@
                     land: g.land,
                     pts: shape,
                     islandPts: g.pts,
-                    // Where the border found room for the name it gathers
-                    nameSpot: shape.nameSpot || null,
                     box: [minX, minY, maxX, maxY],
                     cx: (minX + maxX) / 2,
                     cy: (minY + maxY) / 2
@@ -2774,13 +2743,10 @@
             return rings;
         }
 
-        // The cluster each island state is named from: its biggest ring, kept
-        // as it is drawn so a label may stretch to the border of the group
-        let islandRingAnchors = new Map();
-
-        // Rings live beneath every country, so a ring can only ever be covered
-        // by a neighbour's land, never drawn on top of it — and every ring is
-        // an outline, so the sea it gathers keeps its own colour throughout.
+        // The gather drawn round a cluster sits beneath every country, so it
+        // can only ever be covered by a neighbour's land, never drawn on top
+        // of it — which is how Mayotte under French paint stays out of the
+        // Comoros beside it. It carries no line and no colour of its own.
         function renderIslandRings() {
             if (!gMap || !projection || !state.combinedFeatures.length) return;
 
@@ -2792,7 +2758,7 @@
             });
             gMap.selectAll("path.map-island-ring").remove();
             const refNode = gMap.select("path.map-country:not(.map-island-ring)").node();
-            if (!refNode) { islandRingAnchors = new Map(); return; }
+            if (!refNode) return;
 
             const sphereArea = pathGenerator.area({ type: "Sphere" }) || 1;
             const maxClusterArea = ISLAND_RING_MAX_CLUSTER_REL_AREA * sphereArea;
@@ -2801,30 +2767,14 @@
             islandRingFeatures(state.combinedFeatures).forEach(f => {
                 const fid = featureFid(f);
                 islandRingPaths(f, maxClusterArea).forEach(r => {
-                    rings.push({ d: r.d, fid: fid, feature: f, area: r.area, box: r.box,
-                                 cx: r.cx, cy: r.cy, pts: r.pts, islandPts: r.islandPts,
-                                 nameSpot: r.nameSpot });
+                    rings.push({ d: r.d, fid: fid, area: r.area });
                 });
             });
 
-            // Broad hulls at the bottom, so a little one laid afterwards never
-            // masks the line of a bigger neighbour it happens to cross
+            // Broader gathers at the bottom, so a little one laid afterwards
+            // never takes a click meant for a bigger neighbour it happens to
+            // cross
             rings.sort((a, b) => b.area - a.area);
-
-            // The cluster an island state is named from: its biggest ring —
-            // though a ring with room already found for the name beats a
-            // bigger one with none, since that is where the name is going
-            const anchors = new Map();
-            rings.forEach(r => {
-                const was = anchors.get(r.fid);
-                if (!was) { anchors.set(r.fid, r); return; }
-                if (!!r.nameSpot !== !!was.nameSpot) {
-                    if (r.nameSpot) anchors.set(r.fid, r);
-                    return;
-                }
-                if (r.area > was.area) anchors.set(r.fid, r);
-            });
-            islandRingAnchors = anchors;
 
             const CARRIED_STATES = ["guessed-correct", "guessed-1st", "guessed-2nd",
                                     "guessed-3rd", "guessed-failed", "reveal-flash"];
@@ -2882,30 +2832,144 @@
 
             updateMinimapViewport();
 
-            // Click or drag to jump the main chart to a spot
-            let dragging = false;
-            const jump = (clientX, clientY) => {
-                if (!miniFit || !svg) return;
+            // One finger (or the mouse) jumps the chart to a spot on the
+            // inset; two fingers pinch the chart itself, opening and closing
+            // it about the place held between them. The inset stays what it
+            // has always been — an overview and a control — and never a map
+            // of its own. Every jump and pinch goes through the same move:
+            // the chart's centre to a point on the world at a magnification.
+            const pointers = new Map();   // pointerId -> where it is, in world coords
+            let pinch = null;             // the distance two fingers started at
+
+            const toWorld = (clientX, clientY) => {
                 const r = node.getBoundingClientRect();
-                const bx = ((clientX - r.left) - miniFit.tx) / miniFit.s;
-                const by = ((clientY - r.top) - miniFit.ty) / miniFit.s;
-                const t = d3.zoomTransform(svg.node());
+                return { x: (clientX - r.left - miniFit.tx) / miniFit.s,
+                         y: (clientY - r.top - miniFit.ty) / miniFit.s };
+            };
+
+            const viewAt = (at, k) => {
+                if (!svg || !zoomBehavior) return;
                 const W = +svg.attr("width"), H = +svg.attr("height");
                 svg.call(zoomBehavior.transform,
-                    d3.zoomIdentity.translate(W / 2, H / 2).scale(t.k).translate(-bx, -by));
+                    d3.zoomIdentity.translate(W / 2, H / 2).scale(k)
+                        .translate(-at.x, -at.y));
             };
+
+            const jump = (clientX, clientY) => {
+                if (!miniFit || !svg) return;
+                const t = d3.zoomTransform(svg.node());
+                viewAt(toWorld(clientX, clientY), t.k);
+            };
+
+            const pinchZoom = () => {
+                if (!svg || !zoomBehavior) return;
+                const pts = [...pointers.values()];
+                const a = pts[0], b = pts[1];
+                const dist = Math.hypot(a.x - b.x, a.y - b.y);
+                if (!pinch) {
+                    pinch = { dist: dist, k: d3.zoomTransform(svg.node()).k };
+                    return;
+                }
+                if (!(dist > 0) || !(pinch.dist > 0)) return;
+                const extent = zoomBehavior.scaleExtent();
+                const k = Math.max(extent[0], Math.min(extent[1],
+                                                       pinch.k * (dist / pinch.dist)));
+                viewAt({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, k);
+            };
+
+            let dragging = false;
             node.onpointerdown = e => {
                 e.preventDefault();
-                dragging = true;
                 try { node.setPointerCapture(e.pointerId); } catch (err) {}
-                jump(e.clientX, e.clientY);
+                pointers.set(e.pointerId, toWorld(e.clientX, e.clientY));
+                if (pointers.size === 1) {
+                    dragging = true;
+                    jump(e.clientX, e.clientY);
+                } else if (pointers.size === 2) {
+                    // The second finger changes the question: no more
+                    // jumping, the chart is being pinched now
+                    dragging = false;
+                    pinch = null;
+                    pinchZoom();
+                }
             };
-            node.onpointermove = e => { if (dragging) jump(e.clientX, e.clientY); };
-            node.onpointerup = node.onpointercancel = () => { dragging = false; };
+            node.onpointermove = e => {
+                if (!pointers.has(e.pointerId)) return;
+                pointers.set(e.pointerId, toWorld(e.clientX, e.clientY));
+                if (pointers.size >= 2) pinchZoom();
+                else if (dragging) jump(e.clientX, e.clientY);
+            };
+            node.onpointerup = node.onpointercancel = e => {
+                pointers.delete(e.pointerId);
+                if (pointers.size < 2) pinch = null;
+                // One finger left over from a pinch goes quiet rather than
+                // snapping the chart to wherever it happens to be resting
+                dragging = false;
+            };
+
+            // A pinch on a trackpad does not arrive as two pointers — it
+            // arrives as a wheel with the control key held down — so it is
+            // caught here and opens the chart the same way, about the view
+            // the chart already has
+            node.onwheel = e => {
+                if (!e.ctrlKey || !svg || !zoomBehavior) return;
+                e.preventDefault();
+                const t = d3.zoomTransform(svg.node());
+                const extent = zoomBehavior.scaleExtent();
+                const k = Math.max(extent[0], Math.min(extent[1],
+                                      t.k * Math.exp(-e.deltaY * 0.01)));
+                viewAt(chartCentre(), k);
+            };
+
+            // The bar under the inset does the same thing for anybody who
+            // would rather push something than learn a gesture
+            const slider = document.getElementById("minimap-zoom");
+            if (slider) {
+                slider.oninput = () => {
+                    if (!svg || !zoomBehavior) return;
+                    viewAt(chartCentre(), sliderToZoom(+slider.value));
+                };
+            }
+            syncMinimapZoom();
+        }
+
+        // The world point the chart is presently centred on
+        function chartCentre() {
+            if (!svg) return { x: 0, y: 0 };
+            const W = +svg.attr("width"), H = +svg.attr("height");
+            const t = d3.zoomTransform(svg.node());
+            return { x: (W / 2 - t.x) / t.k, y: (H / 2 - t.y) / t.k };
+        }
+
+        // The inset's slider counts in equal steps of ratio, not of number:
+        // one end is the chart at rest, the other its deepest allowed
+        // magnification, and every doubling in between is given the same
+        // stretch of the track — 300x is not a hundred and fifty times the
+        // journey that 2x is.
+        function sliderToZoom(v) {
+            const cap = (zoomBehavior && zoomBehavior.scaleExtent()[1]) || 300;
+            const t = Math.max(0, Math.min(100, +v)) / 100;
+            return Math.exp(t * Math.log(cap));
+        }
+
+        function zoomToSlider(k) {
+            const cap = (zoomBehavior && zoomBehavior.scaleExtent()[1]) || 300;
+            if (!(k > 1)) return 0;
+            return Math.max(0, Math.min(100, 100 * Math.log(k) / Math.log(cap)));
+        }
+
+        // Keep the bar under the inset saying what the chart is doing,
+        // however the chart came to be doing it
+        function syncMinimapZoom() {
+            const slider = document.getElementById("minimap-zoom");
+            if (!slider || !svg) return;
+            const v = zoomToSlider(d3.zoomTransform(svg.node()).k);
+            if (+slider.value !== v) slider.value = v;
         }
 
         // Outline of what the main chart currently shows
         function updateMinimapViewport() {
+            syncMinimapZoom();
             const rect = document.getElementById("minimap-viewport");
             if (!rect || !miniFit || !svg) return;
             const t = d3.zoomTransform(svg.node());
@@ -3287,9 +3351,13 @@
             const W = +svg.attr("width"), H = +svg.attr("height");
             const bw = Math.max(1e-6, x1 - x0), bh = Math.max(1e-6, y1 - y0);
             // Fit the region into ~70% of the view; never below 1 (the chart
-            // starts whole) and never past the zoom range's ceiling
+            // starts whole) and never past the zoom range's ceiling — so a
+            // whole country is framed at once, and Vatican City, at a
+            // twentieth of a pixel wide, is brought up to something that can
+            // be pointed at
             const fit = 0.7 * Math.min(W / bw, H / bh);
-            const k = Math.max(1, Math.min(o.maxScale || 12, fit));
+            const ceiling = zoomBehavior ? zoomBehavior.scaleExtent()[1] : 300;
+            const k = Math.max(1, Math.min(o.maxScale || Infinity, ceiling, fit));
             svg.transition().duration(o.duration || 700).call(
                 zoomBehavior.transform,
                 d3.zoomIdentity.translate(W / 2, H / 2).scale(k)
@@ -3329,26 +3397,28 @@
                     .text(targetName);
 
                 // Bring it to the middle of the chart so the student can study it
-                centreOnFeature(targetFeature, { duration: 650, maxScale: 12 });
+                centreOnFeature(targetFeature, { duration: 650 });
             }
         }
 
         const LABEL_MAX_FONT = 9;     // user units (px at rest) — cap for region names
         const LABEL_MIN_FONT = 0.35;  // below this a name is only noise
-        // An island cluster is named inside its own ring, which is drawn
-        // wider than any coastline, so its type may grow past a country's
-        // cap — but only as far as the border and the islands allow: the
-        // name has to fit within the ring and keep off the land gathered
-        // inside it, so the search below sizes it down until both hold.
-        const ISLAND_LABEL_MAX_FONT = 12;
-        // …and it starts from a name that can be read, not from whatever
-        // sliver of room happens to be left: a chain of islands is thinner
-        // than any word, so the largest name is tried first and shrinks only
-        // if the border will not have it.
-        const ISLAND_LABEL_FLOOR = 4;
+        // Below this a name is too small to have earned a place inside its
+        // own country — the search sets it beside the place instead, on open
+        // water, where it can still be read
+        const LABEL_INSIDE_MIN = 2.6;
+        // A name set beside a place, for a place too small to hold its own:
+        // Mauritius at about four pixels is the mark these are set by, and
+        // never so large that the caption starts naming the sea instead
+        const LABEL_CAPTION_MIN = 4;
+        const LABEL_CAPTION_MAX = 5;
+        // How far a name may grow on screen as the chart is magnified — it
+        // follows the zoom only so far, then holds its size on the paper
+        const LABEL_SCREEN_CAP = 12;
         const LABEL_BOX_PAD = 1.2;     // paper halo + a breath between neighbours
         const LABEL_MAX_PROBES = 260;  // grid points sampled inside one region
         const LABEL_TEST_BUDGET = 24000;// fill probes one label may spend
+        const LABEL_CAPTION_BUDGET = LABEL_TEST_BUDGET * 4; // sifting a seaful of spots
         const LABEL_SPOT_LIMIT = 45;    // candidate spots tried per font size
 
         // Measure a layout once at font-size 100 and scale arithmetically:
@@ -3517,20 +3587,6 @@
             return best || nodes[0];
         }
 
-        // The ring this feature is named from. Rings are indexed by the id
-        // they were drawn under, which may belong to more than one place, so
-        // a feature may only claim a ring it drew itself — or, if the objects
-        // have been rebuilt since, one that reaches over it.
-        function ownRingAnchor(fid, feature) {
-            const a = islandRingAnchors.get(fid);
-            if (!a) return null;
-            if (a.feature === feature) return a;
-            const b = pathGenerator.bounds(feature);
-            const rw = a.box[2] - a.box[0], rh = a.box[3] - a.box[1];
-            const fw = b[1][0] - b[0][0], fh = b[1][1] - b[0][1];
-            return (rw >= fw * 0.5 && rh >= fh * 0.5) ? a : null;
-        }
-
         function makeInsideTest(feature, node) {
             if (node && typeof node.isPointInFill === "function") {
                 const useDOMPoint = typeof window.DOMPoint === "function";
@@ -3686,40 +3742,270 @@
             return true;
         }
 
-        // An island cluster's name must never cover the islands it names —
-        // they are the very thing being pointed at. Two ways it could:
-        // an island straying into the name's box (settled by the island's
-        // own points, which cost nothing to ask), and the name standing on
-        // land too big to miss (settled against the coast as drawn, sampled
-        // down to the pixel only when the name is actually committed).
-        function boxClearOfIslands(land, islandPts, box, budget, dense) {
-            const pad = padForBox(box);
-            const l = box.x - pad, r = box.x + box.w + pad;
-            const t = box.y - pad, b = box.y + box.h + pad;
-            for (let i = 0; i < islandPts.length; i++) {
-                const p = islandPts[i];
-                if (p[0] >= l && p[0] <= r && p[1] >= t && p[1] <= b) return false;
-            }
-            const step = dense ? 1 : 2.5;
-            const nx = Math.max(2, Math.min(dense ? 44 : 12, Math.ceil(box.w / step) + 1));
-            const ny = Math.max(2, Math.min(dense ? 32 : 9, Math.ceil(box.h / step) + 1));
-            budget.left -= nx * ny;
-            for (let j = 0; j < ny; j++) {
-                const y = box.y + (box.h * j) / (ny - 1);
-                for (let i = 0; i < nx; i++) {
-                    if (land(box.x + (box.w * i) / (nx - 1), y)) return false;
-                }
-            }
-            return true;
+        // ------------------------------------------------------------------
+        // THE CHART'S LAND, AS ONE THING TO ASK
+        // A name that cannot live inside its own country — Vatican City, the
+        // Gambia, Mauritius, any place too small or too thin to hold it — is
+        // set beside it instead, and then it must stand on nobody's land at
+        // all: not a neighbour's, not its own islands either. Asking every
+        // coastline in turn would be far too slow for that, so the land of
+        // the whole chart is indexed once per layout — every part of every
+        // country boxed and ringed, with a grid laid over it so only the
+        // parts standing near a spot are ever looked at.
+        // ------------------------------------------------------------------
+        let landIndex = null;
+        const LAND_CELL = 12;
+
+        function landIndexFor() {
+            if (landIndex && landIndex.stamp === labelPlacementStamp &&
+                landIndex.projection === projection) return landIndex;
+
+            const b = pathGenerator.bounds({ type: "Sphere" });
+            const ox = b[0][0], oy = b[0][1];
+            const cols = Math.max(1, Math.ceil((b[1][0] - ox) / LAND_CELL) + 1);
+            const rows = Math.max(1, Math.ceil((b[1][1] - oy) / LAND_CELL) + 1);
+            const cells = new Array(cols * rows);
+            const parts = [];
+
+            state.combinedFeatures.forEach(f => {
+                polygonsOf(f).forEach(rings => {
+                    const outer = rings[0] || [];
+                    const pts = [];
+                    for (let i = 0; i < outer.length; i++) {
+                        const p = projection([outer[i][0], outer[i][1]]);
+                        if (p && isFinite(p[0]) && isFinite(p[1])) pts.push(p);
+                    }
+                    if (pts.length < 3) return;
+                    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+                    for (let i = 0; i < pts.length; i++) {
+                        const p = pts[i];
+                        if (p[0] < x0) x0 = p[0];
+                        if (p[0] > x1) x1 = p[0];
+                        if (p[1] < y0) y0 = p[1];
+                        if (p[1] > y1) y1 = p[1];
+                    }
+                    const part = { pts: pts, box: [x0, y0, x1, y1], seen: 0 };
+                    const at = parts.push(part) - 1;
+                    const c0 = Math.max(0, Math.floor((x0 - ox) / LAND_CELL));
+                    const c1 = Math.min(cols - 1, Math.floor((x1 - ox) / LAND_CELL));
+                    const r0 = Math.max(0, Math.floor((y0 - oy) / LAND_CELL));
+                    const r1 = Math.min(rows - 1, Math.floor((y1 - oy) / LAND_CELL));
+                    for (let r = r0; r <= r1; r++) {
+                        for (let c = c0; c <= c1; c++) {
+                            const i = r * cols + c;
+                            (cells[i] || (cells[i] = [])).push(at);
+                        }
+                    }
+                });
+            });
+
+            landIndex = { stamp: labelPlacementStamp, projection: projection,
+                          parts: parts, cells: cells, ox: ox, oy: oy,
+                          cols: cols, rows: rows, seq: 0 };
+            return landIndex;
         }
 
-        // Find a spot for one label that lies wholly inside its own region,
-        // keeping the type as large as that region allows. A region too small
-        // to hold its own name (Vatican, Nauru…) is captioned on its own spot
-        // instead — and if even that has no room the label is dropped; the
-        // hover tooltip still tells the story. For an island cluster the
-        // region is the ring drawn round it: the name lies inside that
-        // border and on the water, never over the islands it gathers.
+        // Is this point on land — anybody's?
+        function landAt(x, y) {
+            const ix = landIndexFor();
+            const c = Math.floor((x - ix.ox) / LAND_CELL), r = Math.floor((y - ix.oy) / LAND_CELL);
+            if (c < 0 || r < 0 || c >= ix.cols || r >= ix.rows) return false;
+            const bucket = ix.cells[r * ix.cols + c];
+            if (!bucket) return false;
+            for (let i = 0; i < bucket.length; i++) {
+                const p = ix.parts[bucket[i]];
+                if (x < p.box[0] || x > p.box[2] || y < p.box[1] || y > p.box[3]) continue;
+                if (d3.polygonContains(p.pts, [x, y])) return true;
+            }
+            return false;
+        }
+
+        // Every part standing in or near a box (each part offered once)
+        function partsInBox(l, t, r, bo) {
+            const ix = landIndexFor();
+            const c0 = Math.max(0, Math.floor((l - ix.ox) / LAND_CELL));
+            const c1 = Math.min(ix.cols - 1, Math.floor((r - ix.ox) / LAND_CELL));
+            const r0 = Math.max(0, Math.floor((t - ix.oy) / LAND_CELL));
+            const r1 = Math.min(ix.rows - 1, Math.floor((bo - ix.oy) / LAND_CELL));
+            const seen = ++ix.seq;
+            const out = [];
+            for (let rr = r0; rr <= r1; rr++) {
+                for (let cc = c0; cc <= c1; cc++) {
+                    const bucket = ix.cells[rr * ix.cols + cc];
+                    if (!bucket) continue;
+                    for (let i = 0; i < bucket.length; i++) {
+                        const p = ix.parts[bucket[i]];
+                        if (p.seen === seen) continue;
+                        p.seen = seen;
+                        out.push(p);
+                    }
+                }
+            }
+            return out;
+        }
+
+        // Does a part stand inside this box? A vertex inside settles it;
+        // otherwise the box is sampled, since a country's box reaches far
+        // past its coast and a bounding box is not a coastline. The cheap
+        // sweep is for sifting a seaful of candidate spots; the dense one is
+        // for the name itself, once it has been drawn.
+        function partCrossesBox(p, l, t, r, bo, dense) {
+            const pts = p.pts;
+            for (let i = 0; i < pts.length; i++) {
+                const q = pts[i];
+                if (q[0] >= l && q[0] <= r && q[1] >= t && q[1] <= bo) return true;
+            }
+            const w = r - l, h = bo - t;
+            const nx = Math.max(2, Math.min(dense ? 26 : 13, Math.ceil(w / (dense ? 1.4 : 3))));
+            const ny = Math.max(2, Math.min(dense ? 18 : 9, Math.ceil(h / (dense ? 1.4 : 3))));
+            for (let j = 0; j < ny; j++) {
+                const y = t + (h * j) / (ny - 1);
+                for (let i = 0; i < nx; i++) {
+                    if (d3.polygonContains(pts, [l + (w * i) / (nx - 1), y])) return true;
+                }
+            }
+            return false;
+        }
+
+        // Does any land at all — this place's included — stand beneath the
+        // box? A caption set beside a speck of an island may not rest on the
+        // island, let alone on the country next door.
+        function boxTouchesLand(box, budget, dense) {
+            const pad = padForBox(box);
+            const l = box.x - pad, t = box.y - pad;
+            const r = box.x + box.w + pad, bo = box.y + box.h + pad;
+            const list = partsInBox(l, t, r, bo);
+            for (let i = 0; i < list.length; i++) {
+                const p = list[i];
+                if (p.box[0] > r || p.box[2] < l || p.box[1] > bo || p.box[3] < t) continue;
+                budget.left -= dense ? 150 : 30;
+                if (partCrossesBox(p, l, t, r, bo, dense)) return true;
+            }
+            return false;
+        }
+
+        // How far a box stands from the place it is captioning: 0 while it
+        // still reaches over the place's own ground. A name set beside a
+        // country has to stay beside it — a caption a country's width away
+        // is a caption about nobody.
+        function gapToAnchor(box, anchor) {
+            const ax0 = anchor.x0, ay0 = anchor.y0;
+            const ax1 = anchor.x0 + anchor.w, ay1 = anchor.y0 + anchor.h;
+            const dx = Math.max(ax0 - (box.x + box.w), box.x - ax1, 0);
+            const dy = Math.max(ay0 - (box.y + box.h), box.y - ay1, 0);
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        // Open water near a place, nearest the place first: where its caption
+        // may stand. The sea immediately round a small island is ruled out
+        // with the caption's own box in hand — a name far wider than the
+        // place it names has to be set beyond the name's own width before it
+        // is clear of the place, and of every island or neighbour around it.
+        // Only the spots that pass are returned, still nearest first.
+        function waterSpots(anchor, reach, slack, box, budget) {
+            const cx = anchor.cx, cy = anchor.cy;
+            const step = Math.max(1, Math.min(3, (2 * reach) / 64));
+            const far = slack + Math.max(box.w, box.h);
+            const all = [];
+            const x0 = cx - reach, x1 = cx + reach, y0 = cy - reach, y1 = cy + reach;
+            const nx = Math.max(3, Math.min(72, Math.ceil((x1 - x0) / step) + 1));
+            const ny = Math.max(3, Math.min(72, Math.ceil((y1 - y0) / step) + 1));
+            for (let j = 0; j < ny; j++) {
+                const y = y0 + (y1 - y0) * (j + 0.5) / ny;
+                for (let i = 0; i < nx; i++) {
+                    const x = x0 + (x1 - x0) * (i + 0.5) / nx;
+                    const dx = x - cx, dy = y - cy;
+                    if (dx * dx + dy * dy > reach * reach) continue;
+                    if ((budget.left -= 1) <= 0) return all.sort((a, b) => a.d - b.d);
+                    if (landAt(x, y)) continue;
+                    all.push({ x: x, y: y, centre: true,
+                               d: gapToAnchor({ x: x, y: y, w: 0, h: 0 }, anchor) });
+                }
+            }
+            all.sort((a, b) => a.d - b.d);
+
+            const out = [];
+            const hw = box.w / 2, hh = box.h / 2;
+            for (let i = 0; i < all.length && out.length < 40; i++) {
+                const p = all[i];
+                if (p.d > far || budget.left <= 0) break;
+                if (boxTouchesLand({ x: p.x - hw, y: p.y - hh, w: box.w, h: box.h },
+                                   budget)) continue;
+                out.push(p);
+            }
+            return out;
+        }
+
+        // A name holds its size on the paper however far the chart is
+        // magnified: it follows the zoom only up to LABEL_SCREEN_CAP screen
+        // pixels, then stops — zooming into the Vatican must never leave a
+        // banner where a name used to be. The place is measured at rest and
+        // scaled here, so every box reserved for a neighbour stays true.
+        function currentZoomK() {
+            return (svg && typeof d3 !== "undefined") ? d3.zoomTransform(svg.node()).k : 1;
+        }
+
+        // A name that stands on open water is naming a place it is not
+        // standing on, so it has to stay visibly tied to that place. The tie
+        // is a point of the place's own ground, kept with the name: whatever
+        // happens to the chart, the name hangs off it. Left alone, the chart's
+        // magnification would stretch the tie along with everything else while
+        // the name itself holds its size on the paper — a caption four pixels
+        // off Mauritius would end up a sea away from Mauritius at full zoom.
+        // So the tie is let out only as far as the name follows the chart: it
+        // grows while the name grows, and then stops, so the name always sits
+        // at the remove from the coast it was set at.
+        function hangMapLabel(node, at) {
+            if (!node) return;
+            node._tiedTo = at && at.ref ? at.ref : null;
+            node._tiedAt = at && at.ref ? { x: at.x, y: at.y } : null;
+        }
+
+        function scaleMapLabel(node, k) {
+            if (!node || !node.dataset) return;
+            const base = +node.dataset.baseSize;
+            if (!(base > 0)) return;
+            const kk = k > 0 ? k : 1;
+            const fs = Math.min(base * kk, LABEL_SCREEN_CAP) / kk;
+            const baseStroke = +node.dataset.baseStroke || Math.max(0.4, base * 0.3);
+            const stroke = Math.min(baseStroke * kk, LABEL_SCREEN_CAP * 0.3) / kk;
+            const count = node.querySelectorAll("tspan").length;
+            const sel = d3.select(node)
+                .style("font-size", fs + "px")
+                .style("stroke-width", stroke + "px");
+            const tie = node._tiedTo, at = node._tiedAt;
+            if (tie && at) {
+                // The name and its gap from the ground are scaled as one, so
+                // the name reads at whatever remove it was set at rest
+                const s = Math.min(base * kk, LABEL_SCREEN_CAP) / (base * kk);
+                const x = tie.x + (at.x - tie.x) * s;
+                const y = tie.y + (at.y - tie.y) * s;
+                sel.attr("x", x).attr("y", y)
+                    .selectAll("tspan").attr("x", x);
+            }
+            sel.selectAll("tspan")
+                .each(function (d, i) {
+                    d3.select(this).attr("dy",
+                        i === 0 ? -((count - 1) / 2) * 1.15 * fs : 1.15 * fs);
+                });
+        }
+
+        function scaleMapLabels(k) {
+            if (!gMap) return;
+            gMap.selectAll(".map-label").each(function () { scaleMapLabel(this, k); });
+        }
+
+        // Find a spot for one label, in the order the chart would rather have
+        // it — and never standing on somebody else's country:
+        //   1. inside its own land, at a size worth reading;
+        //   2. a caption on open water beside the place, for a place too small
+        //      or too thin to hold its own name — clear of every coastline,
+        //      its own islands included, and never further from the place than
+        //      its own name is wide;
+        //   3. inside its own land at whatever size still fits, for a place
+        //      with no water to spare its name.
+        // A place with no room at all goes unlabelled: the hover tooltip
+        // still tells the story, and a name drawn on a neighbour is no name.
         function placeLabel(feature, fid, text) {
             if (!gMap || !feature || !text || !fid || fid === "undefined") return;
             if (labelBoxes.has(fid)) return;
@@ -3739,12 +4025,17 @@
             };
 
             const makeLabelNode = (ax, ay, v, withId) => {
+                const stroke = Math.max(0.4, v.fs * 0.3);
                 const n = gMap.append("text")
                     .attr("class", "map-label")
                     .attr("x", ax)
                     .attr("y", ay)
+                    // The size it was set at, kept for the zoom: names follow
+                    // the chart only so far, then hold their size on the paper
+                    .attr("data-base-size", v.fs)
+                    .attr("data-base-stroke", stroke)
                     .style("font-size", v.fs + "px")
-                    .style("stroke-width", Math.max(0.4, v.fs * 0.3) + "px");
+                    .style("stroke-width", stroke + "px");
                 if (withId) n.attr("data-label-id", fid).attr("data-full-text", text);
                 v.lines.forEach((ln, i) => {
                     n.append("tspan")
@@ -3767,95 +4058,67 @@
                 const box = { x: cached.x + cached.rel.x, y: cached.y + cached.rel.y,
                               w: cached.rel.w, h: cached.rel.h };
                 if (!labelBoxHits(box, padForBox(box))) {
-                    makeLabelNode(cached.x, cached.y, cached.v, true);
+                    const node = makeLabelNode(cached.x, cached.y, cached.v, true);
                     labelBoxes.set(fid, box);
+                    hangMapLabel(node.node(), cached);
+                    scaleMapLabel(node.node(), currentZoomK());
                     return;
                 }
                 // A neighbour has moved into that spot since — search again
             }
 
-            // An island cluster is named inside the ring drawn round it and
-            // never on the islands that ring gathers; every other place is
-            // named on the land it is drawn from.
-            const ring = ownRingAnchor(fid, feature);
-            const anchor = ring ? ringAnchor(ring) : largestPartAnchor(feature);
+            const anchor = largestPartAnchor(feature);
             if (!anchor) return;
             const coast = makeInsideTest(feature, countryPathFor(fid, feature));
-            const inside = ring
-                ? ((x, y) => d3.polygonContains(ring.pts, [x, y]))
-                : coast;
-            const maxFont = ring ? ISLAND_LABEL_MAX_FONT : LABEL_MAX_FONT;
-
-            // The room a cluster's name wants is open water: spots ranked
-            // by how far they stand from the nearest island as well as from
-            // the border, so the name settles into the sea the ring
-            // gathers instead of running over the land it points at.
-            let probe = probeRegion(feature,
-                ring ? ((x, y) => inside(x, y) && !coast(x, y)) : inside, anchor);
-            // A chain so thin the open water falls between its sample
-            // points: the cluster is still where its name belongs, so take
-            // the whole interior of the ring and let the island test rule
-            // the spots out instead
-            if (ring && probe.pts.length < 3) probe = probeRegion(feature, inside, anchor);
-            if (ring && probe.pts.length < 3) {
-                const b = ring.box;
-                probe = probeRegion(feature,
-                    (x, y) => x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3], anchor);
-            }
-            // A cluster is named from the middle of the group first — that is
-            // where its name belongs — and only looks further afield if
-            // something else is already standing there. The middle borrows
-            // the room of the best real spot, so nothing downstream mistakes
-            // it for a place with infinite depth.
-            const captionRoom = probe.pts.length ? probe.pts[0].edt : 0;
-            if (ring) {
-                const roomiest = captionRoom;
-                probe.pts.unshift({ x: anchor.cx, y: anchor.cy,
-                                    edt: roomiest > 0 ? roomiest : Infinity });
-                // The border has already found where the name goes, and
-                // checked the place with the label's own rules — so that
-                // place is tried first, and never ruled out for want of
-                // depth it does not need to have
-                if (ring.nameSpot) {
-                    probe.pts.unshift({ x: ring.nameSpot.x, y: ring.nameSpot.y,
-                                        edt: Infinity, centre: true });
-                }
-            }
+            const probe = probeRegion(feature, coast, anchor);
             const budget = { left: LABEL_TEST_BUDGET };
-            // Nothing may come between a cluster's name and its islands
-            const clearOfLand = ring
-                ? (box, dense) => boxClearOfIslands(coast, ring.islandPts, box, budget, dense)
-                : null;
 
             // Every sensible way of breaking the name, at every size it could
-            // plausibly be drawn — the largest type first. Even a speck gets
-            // one try at the smallest size before it is captioned.
-            const variants = [];
-            wrapCandidatesFor(text).forEach(lines => {
-                const m = measureLabelLines(text, lines);
-                let top = Math.min(maxFont,
-                    (anchor.w * 0.94 / m.w) * 100,
-                    (anchor.h * 0.94 / m.h) * 100);
-                // A cluster's name is never allowed to dwindle to a speck: a
-                // chain of islands is narrower than any word
-                if (ring && top > 0 && top < ISLAND_LABEL_FLOOR) top = ISLAND_LABEL_FLOOR;
-                if (!(top > 0)) top = LABEL_MIN_FONT;
-                let fs = Math.max(top, LABEL_MIN_FONT), guard = 0;
-                while (fs >= LABEL_MIN_FONT && guard++ < 12) {
-                    variants.push({ lines: lines, m: m, fs: fs });
-                    fs *= 0.74;
-                }
-                // The floor is worth an exact try: a border grows to hold
-                // precisely this size, and the ladder's steps would stride
-                // straight past it and settle for a smaller name
-                if (ring && top >= ISLAND_LABEL_FLOOR &&
-                    !variants.some(v => v.lines === lines &&
-                                        Math.abs(v.fs - ISLAND_LABEL_FLOOR) < 0.01)) {
-                    variants.push({ lines: lines, m: m, fs: ISLAND_LABEL_FLOOR });
-                }
-            });
-            variants.sort((a, b) => b.fs - a.fs);
-            if (!variants.length) return;
+            // plausibly be drawn inside this place's own land — largest first.
+            // `topOf` is where the ladder starts: a name the region cannot
+            // hold even arithmetically is never ladder'd down to nothing.
+            const insideVariants = (topOf, bot) => {
+                const out = [];
+                wrapCandidatesFor(text).forEach(lines => {
+                    const m = measureLabelLines(text, lines);
+                    const fit = Math.min(LABEL_MAX_FONT,
+                                         (anchor.w * 0.94 / m.w) * 100,
+                                         (anchor.h * 0.94 / m.h) * 100);
+                    const top = topOf(fit);
+                    if (!(top >= bot)) return;
+                    let fs = top, guard = 0;
+                    while (fs >= bot && guard++ < 16) {
+                        out.push({ lines: lines, m: m, fs: fs });
+                        fs *= 0.74;
+                    }
+                    // The floor is worth an exact try: the ladder's steps
+                    // would stride straight past it and settle lower
+                    if (!out.some(v => v.lines === lines && Math.abs(v.fs - bot) < 0.01)) {
+                        out.push({ lines: lines, m: m, fs: bot });
+                    }
+                });
+                out.sort((a, b) => b.fs - a.fs);
+                return out;
+            };
+
+            // 1 — inside its own land, at a size worth reading
+            const phaseA = insideVariants(f => (f >= LABEL_INSIDE_MIN ? f : -1),
+                                          LABEL_INSIDE_MIN);
+            // 3 — inside its own land, however small it has to be
+            const phaseC = insideVariants(f => (f >= LABEL_INSIDE_MIN
+                                                ? LABEL_INSIDE_MIN * 0.74 : f),
+                                          LABEL_MIN_FONT);
+            // 2 — a caption beside the place, for a name that will not fit
+            // inside it: about as big as the place it names is small (Mauritius
+            // and the like come out near four pixels, the mark these are set
+            // by), and one line rather than a stack
+            const captionFs = Math.min(LABEL_CAPTION_MAX, Math.max(LABEL_CAPTION_MIN,
+                Math.min(anchor.w, anchor.h) * 1.3 + 1.2));
+            const captionSlack = captionFs;   // how far from the place it may stray
+            const phaseB = wrapCandidatesFor(text).map(lines => ({
+                lines: lines, m: measureLabelLines(text, lines), fs: captionFs
+            }));
+            phaseB.sort((a, b) => a.lines.length - b.lines.length);
 
             // Draw the name so its glyphs land exactly on the box planned for
             // them: SVG text does not scale exactly (small type snaps
@@ -3881,49 +4144,75 @@
 
             let placed = null;
 
-            // A spot the border found is where the box itself goes; every
-            // other spot is where the name is anchored and the box follows
-            // along. This maps one onto the other for the size in hand.
-            const anchorFor = (p, rel) => p.centre
-                ? { x: p.x - rel.x - rel.w / 2, y: p.y - rel.y - rel.h / 2 }
-                : p;
+            // A spot from the probe is where the name is anchored and its box
+            // follows along; a spot beside the place is where the box itself
+            // goes. This maps one onto the other for the size in hand.
+            // The name stands centred on the spot it is handed — a deep inland
+            // point, or a place out on the water — so the box reaches as far
+            // each way as it has to and the room measured at the spot is the
+            // room the name actually uses. (Anchoring the text origin there
+            // instead would throw the whole name off to the right of the room
+            // it was measured against, and every wide name would lean out of
+            // the country it belongs to.)
+            const anchorFor = (p, rel) => ({ x: p.x - rel.x - rel.w / 2,
+                                             y: p.y - rel.y - rel.h / 2 });
 
-            // The whole search runs on the planned box alone — arithmetic,
-            // no DOM — so a name costs a handful of measurements rather than
-            // a hundred. Only a spot that has earned it is ever drawn.
-            // A cluster's name has to lie wholly within its border and clear
-            // of the islands that border gathers; any other place earns its
-            // spot the old way, by fitting wholly on its own land.
-            const fits = (p, rel) => {
-                const box = { x: p.x + rel.x, y: p.y + rel.y, w: rel.w, h: rel.h };
-                if (labelBoxHits(box, padForBox(box))) return false;
-                if (budget.left <= 0) return false;
-                // Cheaper than asking the polygon: a box that overhangs the
-                // ring's own reach can never be inside it
-                if (ring && (box.x < ring.box[0] - 0.5 || box.y < ring.box[1] - 0.5 ||
-                             box.x + box.w > ring.box[2] + 0.5 ||
-                             box.y + box.h > ring.box[3] + 0.5)) return false;
-                // A ring is one closed line, so it can be asked directly —
-                // and asking directly costs nothing, where a country's coast
-                // has to be sampled point by point
-                if (ring ? !boxInLoop(ring.pts, box)
-                         : !boxInsideRegion(inside, box, budget)) return false;
-                if (clearOfLand && !clearOfLand(box, false)) return false;
-                return true;
+            const boxAt = (p, rel) => ({ x: p.x + rel.x, y: p.y + rel.y,
+                                         w: rel.w, h: rel.h });
+
+            // Every search runs on the planned box alone — arithmetic, no DOM
+            // — so a name costs a handful of measurements rather than a
+            // hundred; only a spot that has earned it is ever drawn, and the
+            // drawn rectangle is what actually counts.
+            const inside = {
+                fits: (p, rel) => {
+                    const box = boxAt(p, rel);
+                    if (labelBoxHits(box, padForBox(box))) return false;
+                    if (budget.left <= 0) return false;
+                    return boxInsideRegion(coast, box, budget);
+                },
+                holds: box => boxInsideRegion(coast, box, budget, true)
             };
 
-            const commit = (p, v) => {
+            const beside = {
+                fits: (p, rel) => {
+                    const box = boxAt(p, rel);
+                    if (labelBoxHits(box, padForBox(box))) return false;
+                    if (budget.left <= 0) return false;
+                    if (gapToAnchor(box, anchor) > captionSlack) return false;
+                    return !boxTouchesLand(box, budget, false);
+                },
+                holds: box => gapToAnchor(box, anchor) <= captionSlack &&
+                              !boxTouchesLand(box, budget, true)
+            };
+
+            // Where a name out on the water is hung from: the nearest point
+            // of this place's own ground. The caption is tied to that point
+            // for good, so that magnifying the chart cannot stretch the name
+            // away from the place it is naming.
+            const refFor = box => {
+                let best = null, bd = Infinity;
+                for (let i = 0; i < probe.pts.length; i++) {
+                    const p = probe.pts[i];
+                    const dx = Math.max(box.x - p.x, p.x - (box.x + box.w), 0);
+                    const dy = Math.max(box.y - p.y, p.y - (box.y + box.h), 0);
+                    const d = dx * dx + dy * dy;
+                    if (d < bd) { bd = d; best = { x: p.x, y: p.y }; }
+                }
+                return best;
+            };
+
+            const commit = (p, v, phase) => {
                 const n = draw(p.x, p.y, v);
                 const real = realBox(n);
                 const ok = real && !labelBoxHits(real, padForBox(real)) &&
-                           (ring ? boxInLoop(ring.pts, real)
-                                 : boxInsideRegion(inside, real, budget, true)) &&
-                           (!clearOfLand || clearOfLand(real, true));
+                           phase.holds(real);
                 if (ok) {
                     const at = +n.attr("x"), ay = +n.attr("y");
                     placed = {
                         node: n, box: real,
                         at: { x: at, y: ay, v: v,
+                              ref: phase === beside ? refFor(real) : null,
                               rel: { x: real.x - at, y: real.y - ay, w: real.w, h: real.h } }
                     };
                     return true;
@@ -3932,79 +4221,60 @@
                 return false;
             };
 
-            for (const v of variants) {
-                const rel = relFor(v);
-                const need = Math.min(rel.w, rel.h) / 2;
-                let tried = 0;
-                for (const p of probe.pts) {               // roomiest spot first
-                    if (p.edt < need) break;               // nothing deeper remains
-                    if (++tried > LABEL_SPOT_LIMIT) break; // the best rooms are first
-                    const spot = anchorFor(p, rel);
-                    if (!fits(spot, rel)) continue;
-                    if (commit(spot, v)) break;
+            // One pass: every size worth trying, at every room worth taking
+            const run = (variants, spots, phase) => {
+                for (const v of variants) {
+                    const rel = relFor(v);
+                    const need = Math.min(rel.w, rel.h) / 2;
+                    let tried = 0;
+                    for (const p of spots) {                   // best room first
+                        if (p.edt !== undefined && p.edt < need) break;
+                        if (++tried > LABEL_SPOT_LIMIT) break;
+                        const spot = anchorFor(p, rel);
+                        if (!phase.fits(spot, rel)) continue;
+                        if (commit(spot, v, phase)) return true;
+                        if (budget.left <= 0) break;
+                    }
                     if (budget.left <= 0) break;
                 }
-                if (placed || budget.left <= 0) break;
-            }
+                return false;
+            };
 
-            if (!placed) {
-                // The fallback deserves its own allowance: a stalled attempt
-                // must not starve the caption that follows it
-                budget.left = LABEL_TEST_BUDGET;
-                const roomiest = captionRoom;
-                const smallest = variants[variants.length - 1];
-                const sRel = relFor(smallest);
-                const canHold = roomiest >= Math.min(sRel.w, sRel.h) / 2;
-
-                if (!canHold || labelRescueUsed.has(fid)) {
-                    // Either the region is far too small to hold its name at
-                    // any magnification (type and land grow together, so
-                    // zooming never helps) or two full passes have come up
-                    // empty — caption it on its own spot, as small as legible.
-                    const step = Math.min(6, Math.max(1, Math.min(anchor.w, anchor.h)));
-                    const spokes = [];
-                    [1, 2, 3].forEach(k => {
-                        for (let a = 0; a < 8; a++) {
-                            spokes.push({
-                                x: anchor.cx + step * k * Math.cos(a * Math.PI / 4),
-                                y: anchor.cy + step * k * Math.sin(a * Math.PI / 4)
-                            });
-                        }
-                    });
-                    const order = [{ x: anchor.cx, y: anchor.cy }]
-                        .concat(probe.pts.slice(0, 10), spokes);
-                    const caption = variants.filter(v => v.fs <= 1.2);
-                    for (const v of (caption.length ? caption : [smallest])) {
-                        const rel = relFor(v);
-                        for (const p of order) {
-                            if (budget.left <= 0) break;
-                            const spot = anchorFor(p, rel);
-                            if (!fits(spot, rel)) continue;
-                            if (commit(spot, v)) break;
-                        }
-                        if (placed) break;
+            // 1 — on its own land, at a size worth reading
+            if (!(phaseA.length && run(phaseA, probe.pts, inside))) {
+                // 2 — beside it on open water: a name too big for the place
+                // goes in the sea next door, never on the place next door.
+                // Sifting a seaful of spots costs more than a whole pass
+                // across a country, so the caption is given its own allowance
+                budget.left = LABEL_CAPTION_BUDGET;
+                const capRel = relFor(phaseB[0]);
+                const reach = Math.max(anchor.w, anchor.h) + captionFs * 2 +
+                              Math.max(capRel.w, capRel.h);
+                const water = waterSpots(anchor, reach, captionFs,
+                                         { w: capRel.w, h: capRel.h }, budget);
+                if (!water.length || !run(phaseB, water, beside)) {
+                    // 3 — on its own land, however small it has to be
+                    budget.left = LABEL_TEST_BUDGET;
+                    if (!(phaseC.length && run(phaseC, probe.pts, inside)) &&
+                        !labelRescueUsed.has(fid) && probe.pts.length > 3) {
+                        // The room is there but the neighbours have taken it —
+                        // lay every label out again in one calm pass and try
+                        // once more inside the new arrangement
+                        labelRescueUsed.add(fid);
+                        relayoutMapLabels({ fid: fid, text: text });
+                        return;
                     }
-                } else {
-                    // The room is there but the neighbours have taken it —
-                    // lay every label out again in one calm pass and try once
-                    // more inside the new arrangement
-                    labelRescueUsed.add(fid);
-                    relayoutMapLabels({ fid: fid, text: text });
-                    return;
                 }
             }
             if (!placed) return;
 
             labelBoxes.set(fid, placed.box);
             if (placed.at) labelPlacementCache.set(cacheKey, placed.at);
-        }
-
-        // The middle of an island cluster, and how far it reaches: the anchor
-        // its name is set from and the size that name may grow to
-        function ringAnchor(ring) {
-            const w = ring.box[2] - ring.box[0], h = ring.box[3] - ring.box[1];
-            return { area: w * h, cx: ring.cx, cy: ring.cy, w: w, h: h,
-                     x0: ring.box[0], y0: ring.box[1] };
+            // A name standing off the water stays tied to the place it names
+            hangMapLabel(placed.node.node(), placed.at);
+            // …and hold it to its size on the paper, however far the chart
+            // has been magnified by now
+            scaleMapLabel(placed.node.node(), currentZoomK());
         }
 
         // Re-place every label from scratch — used after a resize, when the
@@ -4182,8 +4452,8 @@
                 labelStatus.className = "text-moss-600";
             }
             document.body.classList.add('study-mode');
-            const banner = document.getElementById('study-banner');
-            if (banner) banner.classList.remove('hidden');
+            // No card about it either: the header already says which mode is
+            // in force, and the chart wants every pixel at the top
             setModeIndicator('study');
             renderSelectionLabels();
             updateStatsUI(); // the footer counts the set, not a test of it
@@ -4194,8 +4464,6 @@
             labelJob++;
             state.studyMode = false;
             document.body.classList.remove('study-mode');
-            const banner = document.getElementById('study-banner');
-            if (banner) banner.classList.add('hidden');
             setModeIndicator('test');
             if (silent || !gMap) return;
 
@@ -4241,9 +4509,21 @@
         }
 
         // --- what's new -----------------------------------------------------
-        const APP_VERSION = 'v1.4.0';
+        const APP_VERSION = 'v1.5.0';
 
         const CHANGELOG = [
+            {
+                version: 'v1.5.0',
+                notes: [
+                    'Pointing at any part of a country washes every piece of it hot pink at once — the mainland and its islands together — while the ring round a scattered group keeps out of the light entirely, so a group of islands has no box ruled round it.',
+                    'A name set out on the water hangs from the coast it names: magnifying the chart grows the name and its gap as one and then lets them stop, so a caption no longer ends up stranded in mid-ocean while its island slides away.',
+                    'Names are sized by the place rather than a fixed ruler, and never stand on another country\'s land — every box is checked against the coastline before it is drawn.',
+                    'The chart magnifies three hundred times over, and its borders thin to keep their weight as you approach, so Vatican City, San Marino and Monaco grow big enough to be pointed at.',
+                    'The banner across the head of Study mode is gone: the chart keeps every pixel it was asking for.',
+                    'The mini-map carries a zoom slider at its foot — a magnifier at either end, the chart\'s view sliding between them — and a pinch on the inset still moves the chart itself.',
+                    'Mayotte stays out of Comoros\'s answer: a territory under another country\'s paint is never swept in with the islands beside it.'
+                ]
+            },
             {
                 version: 'v1.4.0',
                 notes: [
@@ -4443,7 +4723,7 @@
                 const targetFeature = findTargetFeature(state.currentTarget.id);
 
                 if (targetFeature) {
-                    centreOnFeature(targetFeature, { duration: 900, maxScale: 10 });
+                    centreOnFeature(targetFeature, { duration: 900 });
                     hintText.innerText = "Map auto-zoomed to target location area!";
                 }
             }
