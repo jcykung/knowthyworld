@@ -395,24 +395,20 @@
            under French paint is never lit by the Comoros beside it.
            `transparent` rather than `none` is what lets the whole shape
            answer the pointer. */
-        .map-country.map-island-line {
+        /* An island cluster's gather remains purely an invisible hit area
+           for clicks, never painting or leaking any color onto the water
+           outside the land border when guessed or revealed. */
+        .map-country.map-island-line,
+        .map-country.map-island-line.guessed-correct,
+        .map-country.map-island-line.guessed-1st,
+        .map-country.map-island-line.guessed-2nd,
+        .map-country.map-island-line.guessed-3rd,
+        .map-country.map-island-line.guessed-failed,
+        .map-country.map-island-line.reveal-flash {
             fill: transparent !important;
             stroke: none !important;
             pointer-events: all;
         }
-
-        /* Once the place is named, the verdict washes over the whole cluster
-           at the same transparency — the islands beneath stay readable
-           through it, and so does any foreign island the gather happens to
-           reach, since every country paints over it. Declared after the
-           plain guesses so these tint the gather rather than being painted
-           over by them. */
-        .map-country.map-island-line.guessed-correct,
-        .map-country.map-island-line.guessed-1st { fill: rgba(124, 154, 85, 0.45) !important; }
-        .map-country.map-island-line.guessed-2nd { fill: rgba(216, 176, 74, 0.45) !important; }
-        .map-country.map-island-line.guessed-3rd { fill: rgba(194, 112, 58, 0.45) !important; }
-        .map-country.map-island-line.guessed-failed { fill: rgba(180, 71, 47, 0.40) !important; }
-        .map-country.map-island-line.reveal-flash { fill: rgba(63, 214, 232, 0.50) !important; }
 
         /* The two ways to play. Whichever is in force is filled in with ink,
            so the mode is read off the header at a glance. */
@@ -2216,12 +2212,27 @@
         // rather than a triangle ruled across empty sea.
         const ISLAND_RING_MAX_CLUSTER_REL_AREA = 3e-3;
 
+        // Only true island nations, archipelagos, or oceanic island states
+        // need click hit rims in the ocean — continental/mainland countries
+        // (like Montenegro, Palestine, Slovenia, Belize, Gambia, etc.) have
+        // real borders and must never generate oceanic rims.
+        const ISLAND_FIDS = new Set([
+            "028", "044", "048", "052", "132", "174", "192", "196",
+            "212", "214", "242", "308", "332", "352", "372", "388",
+            "392", "296", "450", "462", "470", "584", "480", "583",
+            "520", "554", "585", "598", "608", "659", "662", "670",
+            "882", "678", "690", "702", "090", "144", "158", "776",
+            "780", "798", "826", "548", "US-HI", "CA-PE"
+        ]);
+
         function islandRingFeatures(features) {
             const sphereArea = pathGenerator.area({ type: "Sphere" }) || 1;
             return features.filter(f => {
+                const fid = featureFid(f);
+                if (!ISLAND_FIDS.has(fid)) return false;
                 const a = pathGenerator.area(f);
                 return a > 0 && a / sphereArea < ISLAND_RING_MAX_REL_AREA
-                    && isQuizRegion(featureFid(f));
+                    && isQuizRegion(fid);
             });
         }
 
