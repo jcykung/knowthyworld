@@ -211,6 +211,91 @@
             100% { fill: #8a2f1e; }
         }
 
+        /* Canadian Capital City Markers on Map */
+        .map-city-marker {
+            cursor: pointer;
+            transition: transform 0.15s ease;
+        }
+        .map-city-marker .city-hit {
+            fill: transparent;
+            pointer-events: all;
+        }
+        .map-city-marker .city-outer {
+            fill: #fdf8eb;
+            stroke: #7a5f3a;
+            stroke-width: 1.2px;
+            transition: fill 0.2s ease, stroke 0.2s ease, r 0.2s ease;
+        }
+        .map-city-marker .city-inner {
+            fill: #7a5f3a;
+            transition: fill 0.2s ease;
+        }
+        .map-city-marker.is-national .city-outer {
+            stroke-width: 1.6px;
+            stroke: #8b2500;
+        }
+        .map-city-marker.is-national .city-inner {
+            fill: #8b2500;
+        }
+        .map-city-marker:hover .city-outer,
+        .map-city-marker.is-hovered .city-outer {
+            fill: #ff1493 !important;
+            stroke: #a2005a !important;
+        }
+        .map-city-marker:hover .city-inner,
+        .map-city-marker.is-hovered .city-inner {
+            fill: #ffffff !important;
+        }
+        .map-city-marker.guessed-1st .city-outer {
+            fill: #7c9a55 !important;
+            stroke: #4d6332 !important;
+        }
+        .map-city-marker.guessed-1st .city-inner {
+            fill: #fdf8eb !important;
+        }
+        .map-city-marker.guessed-2nd .city-outer {
+            fill: #d8b04a !important;
+            stroke: #8f6c1f !important;
+        }
+        .map-city-marker.guessed-2nd .city-inner {
+            fill: #fdf8eb !important;
+        }
+        .map-city-marker.guessed-3rd .city-outer {
+            fill: #c2703a !important;
+            stroke: #8a4822 !important;
+        }
+        .map-city-marker.guessed-3rd .city-inner {
+            fill: #fdf8eb !important;
+        }
+        .map-city-marker.guessed-failed .city-outer {
+            fill: #b4472f !important;
+            stroke: #7d2b1c !important;
+            animation: pulse-failed 1s infinite alternate;
+        }
+        .map-city-marker.guessed-failed .city-inner {
+            fill: #fdf8eb !important;
+        }
+        .map-city-marker.reveal-flash .city-outer {
+            fill: #00ffff !important;
+            stroke: #008b8b !important;
+        }
+        .map-city-marker.guessed-wrong .city-outer {
+            fill: #b4472f !important;
+            stroke: #7d2b1c !important;
+        }
+        .map-city-label {
+            font-size: 6.5px;
+            font-weight: 700;
+            fill: #221a0f;
+            stroke: #faf3e0;
+            stroke-width: 1.8px;
+            paint-order: stroke fill;
+            pointer-events: none;
+            dominant-baseline: central;
+            font-family: 'EB Garamond', Georgia, serif;
+            letter-spacing: 0.02em;
+        }
+
         /* On-map text labels: ink on a paper halo, sized per region by JS
            so the name stays inside small countries instead of spilling out */
         .map-label {
@@ -946,6 +1031,15 @@
                     </div>
                 </div>
 
+                <!-- Include Capital Cities of Canada Toggle -->
+                <div class="glass-card p-4 rounded-xl border border-parchment-600 flex items-start gap-3 cursor-pointer hover:border-brass-500/40 transition-all" onclick="toggleCanadaCapitalsCheckbox(event)">
+                    <input type="checkbox" id="chk-canada-capitals" class="mt-1 w-4 h-4 rounded text-brass-700 bg-parchment-200 border-parchment-700 focus:ring-brass-500 focus:ring-offset-parchment-100">
+                    <div class="flex-1">
+                        <label class="text-sm font-semibold text-ink-900 block cursor-pointer">Include Capital Cities of Canada 🇨🇦</label>
+                        <p class="text-xs text-ink-500 mt-0.5">Adds Ottawa and the 13 provincial &amp; territorial capitals as individual target questions. Shows provincial &amp; territorial borders on the map. Canada itself is left out of the quiz to avoid conflict. Off by default.</p>
+                    </div>
+                </div>
+
                 <!-- Include U.S. States Toggle -->
                 <div class="glass-card p-4 rounded-xl border border-parchment-600 flex items-start gap-3 cursor-pointer hover:border-brass-500/40 transition-all" onclick="toggleUSCheckbox(event)">
                     <input type="checkbox" id="chk-us-states" class="mt-1 w-4 h-4 rounded text-brass-700 bg-parchment-200 border-parchment-700 focus:ring-brass-500 focus:ring-offset-parchment-100">
@@ -1186,6 +1280,7 @@
             soundEnabled: true,
             advancedMode: false,
             includeCanadaProvinces: false, // the round opens with countries only
+            includeCanadaCapitals: false, // capital cities of Canada, off by default
             includeUSStates: false,
             showLabels: true, // Show area names on map after guess/reveal
             studyMode: false, // Every name in the selection, laid on the chart
@@ -1448,6 +1543,24 @@
             "CA-NU": { name: "Nunavut", type: "Territory", capital: "Iqaluit", continent: "NORTH_AMERICA", shortName: "NU" }
         };
 
+        // CAPITAL CITIES OF CANADA METADATA (Ottawa + 13 Provincial & Territorial Capitals)
+        const CANADA_CAPITALS = {
+            "CA-CAP-OTT": { name: "Ottawa", province: "Canada", provinceCode: "124", type: "National Capital", continent: "NORTH_AMERICA", coordinates: [-75.6972, 45.4215], isNational: true },
+            "CA-CAP-EDM": { name: "Edmonton", province: "Alberta", provinceCode: "CA-AB", type: "Provincial Capital", continent: "NORTH_AMERICA", coordinates: [-113.4909, 53.5444] },
+            "CA-CAP-VIC": { name: "Victoria", province: "British Columbia", provinceCode: "CA-BC", type: "Provincial Capital", continent: "NORTH_AMERICA", coordinates: [-123.3656, 48.4284] },
+            "CA-CAP-WIN": { name: "Winnipeg", province: "Manitoba", provinceCode: "CA-MB", type: "Provincial Capital", continent: "NORTH_AMERICA", coordinates: [-97.1384, 49.8951] },
+            "CA-CAP-FRE": { name: "Fredericton", province: "New Brunswick", provinceCode: "CA-NB", type: "Provincial Capital", continent: "NORTH_AMERICA", coordinates: [-66.6431, 45.9636] },
+            "CA-CAP-STJ": { name: "St. John's", province: "Newfoundland and Labrador", provinceCode: "CA-NL", type: "Provincial Capital", continent: "NORTH_AMERICA", coordinates: [-52.7126, 47.5615] },
+            "CA-CAP-HAL": { name: "Halifax", province: "Nova Scotia", provinceCode: "CA-NS", type: "Provincial Capital", continent: "NORTH_AMERICA", coordinates: [-63.5752, 44.6488] },
+            "CA-CAP-TOR": { name: "Toronto", province: "Ontario", provinceCode: "CA-ON", type: "Provincial Capital", continent: "NORTH_AMERICA", coordinates: [-79.3832, 43.6532] },
+            "CA-CAP-CHA": { name: "Charlottetown", province: "Prince Edward Island", provinceCode: "CA-PE", type: "Provincial Capital", continent: "NORTH_AMERICA", coordinates: [-63.1311, 46.2382] },
+            "CA-CAP-QBC": { name: "Quebec City", province: "Quebec", provinceCode: "CA-QC", type: "Provincial Capital", continent: "NORTH_AMERICA", coordinates: [-71.2082, 46.8139] },
+            "CA-CAP-REG": { name: "Regina", province: "Saskatchewan", provinceCode: "CA-SK", type: "Provincial Capital", continent: "NORTH_AMERICA", coordinates: [-104.6189, 50.4452] },
+            "CA-CAP-YEL": { name: "Yellowknife", province: "Northwest Territories", provinceCode: "CA-NT", type: "Territorial Capital", continent: "NORTH_AMERICA", coordinates: [-114.3718, 62.4540] },
+            "CA-CAP-IQA": { name: "Iqaluit", province: "Nunavut", provinceCode: "CA-NU", type: "Territorial Capital", continent: "NORTH_AMERICA", coordinates: [-68.5170, 63.7467] },
+            "CA-CAP-WHI": { name: "Whitehorse", province: "Yukon", provinceCode: "CA-YT", type: "Territorial Capital", continent: "NORTH_AMERICA", coordinates: [-135.0568, 60.7212] }
+        };
+
         // U.S. STATES — full names on the map, capital city for hints
         const US_STATES = {
             "US-AL": { name: "Alabama", type: "State", capital: "Montgomery" },
@@ -1545,6 +1658,15 @@
         }
 
         function findTargetFeature(targetId) {
+            if (CANADA_CAPITALS[targetId]) {
+                const meta = CANADA_CAPITALS[targetId];
+                return {
+                    type: "Feature",
+                    id: targetId,
+                    geometry: { type: "Point", coordinates: meta.coordinates },
+                    properties: { customId: targetId, name: meta.name, isCanadaCapital: true, ...meta }
+                };
+            }
             return state.combinedFeatures.find(f => featureFid(f) === targetId)
                 || state.worldFeatures.find(f => featureFid(f) === targetId)
                 || null;
@@ -1557,6 +1679,7 @@
         function isQuizRegion(fid) {
             if (!fid || fid === "undefined") return false;
             if (ISO_COUNTRY_NAMES[fid]) return true;
+            if (fid.indexOf("CA-CAP-") === 0) return !!CANADA_CAPITALS[fid];
             if (fid.indexOf("CA-") === 0) return !!CANADA_PROVINCES[fid];
             if (fid.indexOf("US-") === 0) return !!US_STATES[fid];
             return false;
@@ -1570,7 +1693,8 @@
         function featureLabelName(f) {
             if (!f) return "";
             const fid = featureFid(f);
-            const table = fid.indexOf("CA-") === 0 ? CANADA_PROVINCES
+            const table = fid.indexOf("CA-CAP-") === 0 ? CANADA_CAPITALS
+                : fid.indexOf("CA-") === 0 ? CANADA_PROVINCES
                 : fid.indexOf("US-") === 0 ? US_STATES
                 : ISO_COUNTRY_NAMES;
             const meta = table && table[fid];
@@ -1769,6 +1893,16 @@
                 // Old hover tooltips would spoil the fresh round
                 gMap.selectAll(".map-country").select("title").text("");
 
+                gMap.selectAll(".map-city-marker")
+                    .classed("guessed-correct", false)
+                    .classed("guessed-1st", false)
+                    .classed("guessed-2nd", false)
+                    .classed("guessed-3rd", false)
+                    .classed("guessed-failed", false)
+                    .classed("reveal-flash", false)
+                    .classed("guessed-wrong", false);
+                gMap.selectAll(".map-city-marker").select("title").text("");
+
                 // Remove existing labels
                 gMap.selectAll(".map-label").remove();
                 labelBoxes.clear();
@@ -1885,6 +2019,7 @@
                     // place on the chart and their size on the paper, never
                     // ballooning into a banner as the land beneath them grows
                     scaleMapLabels(event.transform.k);
+                    scaleCityMarkers(event.transform.k);
                 });
 
             svg.call(zoomBehavior);
@@ -2144,6 +2279,7 @@
             // tell whether it needs a redraw
             state.drawnSubdivisions = {
                 canada: drawing.canada && state.canadaFeatures.length > 0,
+                canadaCapitals: drawing.canadaCapitals,
                 us: drawing.us && state.usStatesFeatures.length > 0
             };
 
@@ -2177,7 +2313,220 @@
             // on a neighbour's land or across its border line
             renderIslandRings();
 
+            // Render Canadian Capital City Markers if capital cities are in the quiz/active
+            renderCanadaCityMarkers();
+
             buildMinimap();
+        }
+
+        // --- Canadian Capital City Markers Rendering & Interaction --------
+        function renderCanadaCityMarkers() {
+            gMap.selectAll(".map-cities-layer").remove();
+
+            const drawing = wantedSubdivisionDrawing();
+            if (!drawing.canadaCapitals) return;
+
+            const layer = gMap.append("g").attr("class", "map-cities-layer");
+
+            const capitalsData = Object.entries(CANADA_CAPITALS).map(([id, meta]) => ({
+                id,
+                ...meta
+            }));
+
+            const markers = layer.selectAll(".map-city-marker")
+                .data(capitalsData)
+                .enter()
+                .append("g")
+                .attr("class", d => `map-city-marker ${d.isNational ? 'is-national' : ''}`)
+                .attr("data-id", d => d.id)
+                .attr("transform", d => {
+                    const pt = projection(d.coordinates);
+                    return pt ? `translate(${pt[0]}, ${pt[1]})` : "";
+                })
+                .on("click", handleCityClick);
+
+            // Generous touch/click target
+            markers.append("circle")
+                .attr("class", "city-hit")
+                .attr("r", 12);
+
+            // Outer engraved ring
+            markers.append("circle")
+                .attr("class", "city-outer")
+                .attr("r", d => d.isNational ? 5.5 : 4.4);
+
+            // Inner core
+            markers.append("circle")
+                .attr("class", "city-inner")
+                .attr("r", d => d.isNational ? 2.8 : 2.0);
+
+            // National capital accent halo
+            markers.filter(d => d.isNational)
+                .append("circle")
+                .attr("class", "city-national-halo")
+                .attr("r", 8.2)
+                .attr("fill", "none")
+                .attr("stroke", "#8b2500")
+                .attr("stroke-width", "0.8")
+                .attr("stroke-dasharray", "1.5 1.5");
+
+            // Title tooltip
+            markers.append("title")
+                .text(d => (state.studyMode || state.completedTargetIds.has(d.id))
+                    ? (d.isNational ? `${d.name} (National Capital)` : `${d.name} (${d.province})`)
+                    : "");
+
+            // Re-apply guess status if already answered
+            markers.each(function(d) {
+                if (state.completedTargetIds.has(d.id)) {
+                    const info = state.guessedMap.get(d.id);
+                    if (info && info.status) {
+                        d3.select(this).classed(info.status, true);
+                    }
+                }
+            });
+
+            scaleCityMarkers(currentZoomK());
+        }
+
+        function updateCityMarkerPositions() {
+            if (!gMap || !projection) return;
+            gMap.selectAll(".map-city-marker")
+                .attr("transform", d => {
+                    const pt = projection(d.coordinates);
+                    return pt ? `translate(${pt[0]}, ${pt[1]})` : "";
+                });
+        }
+
+        function scaleCityMarkers(k) {
+            if (!gMap) return;
+            const effK = Math.max(1, Math.min(25, k || 1));
+            gMap.selectAll(".map-city-marker").each(function(d) {
+                const el = d3.select(this);
+                const isNat = d && d.isNational;
+                const rOuter = (isNat ? 5.5 : 4.4) / Math.pow(effK, 0.45);
+                const rInner = (isNat ? 2.8 : 2.0) / Math.pow(effK, 0.45);
+                const rHit = Math.max(12 / effK, 12 / Math.pow(effK, 0.45));
+                const sw = Math.max(0.6, 1.2 / Math.pow(effK, 0.5));
+
+                el.select(".city-hit").attr("r", rHit);
+                el.select(".city-outer").attr("r", rOuter).style("stroke-width", sw + "px");
+                el.select(".city-inner").attr("r", rInner);
+                el.select(".city-national-halo").attr("r", rOuter * 1.5).style("stroke-width", (sw * 0.7) + "px");
+            });
+        }
+
+        function handleCityClick(event, d) {
+            if (event) {
+                event.stopPropagation();
+                if (event.preventDefault) event.preventDefault();
+            }
+            if (!state.currentTarget) return;
+            if (pickerOpen()) return;
+            if (state.studyMode) {
+                showToast(`Study mode — ${d.name} (${d.isNational ? 'National Capital of Canada' : 'Capital of ' + d.province})`);
+                return;
+            }
+
+            const clickedId = d.id;
+            if (!isQuizRegion(clickedId)) return;
+
+            const targetId = state.currentTarget.id;
+            const answersTarget = (clickedId === targetId);
+
+            if (!answersTarget && isRegionCompleted(clickedId)) return;
+
+            ensureTimerStarted();
+
+            const element = gMap.selectAll(`.map-city-marker[data-id="${clickedId}"]`);
+
+            if (answersTarget) {
+                // CORRECT GUESS
+                AudioFX.playCorrect();
+                state.score++;
+                state.streak++;
+                if (state.streak > state.bestStreak) state.bestStreak = state.streak;
+
+                let attemptClass = "guessed-1st";
+                let pointsEarned = 3;
+
+                if (state.currentAttempts === 0) {
+                    attemptClass = "guessed-1st";
+                    pointsEarned = 3;
+                    state.count1stTry++;
+                } else if (state.currentAttempts === 1) {
+                    attemptClass = "guessed-2nd";
+                    pointsEarned = 2;
+                    state.count2ndTry++;
+                } else {
+                    attemptClass = "guessed-3rd";
+                    pointsEarned = 1;
+                    state.count3rdTry++;
+                }
+
+                state.earnedPoints += pointsEarned;
+                const targetName = state.currentTarget.displayName || state.currentTarget.name;
+                state.guessedMap.set(targetId, { status: attemptClass, name: targetName });
+                state.completedTargetIds.add(targetId);
+
+                if (!state.advancedMode) {
+                    element.classed("guessed-1st guessed-2nd guessed-3rd guessed-failed", false)
+                           .classed(attemptClass, true);
+                }
+
+                if (state.showLabels) {
+                    renderAreaLabel(findTargetFeature(targetId) || { geometry: { type: "Point", coordinates: d.coordinates }, properties: { customId: targetId } }, targetName);
+                }
+
+                element.select("title").text(targetName);
+
+                updateStatsUI();
+
+                if (!state.targets.length) {
+                    finishQuiz();
+                    return;
+                }
+
+                nextTarget();
+            } else {
+                // INCORRECT GUESS
+                AudioFX.playWrong();
+                state.mistakes++;
+                state.currentAttempts++;
+                updateAttemptDotsUI();
+
+                element.classed("guessed-wrong", true);
+                setTimeout(() => {
+                    element.classed("guessed-wrong", false);
+                }, 600);
+
+                if (state.currentAttempts >= 3) {
+                    state.streak = 0;
+                    state.countRevealed++;
+                    state.guessedMap.set(targetId, {
+                        status: 'guessed-failed',
+                        name: state.currentTarget.displayName || state.currentTarget.name
+                    });
+                    state.completedTargetIds.add(targetId);
+
+                    revealTargetArea(targetId);
+
+                    const hintBanner = document.getElementById('hint-banner');
+                    const hintText = document.getElementById('hint-text');
+                    const hintIcon = document.getElementById('hint-icon');
+                    if (hintBanner && hintText) {
+                        hintIcon.className = "fa-solid fa-triangle-exclamation text-vermilion-600 text-sm";
+                        hintText.innerText = `3 Tries Exceeded! Revealed location: ${state.currentTarget.displayName || state.currentTarget.name}`;
+                        hintBanner.classList.remove('hidden');
+                    }
+
+                    setTimeout(() => {
+                        nextTarget();
+                    }, 1800);
+                }
+
+                updateStatsUI();
+            }
         }
 
         // Rims for the places that are easy to lose in the ocean: the island
@@ -3036,22 +3385,28 @@
         function subdivisionsInQuiz() {
             return {
                 canada: !!state.includeCanadaProvinces,
+                canadaCapitals: !!state.includeCanadaCapitals,
                 us: !!state.includeUSStates
             };
         }
 
         // What the chart has to SHOW: the switches above, plus whatever a
         // hand-built selection names. A round that asks "Alberta" is a round
-        // with Alberta on the map — otherwise the answer could never be clicked
+        // with Alberta on the map — otherwise the answer could never be clicked.
+        // Showing capital cities of Canada always shows the borders of provinces & territories.
         function wantedSubdivisionDrawing() {
             const custom = (state.customSelectedIds && state.customSelectedIds.size)
                 ? state.customSelectedIds : null;
-            const wants = custom
-                ? prefix => [...custom].some(id => typeof id === "string" && id.indexOf(prefix) === 0)
-                : () => false;
+            const customWantsCapitals = custom
+                ? [...custom].some(id => typeof id === "string" && id.startsWith("CA-CAP-"))
+                : false;
+            const customWantsProvinces = custom
+                ? [...custom].some(id => typeof id === "string" && id.startsWith("CA-") && !id.startsWith("CA-CAP-"))
+                : false;
             return {
-                canada: !!state.includeCanadaProvinces || wants("CA-"),
-                us: !!state.includeUSStates || wants("US-")
+                canada: !!state.includeCanadaProvinces || !!state.includeCanadaCapitals || customWantsProvinces || customWantsCapitals,
+                canadaCapitals: !!state.includeCanadaCapitals || customWantsCapitals,
+                us: !!state.includeUSStates || (custom ? [...custom].some(id => typeof id === "string" && id.startsWith("US-")) : false)
             };
         }
 
@@ -3059,8 +3414,8 @@
         function refreshSubdivisionDrawing() {
             if (!gMap) return;
             const want = wantedSubdivisionDrawing();
-            const have = state.drawnSubdivisions || { canada: false, us: false };
-            if (have.canada === want.canada && have.us === want.us) return;
+            const have = state.drawnSubdivisions || { canada: false, canadaCapitals: false, us: false };
+            if (have.canada === want.canada && have.canadaCapitals === want.canadaCapitals && have.us === want.us) return;
             buildMapFeatures();
         }
 
@@ -3069,27 +3424,32 @@
             let targetList = [];
             const subunits = subdivisionsInQuiz();
 
-            // The picker can name provinces and states even while the header
+            // The picker can name provinces, capitals, and states even while the header
             // switches are off. A hand-built selection is the final word, so
-            // any subdivision it mentions is part of the round (otherwise
-            // picking only Alberta would build no targets at all)
+            // any subdivision it mentions is part of the round
             const custom = (state.customSelectedIds && state.customSelectedIds.size)
                 ? state.customSelectedIds : null;
             const customWants = custom
                 ? prefix => [...custom].some(id => typeof id === "string" && id.indexOf(prefix) === 0)
                 : null;
+            const customWantsCapitals = custom
+                ? [...custom].some(id => typeof id === "string" && id.startsWith("CA-CAP-"))
+                : false;
+            const customWantsProvinces = custom
+                ? [...custom].some(id => typeof id === "string" && id.startsWith("CA-") && !id.startsWith("CA-CAP-"))
+                : false;
 
-            // A student drilling the provinces (or the states) should not also
-            // be asked for the country they belong to — that question is
-            // already answered by every one of them.
-            const provincesInQuiz = custom ? !!customWants("CA-") : subunits.canada;
+            // A student drilling the provinces or capitals should not also
+            // be asked for Canada as a whole to avoid conflict.
+            const provincesInQuiz = custom ? customWantsProvinces : subunits.canada;
+            const capitalsInQuiz = custom ? customWantsCapitals : subunits.canadaCapitals;
             const statesInQuiz = custom ? !!customWants("US-") : subunits.us;
 
             // 1. World Countries — 193 UN members + 2 observer states +
             //    2 partially recognized states = 197 nations
             for (const [iso, meta] of Object.entries(ISO_COUNTRY_NAMES)) {
-                // The subdivisions stand in for their country
-                if (iso === '124' && provincesInQuiz) continue;
+                // The subdivisions stand in for their country to avoid conflict
+                if (iso === '124' && (provincesInQuiz || capitalsInQuiz)) continue;
                 if (iso === '840' && statesInQuiz) continue;
                 targetList.push({
                     id: iso,
@@ -3100,7 +3460,7 @@
                 });
             }
 
-            // 2. Canadian Provinces
+            // 2. Canadian Provinces & Territories
             if (provincesInQuiz) {
                 for (const [code, meta] of Object.entries(CANADA_PROVINCES)) {
                     targetList.push({
@@ -3111,6 +3471,24 @@
                         capital: meta.capital,
                         continent: 'CANADA_PROVINCES',
                         isCanadaProvince: true
+                    });
+                }
+            }
+
+            // 2b. Capital Cities of Canada
+            if (capitalsInQuiz) {
+                for (const [code, meta] of Object.entries(CANADA_CAPITALS)) {
+                    targetList.push({
+                        id: code,
+                        name: meta.isNational ? `${meta.name} (National Capital)` : `${meta.name} (Capital of ${meta.province})`,
+                        displayName: meta.name,
+                        type: meta.type,
+                        province: meta.province,
+                        provinceCode: meta.provinceCode,
+                        coordinates: meta.coordinates,
+                        continent: 'CANADA_CAPITALS',
+                        isCanadaCapital: true,
+                        isNational: !!meta.isNational
                     });
                 }
             }
@@ -3191,7 +3569,9 @@
 
             // Display target name
             document.getElementById('target-country-name').innerText = state.currentTarget.displayName || state.currentTarget.name;
-            document.getElementById('target-subtext').innerText = state.currentTarget.isCanadaProvince 
+            document.getElementById('target-subtext').innerText = state.currentTarget.isCanadaCapital
+                ? (state.currentTarget.isNational ? "National Capital of Canada 🇨🇦" : `Capital of ${state.currentTarget.province} 🇨🇦`)
+                : state.currentTarget.isCanadaProvince 
                 ? "Canadian Province/Territory" 
                 : state.currentTarget.isUSState
                 ? `U.S. ${state.currentTarget.type}`
@@ -3234,7 +3614,28 @@
             // Provinces and states paint their whole country, so clicking any
             // piece of them answers for the country itself
             const viaSubUnit = parent === targetId;
-            const answersTarget = clickedId === targetId || viaSubUnit;
+            let answersTarget = clickedId === targetId || viaSubUnit;
+
+            // If current target is a Canadian capital, and provinces are NOT in the quiz:
+            // Clicking the matching province can also answer the capital
+            if (!answersTarget && state.currentTarget.isCanadaCapital) {
+                const provCode = state.currentTarget.provinceCode;
+                if (clickedId === provCode) {
+                    if (provCode === 'CA-ON') {
+                        const [px, py] = d3.pointer(event, gMap.node());
+                        const ottPt = projection(CANADA_CAPITALS['CA-CAP-OTT'].coordinates);
+                        const torPt = projection(CANADA_CAPITALS['CA-CAP-TOR'].coordinates);
+                        const distOtt = Math.hypot(px - ottPt[0], py - ottPt[1]);
+                        const distTor = Math.hypot(px - torPt[0], py - torPt[1]);
+                        const isOttTarget = targetId === 'CA-CAP-OTT';
+                        if ((isOttTarget && distOtt <= distTor) || (!isOttTarget && distTor <= distOtt)) {
+                            answersTarget = true;
+                        }
+                    } else {
+                        answersTarget = true;
+                    }
+                }
+            }
 
             // Straying onto a region that is already identified (green or red
             // from an earlier question) is almost always a slip of the mouse —
@@ -3278,7 +3679,11 @@
 
                 // Highlight feature with color tier (unless in Advanced Mode)
                 if (!state.advancedMode) {
-                    if (viaSubUnit) {
+                    if (state.currentTarget.isCanadaCapital) {
+                        gMap.selectAll(`.map-city-marker[data-id="${targetId}"]`)
+                            .classed("guessed-1st guessed-2nd guessed-3rd guessed-failed", false)
+                            .classed(attemptClass, true);
+                    } else if (viaSubUnit) {
                         // Light up every piece of the country that was answered
                         gMap.selectAll(".map-country")
                             .filter(x => { const f = featureFid(x); return f === targetId || parentCountryOf(f) === targetId; })
@@ -3365,8 +3770,10 @@
             // starts whole) and never past the zoom range's ceiling — so a
             // whole country is framed at once, and Vatican City, at a
             // twentieth of a pixel wide, is brought up to something that can
-            // be pointed at
-            const fit = 0.7 * Math.min(W / bw, H / bh);
+            // be pointed at. Points (e.g. capital cities) use a preset comfortable scale.
+            const fit = (feature.geometry && feature.geometry.type === 'Point')
+                ? (o.pointScale || 9)
+                : (0.7 * Math.min(W / bw, H / bh));
             const ceiling = zoomBehavior ? zoomBehavior.scaleExtent()[1] : 300;
             const k = Math.max(1, Math.min(o.maxScale || Infinity, ceiling, fit));
             svg.transition().duration(o.duration || 700).call(
@@ -3383,6 +3790,23 @@
                 const targetName = state.currentTarget
                     ? (state.currentTarget.displayName || state.currentTarget.name)
                     : "";
+
+                // Canadian Capital City markers
+                if (targetId && targetId.startsWith("CA-CAP-")) {
+                    const marker = gMap.selectAll(".map-city-marker")
+                        .filter(d => d.id === targetId);
+                    marker.classed("guessed-failed", true).classed("reveal-flash", true);
+                    setTimeout(() => marker.classed("reveal-flash", false), 1700);
+
+                    // Render city label on map if labels are enabled
+                    if (state.showLabels) {
+                        renderAreaLabel(targetFeature, targetName);
+                    }
+
+                    marker.select("title").text(targetName);
+                    centreOnFeature(targetFeature, { duration: 650 });
+                    return;
+                }
 
                 const pieces = gMap.selectAll(".map-country")
                     .filter(d => {
@@ -4132,6 +4556,38 @@
             if (!gMap || !feature || !text || !fid || fid === "undefined") return;
             if (labelBoxes.has(fid)) return;
             if (gMap.select(`.map-label[data-label-id="${fid}"]`).size() > 0) return;
+
+            // City Point labels: positioned cleanly beside the marker
+            if (fid.startsWith("CA-CAP-") || (feature.geometry && feature.geometry.type === "Point")) {
+                const coords = (feature.geometry && feature.geometry.coordinates) ||
+                    (CANADA_CAPITALS[fid] ? CANADA_CAPITALS[fid].coordinates : null);
+                if (!coords || !projection) return;
+                const pt = projection(coords);
+                if (!pt) return;
+                const fs = 3.6;
+                const stroke = 0.8;
+                const ax = pt[0] + 5;
+                const ay = pt[1] - 1;
+                const n = gMap.append("text")
+                    .attr("class", "map-label map-city-label")
+                    .attr("x", ax)
+                    .attr("y", ay)
+                    .attr("data-base-size", fs)
+                    .attr("data-base-stroke", stroke)
+                    .attr("data-label-id", fid)
+                    .attr("data-full-text", text)
+                    .style("font-size", fs + "px")
+                    .style("stroke-width", stroke + "px")
+                    .text(text);
+                if (!state.showLabels) {
+                    n.style("display", "none");
+                }
+                const at = { ref: { x: pt[0], y: pt[1] }, x: ax, y: ay };
+                hangMapLabel(n.node(), at);
+                scaleMapLabel(n.node(), currentZoomK());
+                labelBoxes.set(fid, { x: ax, y: ay - fs, w: text.length * fs * 0.6, h: fs * 1.2 });
+                return;
+            }
 
             const relFor = v => {
                 const s = v.fs / 100;
@@ -4927,13 +5383,26 @@
             hintBanner.classList.remove('hidden');
             if (hintIcon) hintIcon.className = "fa-solid fa-compass text-ochre-600 text-sm";
 
+            const cur = state.currentTarget;
+            const isCap = cur.isCanadaCapital || (cur.id && cur.id.startsWith("CA-CAP-"));
+
             if (state.hintsRemaining === 2) {
-                hintText.innerText = `Capital City: ${state.currentTarget.capital}`;
+                if (isCap) {
+                    hintText.innerText = cur.isNational
+                        ? "Capital of: Canada (Federal Capital) 🇨🇦"
+                        : `Capital of: ${cur.province} 🇨🇦`;
+                } else {
+                    hintText.innerText = `Capital City: ${cur.capital}`;
+                }
             } else if (state.hintsRemaining === 1) {
-                hintText.innerText = `Region: ${state.currentTarget.continent.replace('_', ' ')}`;
+                if (isCap) {
+                    hintText.innerText = `Type: ${cur.isNational ? 'National Capital City' : cur.type || 'Provincial / Territorial Capital'}`;
+                } else {
+                    hintText.innerText = `Region: ${cur.continent.replace('_', ' ')}`;
+                }
             } else {
-                // Zoom map to target bounding box
-                const targetFeature = findTargetFeature(state.currentTarget.id);
+                // Zoom map to target bounding box or point
+                const targetFeature = findTargetFeature(cur.id);
 
                 if (targetFeature) {
                     centreOnFeature(targetFeature, { duration: 900 });
@@ -4985,6 +5454,7 @@
         // CUSTOM COUNTRY SELECTION SYSTEM logic
         const CONTINENT_META = {
             "CANADA_PROVINCES": { title: "🇨🇦 Canadian Provinces & Territories", icon: "fa-map-location-dot" },
+            "CANADA_CAPITALS": { title: "🇨🇦 Capital Cities of Canada", icon: "fa-city" },
             "US_STATES": { title: "🇺🇸 U.S. States & D.C.", icon: "fa-star" },
             "NORTH_AMERICA": { title: "North America & Caribbean", icon: "fa-earth-americas" },
             "SOUTH_AMERICA": { title: "South America", icon: "fa-earth-americas" },
@@ -5009,6 +5479,18 @@
                     continent: meta.continent,
                     group: 'CANADA_PROVINCES',
                     type: meta.type
+                });
+            }
+
+            // Canadian Capital Cities
+            for (const [code, meta] of Object.entries(CANADA_CAPITALS)) {
+                list.push({
+                    id: code,
+                    name: meta.name,
+                    subName: meta.isNational ? 'Canada' : meta.province,
+                    continent: 'NORTH_AMERICA',
+                    group: 'CANADA_CAPITALS',
+                    type: meta.type || (meta.isNational ? 'National Capital' : 'Capital City')
                 });
             }
 
@@ -5046,9 +5528,10 @@
             const ids = [];
             getAllAvailableEntities().forEach(e => {
                 if (e.group === 'CANADA_PROVINCES' && !state.includeCanadaProvinces) return;
+                if (e.group === 'CANADA_CAPITALS' && !state.includeCanadaCapitals) return;
                 if (e.group === 'US_STATES' && !state.includeUSStates) return;
                 // The country a student is drilling is not a question of its own
-                if (e.id === '124' && subunits.canada) return;
+                if (e.id === '124' && (subunits.canada || subunits.canadaCapitals)) return;
                 if (e.id === '840' && subunits.us) return;
                 ids.push(e.id);
             });
@@ -5066,7 +5549,7 @@
         // card, and each folds its provinces or states away behind a chevron so
         // the list starts short.
         const PINNED_COUNTRIES = [
-            { id: '124', name: 'Canada', flag: '🇨🇦', group: 'CANADA_PROVINCES', open: 'canada', pieces: 'provinces & territories', sub: 'canada' },
+            { id: '124', name: 'Canada', flag: '🇨🇦', group: 'CANADA_PROVINCES', open: 'canada', pieces: 'provinces & capitals', sub: 'canada' },
             { id: '840', name: 'United States', flag: '🇺🇸', group: 'US_STATES', open: 'us', pieces: 'states & D.C.', sub: 'us' }
         ];
         const PINNED_IDS = new Set(PINNED_COUNTRIES.map(p => p.id));
@@ -5084,9 +5567,12 @@
                     : 'bg-parchment-50/70 border-parchment-600/60 text-ink-500 hover:text-ink-800'
             }`;
 
+            const subHtml = item.subName ? ` <span class="text-[10px] opacity-75 shrink-0">(${item.subName})</span>` : '';
+            const titleText = item.subName ? `${item.name} (${item.subName})` : item.name;
+
             label.innerHTML = `
                 <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleIndividualCountry('${item.id}', this.checked)" class="w-3.5 h-3.5 rounded text-moss-600 bg-parchment-200 border-parchment-700 focus:ring-moss-500 focus:ring-offset-parchment-100">
-                <span class="truncate" title="${item.name}">${item.name}</span>
+                <span class="truncate" title="${titleText}">${item.name}${subHtml}</span>
             `;
             return label;
         }
@@ -5098,26 +5584,38 @@
         function shownPiecesFor(pin, query, all) {
             const entities = all || getAllAvailableEntities();
             const country = entities.find(e => e.id === pin.id);
-            const pieces = entities.filter(e => e.group === pin.group);
+            const pieces = (pin.id === '124')
+                ? entities.filter(e => e.group === 'CANADA_PROVINCES' || e.group === 'CANADA_CAPITALS')
+                : entities.filter(e => e.group === pin.group);
             if (!query) return pieces;
             if (country && country.name.toLowerCase().includes(query)) return pieces;
-            return pieces.filter(p => p.name.toLowerCase().includes(query));
+            return pieces.filter(p => p.name.toLowerCase().includes(query) || (p.subName && p.subName.toLowerCase().includes(query)));
         }
 
-        // Every province, or every state, in one press: the panel holds 13 or
-        // 51 boxes and ticking them one at a time is a chore. The pieces win
+        // Every province, capital city, or every state in one press: the panel holds
+        // multiple boxes and ticking them one at a time is a chore. The pieces win
         // the country, as they do everywhere else in the list.
         function toggleAllPieces(groupKey, selectAll) {
-            const pin = PINNED_COUNTRIES.find(p => p.group === groupKey);
-            if (!pin) return;
-            const shown = shownPiecesFor(pin, currentListQuery());
-            if (!shown.length) return;
+            const allEntities = getAllAvailableEntities();
+            const query = currentListQuery();
+            const pin = PINNED_COUNTRIES.find(p => p.group === groupKey || (p.id === '124' && (groupKey === 'CANADA_PROVINCES' || groupKey === 'CANADA_CAPITALS')));
+            const country = pin ? allEntities.find(e => e.id === pin.id) : null;
+            let pieces = allEntities.filter(e => e.group === groupKey);
+            if (query && (!country || !country.name.toLowerCase().includes(query))) {
+                pieces = pieces.filter(p => p.name.toLowerCase().includes(query) || (p.subName && p.subName.toLowerCase().includes(query)));
+            }
+            if (!pieces.length) return;
 
-            shown.forEach(piece => {
+            pieces.forEach(piece => {
                 if (selectAll) tempSelectedIds.add(piece.id);
                 else tempSelectedIds.delete(piece.id);
             });
-            if (selectAll) reconcileSubdivisions();
+            if (selectAll) {
+                if (groupKey === 'CANADA_CAPITALS') reconcileSubdivisions('CA-CAP-');
+                else if (groupKey === 'CANADA_PROVINCES') reconcileSubdivisions('CA-');
+                else if (groupKey === 'US_STATES') reconcileSubdivisions('US-');
+                else reconcileSubdivisions();
+            }
             renderAfterTick();
         }
 
@@ -5125,7 +5623,9 @@
         // checkbox, the chevron on the right folding its pieces in and out
         function buildPinnedCard(pin, country, pieces, shown, open) {
             const sub = subdivisionsInQuiz();
-            const blocked = !!sub[pin.sub];      // pieces are what gets drawn
+            const blocked = pin.id === '124'
+                ? (!!sub.canada || !!sub.canadaCapitals)
+                : !!sub[pin.sub]; // pieces are what gets drawn
             const ticked = tempSelectedIds.has(pin.id);
             const piecesTicked = pieces.filter(p => tempSelectedIds.has(p.id)).length;
 
@@ -5156,12 +5656,78 @@
             `;
             card.appendChild(header);
 
-            // The pieces themselves, folded away until the chevron is pressed
-            const grid = document.createElement('div');
-            grid.className = 'p-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 text-xs';
-            if (!open) {
-                grid.classList.add('hidden');
+            if (!open) return card;
+
+            if (pin.id === '124') {
+                // CANADA: Section 1 (Provinces & Territories), Section 2 (Capital Cities of Canada)
+                const provPieces = pieces.filter(p => p.group === 'CANADA_PROVINCES');
+                const provShown = shown.filter(p => p.group === 'CANADA_PROVINCES');
+                const capPieces = pieces.filter(p => p.group === 'CANADA_CAPITALS');
+                const capShown = shown.filter(p => p.group === 'CANADA_CAPITALS');
+
+                // Section 1: Provinces & Territories
+                const provContainer = document.createElement('div');
+                provContainer.className = 'p-3 border-b border-parchment-500/50';
+
+                const provBar = document.createElement('div');
+                provBar.className = 'flex items-center justify-between gap-3 text-[11px] pb-2 font-semibold text-ink-800';
+                provBar.innerHTML = `
+                    <div class="flex items-center gap-1.5">
+                        <i class="fa-solid fa-map-location-dot text-moss-600"></i>
+                        <span>Provinces & Territories</span>
+                        <span class="text-[10px] text-ink-500 bg-parchment-400 px-1.5 py-0.2 rounded-full font-normal">${provPieces.length}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="toggleAllPieces('CANADA_PROVINCES', true)" title="Tick every province & territory" class="text-moss-700 hover:text-moss-900 underline underline-offset-2 decoration-dotted transition-colors">
+                            Select all
+                        </button>
+                        <span class="text-ink-300">|</span>
+                        <button onclick="toggleAllPieces('CANADA_PROVINCES', false)" title="Untick every province & territory" class="text-ink-500 hover:text-ink-800 underline underline-offset-2 decoration-dotted transition-colors">
+                            Clear all
+                        </button>
+                    </div>
+                `;
+                provContainer.appendChild(provBar);
+
+                const provGrid = document.createElement('div');
+                provGrid.className = 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 text-xs';
+                provShown.sort((a, b) => a.name.localeCompare(b.name)).forEach(piece => provGrid.appendChild(buildItemRow(piece)));
+                provContainer.appendChild(provGrid);
+                card.appendChild(provContainer);
+
+                // Section 2: Capital Cities of Canada
+                const capContainer = document.createElement('div');
+                capContainer.className = 'p-3 bg-parchment-100/40';
+
+                const capBar = document.createElement('div');
+                capBar.className = 'flex items-center justify-between gap-3 text-[11px] pb-2 font-semibold text-ink-800';
+                capBar.innerHTML = `
+                    <div class="flex items-center gap-1.5">
+                        <i class="fa-solid fa-city text-ochre-600"></i>
+                        <span>Capital Cities of Canada</span>
+                        <span class="text-[10px] text-ink-500 bg-parchment-400 px-1.5 py-0.2 rounded-full font-normal">${capPieces.length}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="toggleAllPieces('CANADA_CAPITALS', true)" title="Tick every capital city" class="text-moss-700 hover:text-moss-900 underline underline-offset-2 decoration-dotted transition-colors">
+                            Select all
+                        </button>
+                        <span class="text-ink-300">|</span>
+                        <button onclick="toggleAllPieces('CANADA_CAPITALS', false)" title="Untick every capital city" class="text-ink-500 hover:text-ink-800 underline underline-offset-2 decoration-dotted transition-colors">
+                            Clear all
+                        </button>
+                    </div>
+                `;
+                capContainer.appendChild(capBar);
+
+                const capGrid = document.createElement('div');
+                capGrid.className = 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 text-xs';
+                capShown.sort((a, b) => a.name.localeCompare(b.name)).forEach(piece => capGrid.appendChild(buildItemRow(piece)));
+                capContainer.appendChild(capGrid);
+                card.appendChild(capContainer);
             } else {
+                // The pieces themselves, folded away until the chevron is pressed
+                const grid = document.createElement('div');
+                grid.className = 'p-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 text-xs';
                 // One press for the whole panel: tick or untick everything
                 // this country has to offer without going down the list
                 const bar = document.createElement('div');
@@ -5175,9 +5741,9 @@
                     </button>
                 `;
                 grid.appendChild(bar);
+                shown.sort((a, b) => a.name.localeCompare(b.name)).forEach(piece => grid.appendChild(buildItemRow(piece)));
+                card.appendChild(grid);
             }
-            shown.sort((a, b) => a.name.localeCompare(b.name)).forEach(piece => grid.appendChild(buildItemRow(piece)));
-            card.appendChild(grid);
 
             return card;
         }
@@ -5227,11 +5793,17 @@
         }
 
         function reconcileSubdivisions(side) {
-            if (side === '124') dropPrefixed('CA-');
-            else if (side === '840') dropPrefixed('US-');
-            else if (side === 'CA-') tempSelectedIds.delete('124');
-            else if (side === 'US-') tempSelectedIds.delete('840');
-            else {
+            if (side === '124') {
+                // Canada as a country deselects all Canadian provinces and capital cities
+                dropPrefixed('CA-');
+            } else if (side === '840') {
+                dropPrefixed('US-');
+            } else if (side === 'CA-' || side === 'CA-CAP-') {
+                // Ticking either a Canadian province or capital deselects Canada
+                tempSelectedIds.delete('124');
+            } else if (side === 'US-') {
+                tempSelectedIds.delete('840');
+            } else {
                 // No side was named — select all, or a set read back in: the
                 // smaller pieces win, as they do in the round itself
                 if (countPrefixed('CA-') > 0) tempSelectedIds.delete('124');
@@ -5241,7 +5813,7 @@
             // While Quiz Settings has a country handed over to its pieces, the
             // country itself is not drawn — so it can never be a target either
             const sub = subdivisionsInQuiz();
-            if (sub.canada) tempSelectedIds.delete('124');
+            if (sub.canada || sub.canadaCapitals) tempSelectedIds.delete('124');
             if (sub.us) tempSelectedIds.delete('840');
         }
 
@@ -5250,10 +5822,15 @@
         function updateSelectionStatus() {
             const el = document.getElementById('txt-custom-selection-status');
             if (!el) return;
-            const prov = countPrefixed('CA-');
+            const prov = [...tempSelectedIds].filter(id => typeof id === 'string' && id.startsWith('CA-') && !id.startsWith('CA-CAP-')).length;
+            const caps = countPrefixed('CA-CAP-');
             const states = countPrefixed('US-');
-            if (prov > 0) {
+            if (prov > 0 && caps > 0) {
+                el.innerHTML = `<span class="text-ochre-700 font-semibold">Canada is left out while ${prov} provinces/territories and ${caps} capital cities are ticked</span> — the same ground, asked twice.`;
+            } else if (prov > 0) {
                 el.innerHTML = `<span class="text-ochre-700 font-semibold">Canada is left out while ${prov} of its provinces are ticked</span> — the same ground, asked twice.`;
+            } else if (caps > 0) {
+                el.innerHTML = `<span class="text-ochre-700 font-semibold">Canada is left out while ${caps} of its capital cities are ticked</span> — the same ground, asked twice.`;
             } else if (states > 0) {
                 el.innerHTML = `<span class="text-ochre-700 font-semibold">The United States is left out while ${states} of its states are ticked</span> — the same ground, asked twice.`;
             } else {
@@ -5299,13 +5876,15 @@
             container.innerHTML = '';
 
             const allEntities = getAllAvailableEntities();
-            const matches = item => !filterQuery || item.name.toLowerCase().includes(filterQuery);
+            const matches = item => !filterQuery || item.name.toLowerCase().includes(filterQuery) || (item.subName && item.subName.toLowerCase().includes(filterQuery));
 
             // --- Canada and the United States head the list ----------------
             PINNED_COUNTRIES.forEach(pin => {
                 const country = allEntities.find(e => e.id === pin.id);
                 if (!country) return;
-                const pieces = allEntities.filter(e => e.group === pin.group);
+                const pieces = (pin.id === '124')
+                    ? allEntities.filter(e => e.group === 'CANADA_PROVINCES' || e.group === 'CANADA_CAPITALS')
+                    : allEntities.filter(e => e.group === pin.group);
                 // A search filters these rows the same way it filters the
                 // continents: a country's own name brings the whole row with
                 // it, a piece's name brings just that piece
@@ -5314,7 +5893,7 @@
                 if (filterQuery && !countryMatches && shown.length === 0) return;
 
                 // A search that lands inside a folded panel opens it: finding
-                // "Manitoba" must not leave Manitoba hidden behind a chevron
+                // "Manitoba" or "Victoria" must not leave them hidden behind a chevron
                 const open = subdivisionsOpen[pin.open] || !!filterQuery;
                 container.appendChild(buildPinnedCard(pin, country, pieces, shown, open));
             });
@@ -5324,9 +5903,9 @@
             for (const key of Object.keys(CONTINENT_META)) grouped[key] = [];
 
             allEntities.forEach(item => {
-                // The two above own their provinces and states, and are never
+                // The two above own their provinces, capitals and states, and are never
                 // part of the North America card as well
-                if (item.group === 'CANADA_PROVINCES' || item.group === 'US_STATES') return;
+                if (item.group === 'CANADA_PROVINCES' || item.group === 'CANADA_CAPITALS' || item.group === 'US_STATES') return;
                 if (PINNED_IDS.has(item.id)) return;
                 if (matches(item)) {
                     const groupKey = item.group || item.continent;
@@ -5380,7 +5959,7 @@
             // While the settings switch hands a country over to its pieces, the
             // country itself is not on the chart — there is nothing to tick
             const sub = subdivisionsInQuiz();
-            if ((id === '124' && sub.canada) || (id === '840' && sub.us)) {
+            if ((id === '124' && (sub.canada || sub.canadaCapitals)) || (id === '840' && sub.us)) {
                 renderAfterTick();
                 return;
             }
@@ -5388,8 +5967,14 @@
             if (checked) {
                 tempSelectedIds.add(id);
                 // Ticking either side of the pair lets the other out of the round
-                if (id === '124' || id === '840' || id.indexOf('CA-') === 0 || id.indexOf('US-') === 0) {
-                    reconcileSubdivisions(id === '124' || id === '840' ? id : id.substr(0, 3));
+                if (id === '124' || id === '840') {
+                    reconcileSubdivisions(id);
+                } else if (id.startsWith('CA-CAP-')) {
+                    reconcileSubdivisions('CA-CAP-');
+                } else if (id.startsWith('CA-')) {
+                    reconcileSubdivisions('CA-');
+                } else if (id.startsWith('US-')) {
+                    reconcileSubdivisions('US-');
                 }
             } else {
                 tempSelectedIds.delete(id);
@@ -5456,6 +6041,8 @@
         function openSettingsModal() {
             document.getElementById('chk-advanced-mode').checked = state.advancedMode;
             document.getElementById('chk-canada-provinces').checked = state.includeCanadaProvinces;
+            const chkCap = document.getElementById('chk-canada-capitals');
+            if (chkCap) chkCap.checked = state.includeCanadaCapitals;
             document.getElementById('chk-us-states').checked = state.includeUSStates;
             document.getElementById('chk-show-labels').checked = state.showLabels;
             document.getElementById('chk-minimap').checked = state.showMinimap;
@@ -5480,6 +6067,12 @@
             chk.checked = !chk.checked;
         }
 
+        function toggleCanadaCapitalsCheckbox(event) {
+            const chk = document.getElementById('chk-canada-capitals');
+            if (event && event.target === chk) return;
+            if (chk) chk.checked = !chk.checked;
+        }
+
         function toggleUSCheckbox(event) {
             const chk = document.getElementById('chk-us-states');
             if (event && event.target === chk) return;
@@ -5489,6 +6082,8 @@
         function applySettingsAndRestart() {
             state.advancedMode = document.getElementById('chk-advanced-mode').checked;
             state.includeCanadaProvinces = document.getElementById('chk-canada-provinces').checked;
+            const chkCap = document.getElementById('chk-canada-capitals');
+            state.includeCanadaCapitals = chkCap ? chkCap.checked : false;
             state.includeUSStates = document.getElementById('chk-us-states').checked;
             state.showLabels = document.getElementById('chk-show-labels').checked;
 
@@ -5725,6 +6320,8 @@
             gMap.selectAll('.map-water').attr('d', pathGenerator({type: "Sphere"}));
             gMap.selectAll('.graticule').attr('d', pathGenerator);
             buildMinimap();
+            updateCityMarkerPositions();
+            scaleCityMarkers(currentZoomK());
             repositionLabels();
         });
 
