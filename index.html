@@ -3509,21 +3509,61 @@
                 const b = pathGenerator.bounds(part);
                 const w = Math.abs(b[1][0] - b[0][0]);
                 const h = Math.abs(b[1][1] - b[0][1]);
-                if (!(w > 0) || !(h > 0) || w > maxPartW) return;
+                if (!(w > 0) || !(h > 0)) return;
+                let geoArea = 0;
+                try { geoArea = d3.geoArea(part); } catch (e) { geoArea = 0; }
+                // Only skip antimeridian split slivers like Fiji: real continental landmasses (Russia, Antarctica) have large area
+                if (w > maxPartW && geoArea < 0.005) return;
                 if (!(w * h > (best ? best.area : 0))) return;
-                const c = pathGenerator.centroid(part);
-                if (isNaN(c[0]) || isNaN(c[1])) return;
-                best = { area: w * h, cx: c[0], cy: c[1], w, h, x0: b[0][0], y0: b[0][1] };
+                let c = null;
+                if (w > maxPartW) {
+                    try {
+                        const gc = d3.geoCentroid(part);
+                        if (gc) c = projection(gc);
+                    } catch (e) {}
+                }
+                if (!c || isNaN(c[0]) || isNaN(c[1])) {
+                    c = pathGenerator.centroid(part);
+                }
+                if (isNaN(c[0]) || isNaN(c[1])) {
+                    try {
+                        const gc = d3.geoCentroid(part);
+                        if (gc) c = projection(gc);
+                    } catch (e) {}
+                }
+                if (!c || isNaN(c[0]) || isNaN(c[1])) return;
+                let x0 = b[0][0], effW = w;
+                if (w > maxPartW) {
+                    effW = Math.min(w, maxPartW);
+                    x0 = Math.max(b[0][0], c[0] - effW / 2);
+                }
+                best = { area: w * h, cx: c[0], cy: c[1], w: effW, h, x0: x0, y0: b[0][1] };
             });
 
             if (!best) {
                 const b = pathGenerator.bounds(feature);
                 const w = Math.abs(b[1][0] - b[0][0]);
                 const h = Math.abs(b[1][1] - b[0][1]);
-                if (!(w > 0) || !(h > 0)) return null;
-                const c = pathGenerator.centroid(feature);
-                if (isNaN(c[0]) || isNaN(c[1])) return null;
-                best = { area: w * h, cx: c[0], cy: c[1], w, h, x0: b[0][0], y0: b[0][1] };
+                let c = null;
+                try {
+                    const gc = d3.geoCentroid(feature);
+                    if (gc) c = projection(gc);
+                } catch (e) {}
+                if (!c || isNaN(c[0]) || isNaN(c[1])) {
+                    c = pathGenerator.centroid(feature);
+                }
+                if (!c || isNaN(c[0]) || isNaN(c[1])) return null;
+                const effW = Math.max(0.5, w || 1);
+                const effH = Math.max(0.5, h || 1);
+                best = {
+                    area: effW * effH,
+                    cx: c[0],
+                    cy: c[1],
+                    w: effW,
+                    h: effH,
+                    x0: isFinite(b[0][0]) ? b[0][0] : c[0] - effW / 2,
+                    y0: isFinite(b[0][1]) ? b[0][1] : c[1] - effH / 2
+                };
             }
             return best;
         }
@@ -3695,7 +3735,12 @@
                     }
                 }
             }
-            if (!anyLand) return { inside: inside, pts: [] };
+            if (!anyLand) {
+                const pt = (anchor && isFinite(anchor.cx) && isFinite(anchor.cy))
+                    ? { x: anchor.cx, y: anchor.cy, edt: Math.max(0.5, Math.min(anchor.w, anchor.h) / 2) }
+                    : null;
+                return { inside: inside, pts: pt ? [pt] : [] };
+            }
 
             const dist = chamferDistance(grid, cols, rows);
             const pts = [];
@@ -3721,21 +3766,22 @@
             const ix = dense ? 2 : 3;
             const nx = Math.max(5, Math.min(dense ? 48 : 26, Math.ceil(box.w / px)));
             const ny = Math.max(5, Math.min(dense ? 32 : 16, Math.ceil(box.h / px)));
-            budget.left -= nx * ny;
             for (let i = 0; i < nx; i++) {
+                if (budget && (budget.left--) <= 0) return false;
                 const x = box.x + (box.w * i) / (nx - 1);
                 if (!inside(x, box.y) || !inside(x, box.y + box.h)) return false;
             }
             for (let j = 0; j < ny; j++) {
+                if (budget && (budget.left--) <= 0) return false;
                 const y = box.y + (box.h * j) / (ny - 1);
                 if (!inside(box.x, y) || !inside(box.x + box.w, y)) return false;
             }
             const jx = Math.max(4, Math.min(dense ? 24 : 14, Math.ceil(box.w / ix)));
             const jy = Math.max(4, Math.min(dense ? 16 : 9, Math.ceil(box.h / ix)));
-            budget.left -= jx * jy;
             for (let j = 0; j < jy; j++) {
                 const y = box.y + (box.h * j) / (jy - 1);
                 for (let i = 0; i < jx; i++) {
+                    if (budget && (budget.left--) <= 0) return false;
                     if (!inside(box.x + (box.w * i) / (jx - 1), y)) return false;
                 }
             }
@@ -3768,6 +3814,7 @@
             const parts = [];
 
             state.combinedFeatures.forEach(f => {
+                const fid = featureFid(f);
                 polygonsOf(f).forEach(rings => {
                     const outer = rings[0] || [];
                     const pts = [];
@@ -3784,7 +3831,17 @@
                         if (p[1] < y0) y0 = p[1];
                         if (p[1] > y1) y1 = p[1];
                     }
-                    const part = { pts: pts, box: [x0, y0, x1, y1], seen: 0 };
+                    const holes = [];
+                    for (let k = 1; k < rings.length; k++) {
+                        const hPts = [];
+                        const hRing = rings[k] || [];
+                        for (let i = 0; i < hRing.length; i++) {
+                            const p = projection([hRing[i][0], hRing[i][1]]);
+                            if (p && isFinite(p[0]) && isFinite(p[1])) hPts.push(p);
+                        }
+                        if (hPts.length >= 3) holes.push(hPts);
+                    }
+                    const part = { pts: pts, holes: holes, box: [x0, y0, x1, y1], seen: 0, fid: fid };
                     const at = parts.push(part) - 1;
                     const c0 = Math.max(0, Math.floor((x0 - ox) / LAND_CELL));
                     const c1 = Math.min(cols - 1, Math.floor((x1 - ox) / LAND_CELL));
@@ -3815,7 +3872,15 @@
             for (let i = 0; i < bucket.length; i++) {
                 const p = ix.parts[bucket[i]];
                 if (x < p.box[0] || x > p.box[2] || y < p.box[1] || y > p.box[3]) continue;
-                if (d3.polygonContains(p.pts, [x, y])) return true;
+                if (d3.polygonContains(p.pts, [x, y])) {
+                    let inHole = false;
+                    if (p.holes && p.holes.length) {
+                        for (let k = 0; k < p.holes.length; k++) {
+                            if (d3.polygonContains(p.holes[k], [x, y])) { inHole = true; break; }
+                        }
+                    }
+                    if (!inHole) return true;
+                }
             }
             return false;
         }
@@ -3861,7 +3926,16 @@
             for (let j = 0; j < ny; j++) {
                 const y = t + (h * j) / (ny - 1);
                 for (let i = 0; i < nx; i++) {
-                    if (d3.polygonContains(pts, [l + (w * i) / (nx - 1), y])) return true;
+                    const pt = [l + (w * i) / (nx - 1), y];
+                    if (d3.polygonContains(pts, pt)) {
+                        let inHole = false;
+                        if (p.holes && p.holes.length) {
+                            for (let k = 0; k < p.holes.length; k++) {
+                                if (d3.polygonContains(p.holes[k], pt)) { inHole = true; break; }
+                            }
+                        }
+                        if (!inHole) return true;
+                    }
                 }
             }
             return false;
@@ -3878,10 +3952,47 @@
             for (let i = 0; i < list.length; i++) {
                 const p = list[i];
                 if (p.box[0] > r || p.box[2] < l || p.box[1] > bo || p.box[3] < t) continue;
-                budget.left -= dense ? 150 : 30;
+                if (budget) budget.left -= dense ? 150 : 30;
                 if (partCrossesBox(p, l, t, r, bo, dense)) return true;
             }
             return false;
+        }
+
+        // Does any foreign land (not belonging to this feature) stand beneath
+        // the box? Used to verify that as a caption converges toward its tie
+        // point across the zoom range, it never clips a neighbour's land.
+        function boxTouchesForeignLand(box, myFid, budget, dense) {
+            const pad = padForBox(box);
+            const l = box.x - pad, t = box.y - pad;
+            const r = box.x + box.w + pad, bo = box.y + box.h + pad;
+            const list = partsInBox(l, t, r, bo);
+            for (let i = 0; i < list.length; i++) {
+                const p = list[i];
+                if (p.fid === myFid) continue;
+                if (p.box[0] > r || p.box[2] < l || p.box[1] > bo || p.box[3] < t) continue;
+                if (budget) budget.left -= dense ? 80 : 20;
+                if (partCrossesBox(p, l, t, r, bo, dense)) return true;
+            }
+            return false;
+        }
+
+        const CONVERGENCE_S_STEPS = [0.95, 0.85, 0.72, 0.60, 0.48, 0.36, 0.25, 0.16, 0.08, 0.03];
+
+        function convergencePathSafe(at, rel, ref, fid, budget, dense) {
+            if (!ref || !at || !rel) return false;
+            for (let i = 0; i < CONVERGENCE_S_STEPS.length; i++) {
+                const s = CONVERGENCE_S_STEPS[i];
+                const ax = ref.x + (at.x - ref.x) * s;
+                const ay = ref.y + (at.y - ref.y) * s;
+                const boxS = {
+                    x: ax + rel.x * s,
+                    y: ay + rel.y * s,
+                    w: rel.w * s,
+                    h: rel.h * s
+                };
+                if (boxTouchesForeignLand(boxS, fid, budget, dense)) return false;
+            }
+            return true;
         }
 
         // How far a box stands from the place it is captioning: 0 while it
@@ -4114,11 +4225,12 @@
             // by), and one line rather than a stack
             const captionFs = Math.min(LABEL_CAPTION_MAX, Math.max(LABEL_CAPTION_MIN,
                 Math.min(anchor.w, anchor.h) * 1.3 + 1.2));
-            const captionSlack = captionFs;   // how far from the place it may stray
             const phaseB = wrapCandidatesFor(text).map(lines => ({
                 lines: lines, m: measureLabelLines(text, lines), fs: captionFs
             }));
             phaseB.sort((a, b) => a.lines.length - b.lines.length);
+            const capRel = relFor(phaseB[0]);
+            const captionSlack = Math.max(captionFs * 2.5, Math.max(capRel.w, capRel.h) * 1.2, 16);
 
             // Draw the name so its glyphs land exactly on the box planned for
             // them: SVG text does not scale exactly (small type snaps
@@ -4174,46 +4286,70 @@
                 holds: box => boxInsideRegion(coast, box, budget, true)
             };
 
+            // Where a name out on the water is hung from: the nearest point
+            // of this place's own ground that has a foreign-land-safe path.
+            // The caption is tied to that point for good, so that magnifying
+            // the chart cannot stretch the name away from the place it is naming.
+            const refFor = (box, at, rel, dense) => {
+                if (!probe.pts.length) return null;
+                const cands = [];
+                for (let i = 0; i < probe.pts.length; i++) {
+                    const p = probe.pts[i];
+                    const dx = Math.max(box.x - p.x, p.x - (box.x + box.w), 0);
+                    const dy = Math.max(box.y - p.y, p.y - (box.y + box.h), 0);
+                    cands.push({ x: p.x, y: p.y, d: dx * dx + dy * dy });
+                }
+                cands.sort((a, b) => a.d - b.d);
+                if (!at || !rel) return cands[0] ? { x: cands[0].x, y: cands[0].y } : null;
+
+                const limit = Math.min(cands.length, 16);
+                for (let i = 0; i < limit; i++) {
+                    const refPt = { x: cands[i].x, y: cands[i].y };
+                    if (convergencePathSafe(at, rel, refPt, fid, budget, dense)) {
+                        return refPt;
+                    }
+                }
+                return null;
+            };
+
             const beside = {
                 fits: (p, rel) => {
                     const box = boxAt(p, rel);
                     if (labelBoxHits(box, padForBox(box))) return false;
                     if (budget.left <= 0) return false;
                     if (gapToAnchor(box, anchor) > captionSlack) return false;
-                    return !boxTouchesLand(box, budget, false);
+                    if (boxTouchesLand(box, budget, false)) return false;
+                    return !!refFor(box, p, rel, false);
                 },
-                holds: box => gapToAnchor(box, anchor) <= captionSlack &&
-                              !boxTouchesLand(box, budget, true)
-            };
-
-            // Where a name out on the water is hung from: the nearest point
-            // of this place's own ground. The caption is tied to that point
-            // for good, so that magnifying the chart cannot stretch the name
-            // away from the place it is naming.
-            const refFor = box => {
-                let best = null, bd = Infinity;
-                for (let i = 0; i < probe.pts.length; i++) {
-                    const p = probe.pts[i];
-                    const dx = Math.max(box.x - p.x, p.x - (box.x + box.w), 0);
-                    const dy = Math.max(box.y - p.y, p.y - (box.y + box.h), 0);
-                    const d = dx * dx + dy * dy;
-                    if (d < bd) { bd = d; best = { x: p.x, y: p.y }; }
+                holds: (box, at, rel) => {
+                    if (gapToAnchor(box, anchor) > captionSlack) return false;
+                    if (boxTouchesLand(box, budget, true)) return false;
+                    return !!refFor(box, at, rel, true);
                 }
-                return best;
             };
 
             const commit = (p, v, phase) => {
                 const n = draw(p.x, p.y, v);
                 const real = realBox(n);
+                const at = +n.attr("x"), ay = +n.attr("y");
+                const atPt = { x: at, y: ay };
+                const realRel = real ? { x: real.x - at, y: real.y - ay, w: real.w, h: real.h } : null;
                 const ok = real && !labelBoxHits(real, padForBox(real)) &&
-                           phase.holds(real);
+                           phase.holds(real, atPt, realRel);
                 if (ok) {
-                    const at = +n.attr("x"), ay = +n.attr("y");
+                    let ref = null;
+                    if (phase === beside) {
+                        ref = refFor(real, atPt, realRel, true);
+                        if (!ref) {
+                            n.remove();
+                            return false;
+                        }
+                    }
                     placed = {
                         node: n, box: real,
                         at: { x: at, y: ay, v: v,
-                              ref: phase === beside ? refFor(real) : null,
-                              rel: { x: real.x - at, y: real.y - ay, w: real.w, h: real.h } }
+                              ref: ref,
+                              rel: realRel }
                     };
                     return true;
                 }
@@ -4247,10 +4383,9 @@
                 // Sifting a seaful of spots costs more than a whole pass
                 // across a country, so the caption is given its own allowance
                 budget.left = LABEL_CAPTION_BUDGET;
-                const capRel = relFor(phaseB[0]);
-                const reach = Math.max(anchor.w, anchor.h) + captionFs * 2 +
+                const reach = Math.max(anchor.w, anchor.h) + captionSlack +
                               Math.max(capRel.w, capRel.h);
-                const water = waterSpots(anchor, reach, captionFs,
+                const water = waterSpots(anchor, reach, captionSlack,
                                          { w: capRel.w, h: capRel.h }, budget);
                 if (!water.length || !run(phaseB, water, beside)) {
                     // 3 — on its own land, however small it has to be
@@ -4266,6 +4401,72 @@
                     }
                 }
             }
+
+            // 4 — Guaranteed fallback for micro-states, enclaves, and tiny places
+            // (Vatican City, San Marino, Liechtenstein, Monaco, Andorra, etc.)
+            // that cannot hold text inside their borders and have no open water.
+            // Place them cleanly anchored at or radiating outward from their center.
+            if (!placed) {
+                const fallbackVariants = wrapCandidatesFor(text).map(lines => ({
+                    lines: lines, m: measureLabelLines(text, lines), fs: 2.2
+                })).concat(phaseC.length ? phaseC.slice(-2) : []);
+                const step = Math.min(6, Math.max(1.5, Math.min(anchor.w, anchor.h) + 1));
+                const spokes = [{ x: anchor.cx, y: anchor.cy }];
+                [1, 2, 3, 4, 6, 8, 12].forEach(k => {
+                    for (let a = 0; a < 8; a++) {
+                        spokes.push({
+                            x: anchor.cx + step * k * Math.cos(a * Math.PI / 4),
+                            y: anchor.cy + step * k * Math.sin(a * Math.PI / 4)
+                        });
+                    }
+                });
+                for (const v of fallbackVariants) {
+                    const rel = relFor(v);
+                    for (const pt of spokes) {
+                        const spot = anchorFor(pt, rel);
+                        const box = boxAt(spot, rel);
+                        if (labelBoxHits(box, padForBox(box))) continue;
+                        const n = draw(spot.x, spot.y, v);
+                        const real = realBox(n);
+                        if (real && !labelBoxHits(real, padForBox(real))) {
+                            const atX = +n.attr("x"), atY = +n.attr("y");
+                            placed = {
+                                node: n, box: real,
+                                at: {
+                                    x: atX, y: atY, v: v,
+                                    ref: { x: anchor.cx, y: anchor.cy },
+                                    rel: { x: real.x - atX, y: real.y - atY, w: real.w, h: real.h }
+                                }
+                            };
+                            break;
+                        }
+                        n.remove();
+                    }
+                    if (placed) break;
+                }
+            }
+
+            // Absolute guarantee: if all spoke positions hit other label boxes,
+            // place right at anchor center so no country is ever unlabelled
+            if (!placed) {
+                const v = wrapCandidatesFor(text).map(lines => ({
+                    lines: lines, m: measureLabelLines(text, lines), fs: 2.0
+                }))[0];
+                const rel = relFor(v);
+                const spot = anchorFor({ x: anchor.cx, y: anchor.cy }, rel);
+                const n = draw(spot.x, spot.y, v);
+                const real = realBox(n) || boxAt(spot, rel);
+                const atX = +n.attr("x"), atY = +n.attr("y");
+                placed = {
+                    node: n, box: real,
+                    at: {
+                        x: atX, y: atY, v: v,
+                        ref: { x: anchor.cx, y: anchor.cy },
+                        rel: { x: real.x - atX, y: real.y - atY, w: real.w, h: real.h }
+                    }
+                };
+            }
+
             if (!placed) return;
 
             labelBoxes.set(fid, placed.box);
@@ -4521,7 +4722,8 @@
                     'The chart magnifies three hundred times over, and its borders thin to keep their weight as you approach, so Vatican City, San Marino and Monaco grow big enough to be pointed at.',
                     'The banner across the head of Study mode is gone: the chart keeps every pixel it was asking for.',
                     'The mini-map carries a zoom slider at its foot — a magnifier at either end, the chart\'s view sliding between them — and a pinch on the inset still moves the chart itself.',
-                    'Mayotte stays out of Comoros\'s answer: a territory under another country\'s paint is never swept in with the islands beside it.'
+                    'Mayotte stays out of Comoros\'s answer: a territory under another country\'s paint is never swept in with the islands beside it.',
+                    'Captions re-scan their convergence path across all zoom levels: a name travelling toward its tie point never clips a neighbour\'s land.'
                 ]
             },
             {
