@@ -2513,19 +2513,34 @@
 
         function scaleCityMarkers(k) {
             if (!gMap) return;
-            const effK = Math.max(1, Math.min(25, k || 1));
-            // As user zooms in, visual screen radius shrinks gently (e.g. from ~5.2px down to ~2px)
-            // so dots never obscure small regions (like PEI, DC, islands, etc.)
-            const scaleFactor = Math.pow(effK, 1.25);
+            const currentK = Math.max(0.1, k || 1);
+            const effK = Math.min(25, currentK);
+
+            // When zoomed out (k <= 1), dots are the EXACT original full size:
+            // provincial outer 4.4px, national 5.5px, stroke 1.2px/1.5px, halo 8.25px.
+            // When zooming in (k > 1), on-screen radius shrinks gracefully (from ~4.4px down to ~2.2px)
+            // while geographically shrinking over 50x so it never obscures small areas (PEI, Ottawa, etc.)
+            const baseOuter = isNat => (isNat ? 5.5 : 4.4);
+            const baseInner = isNat => (isNat ? 2.8 : 2.0);
+            const baseSW = isNat => (isNat ? 1.5 : 1.2);
+
+            // Scale factor for on-screen visual radius: exactly 1.0 when zoomed out, shrinks gently with k^0.22 as k increases
+            const visualShrink = effK > 1 ? Math.pow(effK, 0.22) : 1;
+
             gMap.selectAll(".map-city-marker").each(function(d) {
                 const el = d3.select(this);
-                const isNat = d && d.isNational;
-                const rOuter = (isNat ? 5.2 : 4.2) / scaleFactor;
-                const rInner = (isNat ? 2.6 : 1.9) / scaleFactor;
-                // Keep hit area comfortable for touch/mouse (~22px screen radius)
-                const rHit = 22 / effK;
-                // Keep stroke thin and crisp on screen (~1px)
-                const sw = Math.max(0.04, (isNat ? 1.2 : 0.9) / effK);
+                const isNat = !!(d && d.isNational);
+
+                // Target on-screen sizes in pixels
+                const screenOuter = baseOuter(isNat) / visualShrink;
+                const screenInner = baseInner(isNat) / visualShrink;
+                const screenSW = Math.max(0.75, baseSW(isNat) / (effK > 1 ? Math.pow(effK, 0.15) : 1));
+
+                // Convert to SVG map coordinate attributes (divided by current zoom k)
+                const rOuter = screenOuter / currentK;
+                const rInner = screenInner / currentK;
+                const sw = screenSW / currentK;
+                const rHit = 22 / currentK; // Generous 44px tap target on screen
 
                 el.select(".city-hit").attr("r", rHit);
                 el.select(".city-outer").attr("r", rOuter).style("stroke-width", sw + "px");
