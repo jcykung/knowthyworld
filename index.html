@@ -237,14 +237,16 @@
         .map-city-marker.is-national .city-inner {
             fill: #8b2500;
         }
-        .map-city-marker:hover .city-outer,
-        .map-city-marker.is-hovered .city-outer {
-            fill: #ff1493 !important;
-            stroke: #a2005a !important;
-        }
-        .map-city-marker:hover .city-inner,
-        .map-city-marker.is-hovered .city-inner {
-            fill: #ffffff !important;
+        @media (hover: hover) and (pointer: fine) {
+            .map-city-marker:hover .city-outer,
+            .map-city-marker.is-hovered .city-outer {
+                fill: #ff1493 !important;
+                stroke: #a2005a !important;
+            }
+            .map-city-marker:hover .city-inner,
+            .map-city-marker.is-hovered .city-inner {
+                fill: #ffffff !important;
+            }
         }
         .map-city-marker.guessed-1st .city-outer {
             fill: #7c9a55 !important;
@@ -455,13 +457,19 @@
            alone could never reach a country's siblings. Declared after every
            fill above (and beside the advanced-mode overrides) so a hover
            always reads over an answered colour, and never over a name. */
-        .map-country.is-hovered,
-        .advanced-mode .map-country.is-hovered {
-            fill: #ff2e93 !important;
-            stroke: #b8005e !important;
-            stroke-width: calc(var(--map-stroke, 0.6px) * 2);
-            filter: drop-shadow(0 0 5px rgba(255, 46, 147, 0.85));
-            transition: none;
+        @media (hover: hover) and (pointer: fine) {
+            .map-country:hover {
+                fill: #ff2e93 !important;
+                stroke: #b8005e !important;
+            }
+            .map-country.is-hovered,
+            .advanced-mode .map-country.is-hovered {
+                fill: #ff2e93 !important;
+                stroke: #b8005e !important;
+                stroke-width: calc(var(--map-stroke, 0.6px) * 2);
+                filter: drop-shadow(0 0 5px rgba(255, 46, 147, 0.85));
+                transition: none;
+            }
         }
 
         .map-water {
@@ -680,30 +688,91 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        @media (max-width: 767px) {
-            /* The chart-room buttons run off the edge on a phone — let the
-               header scroll sideways rather than crush them */
-            .header-actions {
-                overflow-x: auto;
-                overflow-y: hidden;
-                -webkit-overflow-scrolling: touch;
-                scrollbar-width: none;
-                max-width: 68vw;
+        @media (max-width: 768px) {
+            header {
+                height: 52px;
+                padding-left: 10px;
+                padding-right: 10px;
             }
-            .header-actions::-webkit-scrollbar { display: none; }
+            .header-actions {
+                overflow-x: visible;
+                max-width: none;
+                gap: 4px;
+            }
+            #minimap-wrap {
+                display: none !important;
+            }
+            .compass-rose {
+                display: none !important;
+            }
+            #stats-hud {
+                display: none !important;
+            }
+            /* Maximize map area on mobile */
+            footer {
+                height: 38px;
+                padding-left: 10px;
+                padding-right: 10px;
+            }
+        }
+
+        @media (max-width: 1024px) {
+            #stats-hud {
+                display: none !important;
+            }
+        }
+
+        /* Landscape orientation mobile optimization */
+        @media (max-height: 520px) and (orientation: landscape) {
+            header {
+                height: 42px !important;
+                padding-left: 8px !important;
+                padding-right: 8px !important;
+            }
+            .target-hud-wrap {
+                top: 4px !important;
+            }
+            .target-hud-panel {
+                padding: 6px 12px !important;
+                gap: 8px !important;
+            }
+            #target-country-name {
+                font-size: 15px !important;
+                line-height: 1.15 !important;
+            }
+            #target-subtext {
+                display: none !important;
+            }
+            #skip-track {
+                height: 30px !important;
+                width: 110px !important;
+            }
+            #skip-knob {
+                width: 24px !important;
+                height: 24px !important;
+            }
+            .zoom-controls {
+                bottom: 8px !important;
+                right: 8px !important;
+            }
+            .zoom-controls button {
+                width: 34px !important;
+                height: 34px !important;
+                font-size: 13px !important;
+            }
+            footer {
+                height: 32px !important;
+            }
         }
 
         @media (pointer: coarse) {
-            /* 44px: the smallest target that a thumb can trust */
-            button { min-height: 44px; }
-            /* the stamp beside the title keeps its chip shape */
-            button.header-version { min-height: 0; padding: 5px 9px; font-size: 11px; }
-            .zoom-controls button { width: 48px; height: 48px; font-size: 16px; }
-            .zoom-controls { bottom: 16px; right: 16px; }
-            #btn-sound, .zoom-controls button, .header-actions button, #btn-hint { min-width: 44px; }
-            #minimap { cursor: crosshair; }
-            #container-continent-groups label { min-height: 44px; }
-            .settings-row { min-height: 44px; }
+            button { min-height: 38px; }
+            button.header-version { min-height: 0; padding: 3px 6px; font-size: 10px; }
+            .zoom-controls button { width: 44px; height: 44px; font-size: 16px; }
+            .zoom-controls { bottom: 12px; right: 12px; }
+            #btn-sound, .header-actions button, #btn-hint { min-width: 36px; min-height: 38px; }
+            #container-continent-groups label { min-height: 42px; }
+            .settings-row { min-height: 42px; }
             /* iOS magnifies any field under 16px on focus — keep it calm */
             input[type="text"], select { font-size: 16px; }
             .map-country.is-hovered { filter: none; }
@@ -713,18 +782,19 @@
 <body class="h-screen w-screen flex flex-col justify-between relative overflow-hidden bg-parchment-100 text-ink-800">
 
     <!-- TOP NAVIGATION BAR -->
-    <header class="h-16 px-4 md:px-6 glass-panel z-20 flex items-center justify-between shadow-xl shrink-0">
-        <div class="flex items-center space-x-3">
-            <div class="p-2 bg-gradient-to-tr from-brass-600 to-ink-700 rounded-xl text-parchment-50 shadow-lg shadow-ink-900/20 shrink-0">
-                <i class="fa-solid me-0 fa-earth-americas text-xl"></i>
+    <header class="h-14 sm:h-16 px-2.5 sm:px-4 md:px-6 glass-panel z-20 flex items-center justify-between shadow-xl shrink-0">
+        <div class="flex items-center space-x-2 sm:space-x-3 shrink-0">
+            <div class="p-1.5 sm:p-2 bg-gradient-to-tr from-brass-600 to-ink-700 rounded-lg sm:rounded-xl text-parchment-50 shadow-md sm:shadow-lg shrink-0">
+                <i class="fa-solid fa-earth-americas text-base sm:text-xl"></i>
             </div>
             <div class="min-w-0">
-                <h1 class="font-display font-bold text-lg md:text-xl tracking-tight text-ink-900 whitespace-nowrap">
-                    Know Thy World
-                    <button id="btn-version" onclick="openChangelog()" class="header-version"
+                <h1 class="font-display font-bold text-sm sm:text-lg md:text-xl tracking-tight text-ink-900 whitespace-nowrap flex items-center gap-1.5">
+                    <span class="hidden sm:inline">Know Thy World</span>
+                    <span class="sm:hidden font-extrabold text-xs tracking-wider text-brass-700">KTW</span>
+                    <button id="btn-version" onclick="openChangelog()" class="header-version text-[9px] sm:text-[11px] py-0.5 px-1.5"
                             title="What's new in this version">v1.5.0</button>
                 </h1>
-                <a class="header-byline text-xs font-semibold text-moss-700 hover:text-moss-600 transition-colors select-none whitespace-nowrap inline-flex items-center gap-1.5"
+                <a class="header-byline hidden sm:inline-flex text-xs font-semibold text-moss-700 hover:text-moss-600 transition-colors select-none whitespace-nowrap items-center gap-1.5"
                    href="https://ko-fi.com/coolpuddytat" target="_blank" rel="noopener noreferrer" title="Buy me a coffee! on Ko-fi">
                     <span>&gt; Jonathan Kung</span>
                     <i class="fa-solid fa-mug-hot text-[10px]"></i>
@@ -732,51 +802,47 @@
             </div>
         </div>
 
-        <!-- Right Header Action Controls — grouped by what they are for.
-             The two ways to play come first: they say what mode is in force,
-             and on a phone the header scrolls sideways, so they must be the
-             ones you reach without scrolling -->
-        <div class="header-actions flex items-center gap-2 md:gap-3">
-            <!-- Which round to play: each one opens the area list, and the
-                 Start button down there runs it in that mode -->
-            <div class="flex items-center gap-2" role="group" aria-label="Choose how to practise">
-                <button id="btn-mode-study" data-mode="study" onclick="openCustomSelectionModal('study')" class="mode-btn is-study px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2" title="Choose areas, then study the chart with every name on it">
-                    <i class="fa-solid fa-book-open"></i>
+        <!-- Right Header Action Controls — compact, touch-friendly, no horizontal scroll needed -->
+        <div class="header-actions flex items-center gap-1 sm:gap-2 md:gap-3 shrink-0">
+            <!-- Mode buttons -->
+            <div class="flex items-center gap-1 sm:gap-2 shrink-0" role="group" aria-label="Choose how to practise">
+                <button id="btn-mode-study" data-mode="study" onclick="openCustomSelectionModal('study')" class="mode-btn is-study px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs font-bold flex items-center gap-1 sm:gap-2" title="Choose areas, then study the chart with every name on it">
+                    <i class="fa-solid fa-book-open text-xs"></i>
                     <span>Study</span>
                 </button>
-                <button id="btn-mode-test" data-mode="test" onclick="openCustomSelectionModal('test')" class="mode-btn is-test px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2" title="Choose areas, then be tested on them">
-                    <i class="fa-solid fa-stopwatch"></i>
+                <button id="btn-mode-test" data-mode="test" onclick="openCustomSelectionModal('test')" class="mode-btn is-test px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs font-bold flex items-center gap-1 sm:gap-2" title="Choose areas, then be tested on them">
+                    <i class="fa-solid fa-stopwatch text-xs"></i>
                     <span>Test</span>
                 </button>
             </div>
 
-            <span class="header-divider" aria-hidden="true"></span>
+            <span class="header-divider hidden xs:block" aria-hidden="true"></span>
 
-            <!-- Looking at the chart: sound, names -->
-            <div class="flex items-center gap-2" role="group" aria-label="Chart display">
-                <button id="btn-sound" onclick="toggleSound()" class="px-2.5 py-2 rounded-xl bg-parchment-400/80 hover:bg-parchment-500 text-ink-700 hover:text-ink-900 transition-all border border-parchment-700/60" title="Toggle Sound FX">
-                    <i id="icon-sound" class="fa-solid fa-volume-high"></i>
+            <!-- Chart display: Sound, Labels -->
+            <div class="flex items-center gap-1 sm:gap-2 shrink-0" role="group" aria-label="Chart display">
+                <button id="btn-sound" onclick="toggleSound()" class="w-8 h-8 sm:w-auto sm:h-auto sm:px-2.5 sm:py-2 rounded-lg sm:rounded-xl bg-parchment-400/80 hover:bg-parchment-500 text-ink-700 hover:text-ink-900 transition-all border border-parchment-700/60 flex items-center justify-center" title="Toggle Sound FX">
+                    <i id="icon-sound" class="fa-solid fa-volume-high text-xs sm:text-sm"></i>
                 </button>
 
-                <button id="btn-toggle-labels" onclick="toggleLabelsFromHeader()" class="px-3 py-2 rounded-xl bg-parchment-400/80 hover:bg-parchment-500 text-ink-700 hover:text-ink-900 border border-parchment-700/60 text-xs font-semibold flex items-center gap-2 transition-all" title="Toggle On-Map Area Labels">
-                    <i class="fa-solid fa-tag text-ochre-600"></i>
+                <button id="btn-toggle-labels" onclick="toggleLabelsFromHeader()" class="px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-parchment-400/80 hover:bg-parchment-500 text-ink-700 hover:text-ink-900 border border-parchment-700/60 text-xs font-semibold flex items-center gap-1.5 transition-all" title="Toggle On-Map Area Labels">
+                    <i class="fa-solid fa-tag text-ochre-600 text-xs sm:text-sm"></i>
                     <span class="hidden md:inline">Labels: <span id="txt-label-status" class="text-moss-600">ON</span></span>
                 </button>
             </div>
 
-            <span class="header-divider" aria-hidden="true"></span>
+            <span class="header-divider hidden md:block" aria-hidden="true"></span>
 
-            <!-- Setting up the quiz: scope, selection, options -->
-            <div class="flex items-center gap-2" role="group" aria-label="Quiz setup">
-                <button onclick="openCustomSelectionModal()" class="px-3 py-2 rounded-xl bg-moss-600/20 hover:bg-moss-600/30 text-moss-700 hover:text-moss-100 border border-moss-500/40 text-xs font-semibold flex items-center gap-2 transition-all shadow-lg shadow-ink-900/20" title="Choose specific countries to practice">
-                    <i class="fa-solid fa-list-check text-moss-600"></i>
-                    <span class="hidden sm:inline">Select Countries</span>
+            <!-- Scope & Settings -->
+            <div class="flex items-center gap-1 sm:gap-2 shrink-0" role="group" aria-label="Quiz setup">
+                <button onclick="openCustomSelectionModal()" class="relative px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-moss-600/20 hover:bg-moss-600/30 text-moss-700 hover:text-moss-900 border border-moss-500/40 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm" title="Choose specific countries to practice">
+                    <i class="fa-solid fa-list-check text-moss-600 text-xs sm:text-sm"></i>
+                    <span class="hidden lg:inline">Select Countries</span>
                     <span id="badge-custom-count" class="hidden text-[10px] bg-moss-500 text-parchment-50 font-extrabold px-1.5 py-0.5 rounded-full"></span>
                 </button>
 
-                <button onclick="openSettingsModal()" class="px-3 py-2 rounded-xl bg-parchment-400/80 hover:bg-parchment-500 text-ink-700 hover:text-ink-900 text-xs font-semibold flex items-center gap-2 border border-parchment-700/60 transition-all" title="Quiz settings, chart display and scope">
-                    <i class="fa-solid fa-sliders text-brass-600"></i>
-                    <span class="hidden md:inline">Quiz Settings</span>
+                <button onclick="openSettingsModal()" class="w-8 h-8 sm:w-auto sm:h-auto sm:px-3 sm:py-2 rounded-lg sm:rounded-xl bg-parchment-400/80 hover:bg-parchment-500 text-ink-700 hover:text-ink-900 text-xs font-semibold flex items-center justify-center gap-1.5 border border-parchment-700/60 transition-all" title="Quiz settings, chart display and scope">
+                    <i class="fa-solid fa-sliders text-brass-600 text-xs sm:text-sm"></i>
+                    <span class="hidden lg:inline">Quiz Settings</span>
                 </button>
             </div>
         </div>
@@ -786,8 +852,8 @@
     <div class="relative flex-1 w-full h-full overflow-hidden flex flex-col md:flex-row">
         
         <!-- TARGET QUESTION HUD OVERLAY (TOP CENTER) -->
-        <div class="game-only absolute top-4 left-1/2 -translate-x-1/2 z-10 w-11/12 max-w-xl pointer-events-auto">
-            <div class="glass-panel rounded-2xl p-4 shadow-2xl border border-ink-900/15 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div class="game-only target-hud-wrap absolute top-2 sm:top-4 left-1/2 -translate-x-1/2 z-10 w-11/12 max-w-xl pointer-events-auto">
+            <div class="glass-panel target-hud-panel rounded-xl sm:rounded-2xl p-2.5 sm:p-4 shadow-2xl border border-ink-900/15 flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-4">
                 
                 <div class="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-start">
                     <div class="flex flex-col">
@@ -915,7 +981,7 @@
             </div>
 
             <!-- Compass rose: chart-table ornament, bottom-left away from the zoom controls -->
-            <svg class="pointer-events-none select-none absolute bottom-5 left-5 z-10 w-24 h-24 opacity-90" viewBox="0 0 120 120" aria-hidden="true">
+            <svg class="compass-rose hidden md:block pointer-events-none select-none absolute bottom-5 left-5 z-10 w-24 h-24 opacity-90" viewBox="0 0 120 120" aria-hidden="true">
                 <circle cx="60" cy="60" r="46" fill="rgba(251,246,233,0.55)" stroke="#7a5626" stroke-width="1.4"/>
                 <circle cx="60" cy="60" r="38" fill="none" stroke="#a37e4b" stroke-width="1" stroke-dasharray="1.5 3.5"/>
                 <!-- ordinal (shorter) points -->
@@ -988,24 +1054,24 @@
     </footer>
 
     <!-- MODAL: SETTINGS & MODE CONFIGURATION -->
-    <div id="modal-settings" class="fixed inset-0 z-50 bg-ink-900/75 backdrop-blur-md flex items-center justify-center p-4 hidden animate-fade-in">
-        <div class="glass-panel w-full max-w-lg rounded-2xl p-6 shadow-2xl border border-parchment-700 flex flex-col gap-6">
-            <div class="flex items-center justify-between border-b border-parchment-600 pb-4">
+    <div id="modal-settings" class="fixed inset-0 z-50 bg-ink-900/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 hidden animate-fade-in overflow-y-auto">
+        <div class="glass-panel w-full max-w-lg rounded-2xl p-4 sm:p-6 shadow-2xl border border-parchment-700 flex flex-col max-h-[90vh] my-auto">
+            <div class="flex items-center justify-between border-b border-parchment-600 pb-3 sm:pb-4 shrink-0">
                 <div class="flex items-center gap-3">
-                    <div class="p-2.5 rounded-xl bg-brass-500/20 text-brass-600">
-                        <i class="fa-solid fa-gear text-lg"></i>
+                    <div class="p-2 sm:p-2.5 rounded-xl bg-brass-500/20 text-brass-600">
+                        <i class="fa-solid fa-gear text-base sm:text-lg"></i>
                     </div>
                     <div>
-                        <h3 class="text-lg font-bold text-ink-900 font-display">Quiz Configuration</h3>
-                        <p class="text-xs text-ink-500">Customize target scope & difficulty settings</p>
+                        <h3 class="text-base sm:text-lg font-bold text-ink-900 font-display">Quiz Configuration</h3>
+                        <p class="text-[11px] sm:text-xs text-ink-500">Customize target scope &amp; difficulty settings</p>
                     </div>
                 </div>
                 <button onclick="closeSettingsModal()" class="text-ink-500 hover:text-ink-900 p-2 text-lg"><i class="fa-solid fa-xmark"></i></button>
             </div>
 
-            <div class="space-y-4">
+            <div class="space-y-3 sm:space-y-4 py-3 sm:py-4 flex-1 overflow-y-auto pr-1">
                 <!-- Show Area Labels Checkbox -->
-                <div class="glass-card p-4 rounded-xl border border-parchment-600 flex items-start gap-3 cursor-pointer hover:border-brass-500/40 transition-all" onclick="toggleLabelsCheckbox(event)">
+                <div class="glass-card p-3 sm:p-4 rounded-xl border border-parchment-600 flex items-start gap-3 cursor-pointer hover:border-brass-500/40 transition-all" onclick="toggleLabelsCheckbox(event)">
                     <input type="checkbox" id="chk-show-labels" checked class="mt-1 w-4 h-4 rounded text-brass-700 bg-parchment-200 border-parchment-700 focus:ring-brass-500 focus:ring-offset-parchment-100">
                     <div class="flex-1">
                         <label class="text-sm font-semibold text-ink-900 block cursor-pointer">Show Area Names on Map 🏷️</label>
@@ -1014,7 +1080,7 @@
                 </div>
 
                 <!-- Advanced Mode Checkbox -->
-                <div class="glass-card p-4 rounded-xl border border-parchment-600 flex items-start gap-3 cursor-pointer hover:border-brass-500/40 transition-all" onclick="toggleAdvancedCheckbox(event)">
+                <div class="glass-card p-3 sm:p-4 rounded-xl border border-parchment-600 flex items-start gap-3 cursor-pointer hover:border-brass-500/40 transition-all" onclick="toggleAdvancedCheckbox(event)">
                     <input type="checkbox" id="chk-advanced-mode" class="mt-1 w-4 h-4 rounded text-brass-700 bg-parchment-200 border-parchment-700 focus:ring-brass-500 focus:ring-offset-parchment-100">
                     <div class="flex-1">
                         <label class="text-sm font-semibold text-ink-900 block cursor-pointer">Advanced Challenge Mode</label>
@@ -1023,7 +1089,7 @@
                 </div>
 
                 <!-- Include Canadian Provinces Toggle -->
-                <div class="glass-card p-4 rounded-xl border border-parchment-600 flex items-start gap-3 cursor-pointer hover:border-brass-500/40 transition-all" onclick="toggleCanadaCheckbox(event)">
+                <div class="glass-card p-3 sm:p-4 rounded-xl border border-parchment-600 flex items-start gap-3 cursor-pointer hover:border-brass-500/40 transition-all" onclick="toggleCanadaCheckbox(event)">
                     <input type="checkbox" id="chk-canada-provinces" class="mt-1 w-4 h-4 rounded text-brass-700 bg-parchment-200 border-parchment-700 focus:ring-brass-500 focus:ring-offset-parchment-100">
                     <div class="flex-1">
                         <label class="text-sm font-semibold text-ink-900 block cursor-pointer">Include Canadian Provinces &amp; Territories 🇨🇦</label>
@@ -1032,7 +1098,7 @@
                 </div>
 
                 <!-- Include Capital Cities of Canada Toggle -->
-                <div class="glass-card p-4 rounded-xl border border-parchment-600 flex items-start gap-3 cursor-pointer hover:border-brass-500/40 transition-all" onclick="toggleCanadaCapitalsCheckbox(event)">
+                <div class="glass-card p-3 sm:p-4 rounded-xl border border-parchment-600 flex items-start gap-3 cursor-pointer hover:border-brass-500/40 transition-all" onclick="toggleCanadaCapitalsCheckbox(event)">
                     <input type="checkbox" id="chk-canada-capitals" class="mt-1 w-4 h-4 rounded text-brass-700 bg-parchment-200 border-parchment-700 focus:ring-brass-500 focus:ring-offset-parchment-100">
                     <div class="flex-1">
                         <label class="text-sm font-semibold text-ink-900 block cursor-pointer">Include Capital Cities of Canada 🇨🇦</label>
@@ -1041,7 +1107,7 @@
                 </div>
 
                 <!-- Include U.S. States Toggle -->
-                <div class="glass-card p-4 rounded-xl border border-parchment-600 flex items-start gap-3 cursor-pointer hover:border-brass-500/40 transition-all" onclick="toggleUSCheckbox(event)">
+                <div class="glass-card p-3 sm:p-4 rounded-xl border border-parchment-600 flex items-start gap-3 cursor-pointer hover:border-brass-500/40 transition-all" onclick="toggleUSCheckbox(event)">
                     <input type="checkbox" id="chk-us-states" class="mt-1 w-4 h-4 rounded text-brass-700 bg-parchment-200 border-parchment-700 focus:ring-brass-500 focus:ring-offset-parchment-100">
                     <div class="flex-1">
                         <label class="text-sm font-semibold text-ink-900 block cursor-pointer">Include U.S. States 🇺🇸</label>
@@ -1049,7 +1115,7 @@
                     </div>
                 </div>
 
-                <!-- Chart Display: which furniture stays on the screen -->
+                <!-- Chart Display -->
                 <div>
                     <label class="text-xs font-bold text-ink-700 uppercase tracking-wider block mb-2">Chart Display</label>
                     <div class="grid grid-cols-2 gap-3">
@@ -1065,16 +1131,17 @@
                 </div>
             </div>
 
-            <div class="flex items-center justify-end gap-3 pt-2">
-                <button onclick="closeSettingsModal()" class="px-4 py-2 rounded-xl bg-parchment-400 hover:bg-parchment-500 text-ink-700 text-xs font-semibold transition-all">Cancel</button>
-                <button onclick="applySettingsAndRestart()" class="px-5 py-2 rounded-xl bg-brass-600 hover:bg-brass-500 text-parchment-50 text-xs font-semibold shadow-lg shadow-ink-900/20 transition-all">Apply & Restart</button>
+            <!-- Modal Footer: Pinned at bottom, never cut off! -->
+            <div class="flex items-center justify-end gap-3 pt-3 border-t border-parchment-600/70 shrink-0">
+                <button onclick="closeSettingsModal()" class="px-4 py-2 sm:py-2.5 rounded-xl bg-parchment-400 hover:bg-parchment-500 text-ink-700 text-xs font-semibold transition-all">Cancel</button>
+                <button onclick="applySettingsAndRestart()" class="px-5 py-2 sm:py-2.5 rounded-xl bg-brass-600 hover:bg-brass-500 text-parchment-50 text-xs font-semibold shadow-lg shadow-ink-900/20 transition-all">Apply &amp; Restart</button>
             </div>
         </div>
     </div>
 
     <!-- MODAL: CHANGELOG -->
-    <div id="modal-changelog" class="fixed inset-0 z-50 bg-ink-900/75 backdrop-blur-md flex items-center justify-center p-4 hidden animate-fade-in">
-        <div class="glass-panel w-full max-w-lg rounded-2xl p-5 md:p-6 shadow-2xl border border-parchment-700 animate-scale-up flex flex-col gap-4 max-h-[86vh]">
+    <div id="modal-changelog" class="fixed inset-0 z-50 bg-ink-900/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 hidden animate-fade-in overflow-y-auto">
+        <div class="glass-panel w-full max-w-lg rounded-2xl p-4 sm:p-6 shadow-2xl border border-parchment-700 animate-scale-up flex flex-col gap-3 sm:gap-4 max-h-[90vh] my-auto">
             <div class="flex items-start justify-between gap-3 border-b border-parchment-600 pb-3 shrink-0">
                 <div class="flex items-center gap-3">
                     <div class="p-2.5 rounded-xl bg-moss-500/20 text-moss-600">
@@ -1097,8 +1164,8 @@
     </div>
 
     <!-- MODAL: CUSTOM COUNTRY SELECTOR (GROUPED BY CONTINENT) -->
-    <div id="modal-custom-selection" class="fixed inset-0 z-50 bg-ink-900/75 backdrop-blur-md flex items-center justify-center p-3 md:p-6 hidden animate-fade-in">
-        <div class="glass-panel w-full max-w-4xl h-[88vh] rounded-2xl p-5 shadow-2xl border border-parchment-700 flex flex-col justify-between gap-4">
+    <div id="modal-custom-selection" class="fixed inset-0 z-50 bg-ink-900/75 backdrop-blur-md flex items-center justify-center p-2 sm:p-3 md:p-6 hidden animate-fade-in overflow-y-auto">
+        <div class="glass-panel w-full max-w-4xl h-[92vh] max-h-[94vh] rounded-2xl p-3 sm:p-5 shadow-2xl border border-parchment-700 flex flex-col justify-between gap-3 sm:gap-4 my-auto">
             
             <!-- Modal Header & Controls -->
             <div class="flex flex-col gap-3 border-b border-parchment-600 pb-3 shrink-0">
@@ -1182,8 +1249,8 @@
     </div>
 
     <!-- MODAL: QUIZ RESULTS / SUMMARY -->
-    <div id="modal-summary" class="fixed inset-0 z-50 bg-ink-900/75 backdrop-blur-md flex items-center justify-center p-4 hidden">
-        <div id="summary-panel" class="glass-panel w-full max-w-md rounded-2xl p-6 shadow-2xl border border-parchment-700 text-center flex flex-col gap-5 animate-scale-up">
+    <div id="modal-summary" class="fixed inset-0 z-50 bg-ink-900/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 hidden animate-fade-in overflow-y-auto">
+        <div id="summary-panel" class="glass-panel w-full max-w-md rounded-2xl p-4 sm:p-6 shadow-2xl border border-parchment-700 text-center flex flex-col gap-4 sm:gap-5 animate-scale-up max-h-[92vh] overflow-y-auto my-auto">
             <div class="w-16 h-16 bg-gradient-to-tr from-ochre-500 to-moss-500 rounded-2xl mx-auto flex items-center justify-center text-3xl text-parchment-50 shadow-lg shadow-ink-900/20">
                 <i class="fa-solid fa-trophy"></i>
             </div>
@@ -1758,6 +1825,7 @@
 
         // D3 MAP VARS
         let svg, gMap, gOcean, projection, pathGenerator, zoomBehavior;
+        let isTouchInteracting = false, isTouchDragging = false;
 
         // Reserved footprints of placed map labels, in base projection units.
         // Zoom scales every label together, so an overlap-free arrangement at
@@ -1997,6 +2065,12 @@
                 // past 200x does it become a target rather than a dot.
                 .scaleExtent([1, 300])
                 .on("zoom", (event) => {
+                    if (event.sourceEvent) {
+                        if (event.sourceEvent.pointerType === "touch" || (event.sourceEvent.touches && event.sourceEvent.touches.length > 0)) {
+                            isTouchDragging = true;
+                            clearHoverGlow();
+                        }
+                    }
                     gMap.attr("transform", event.transform);
                     gOcean.attr("transform", event.transform);
                     // Borders keep the same fine line on the paper however
@@ -2023,6 +2097,34 @@
                 });
 
             svg.call(zoomBehavior);
+
+            let touchStartCoords = null;
+            svg.on("pointerdown.touchguard", (e) => {
+                if (e.pointerType === "touch") {
+                    touchStartCoords = { x: e.clientX, y: e.clientY };
+                    isTouchInteracting = true;
+                    isTouchDragging = false;
+                    clearHoverGlow();
+                }
+            });
+            svg.on("pointermove.touchguard", (e) => {
+                if (e.pointerType === "touch" && touchStartCoords) {
+                    if (Math.hypot(e.clientX - touchStartCoords.x, e.clientY - touchStartCoords.y) > 8) {
+                        isTouchDragging = true;
+                        clearHoverGlow();
+                    }
+                }
+            });
+            svg.on("pointerup.touchguard pointercancel.touchguard", (e) => {
+                if (e.pointerType === "touch") {
+                    isTouchInteracting = false;
+                    clearHoverGlow();
+                    if (isTouchDragging) {
+                        setTimeout(() => { isTouchDragging = false; }, 100);
+                    }
+                    touchStartCoords = null;
+                }
+            });
 
             gMap = svg.append("g");
             // Every piece of a place answers for the whole of it on hover
@@ -2233,6 +2335,7 @@
         }
 
         function setHoverGlow(fid) {
+            if (isTouchInteracting || isTouchDragging) return;
             if (fid === glowFid) return;
             // The gather drawn round a cluster answers the pointer for its
             // islands, but it is never itself painted: the islands glow.
@@ -2247,17 +2350,27 @@
             }
         }
 
-        function clearHoverGlow() { setHoverGlow(null); }
+        function clearHoverGlow() {
+            if (glowFid) {
+                gMap.selectAll('path.map-country[data-id="' + glowFid + '"]:not(.map-island-ring)')
+                    .classed("is-hovered", false);
+            }
+            glowFid = null;
+        }
 
         function initHoverGlow() {
             if (!gMap) return;
-            gMap.on("pointerover.mapglow", e => setHoverGlow(countryFidOf(e.target)));
-            gMap.on("pointerout.mapglow", e => setHoverGlow(countryFidOf(e.relatedTarget)));
+            const isTouch = e => (e && e.pointerType === "touch");
+            gMap.on("pointerover.mapglow", e => {
+                if (isTouch(e)) return;
+                setHoverGlow(countryFidOf(e.target));
+            });
+            gMap.on("pointerout.mapglow", e => {
+                if (isTouch(e)) return;
+                setHoverGlow(countryFidOf(e.relatedTarget));
+            });
             gMap.on("pointerleave.mapglow", clearHoverGlow);
-            // A finger lights a place only while it is pressed — the glow
-            // follows the touch and lets go with it
-            gMap.on("pointerup.mapglow pointercancel.mapglow",
-                    e => { if (e.pointerType === "touch") clearHoverGlow(); });
+            gMap.on("pointerup.mapglow pointercancel.mapglow", e => clearHoverGlow());
         }
 
         function buildMapFeatures() {
@@ -2401,13 +2514,18 @@
         function scaleCityMarkers(k) {
             if (!gMap) return;
             const effK = Math.max(1, Math.min(25, k || 1));
+            // As user zooms in, visual screen radius shrinks gently (e.g. from ~5.2px down to ~2px)
+            // so dots never obscure small regions (like PEI, DC, islands, etc.)
+            const scaleFactor = Math.pow(effK, 1.25);
             gMap.selectAll(".map-city-marker").each(function(d) {
                 const el = d3.select(this);
                 const isNat = d && d.isNational;
-                const rOuter = (isNat ? 5.5 : 4.4) / Math.pow(effK, 0.45);
-                const rInner = (isNat ? 2.8 : 2.0) / Math.pow(effK, 0.45);
-                const rHit = Math.max(12 / effK, 12 / Math.pow(effK, 0.45));
-                const sw = Math.max(0.6, 1.2 / Math.pow(effK, 0.5));
+                const rOuter = (isNat ? 5.2 : 4.2) / scaleFactor;
+                const rInner = (isNat ? 2.6 : 1.9) / scaleFactor;
+                // Keep hit area comfortable for touch/mouse (~22px screen radius)
+                const rHit = 22 / effK;
+                // Keep stroke thin and crisp on screen (~1px)
+                const sw = Math.max(0.04, (isNat ? 1.2 : 0.9) / effK);
 
                 el.select(".city-hit").attr("r", rHit);
                 el.select(".city-outer").attr("r", rOuter).style("stroke-width", sw + "px");
@@ -2421,6 +2539,8 @@
                 event.stopPropagation();
                 if (event.preventDefault) event.preventDefault();
             }
+            if (isTouchDragging) return;
+            if (event && event.defaultPrevented) return;
             if (!state.currentTarget) return;
             if (pickerOpen()) return;
             if (state.studyMode) {
@@ -3594,6 +3714,8 @@
         }
 
         function handleCountryClick(event, d) {
+            if (isTouchDragging) return;
+            if (event && event.defaultPrevented) return;
             if (!state.currentTarget) return;
             if (pickerOpen()) return;
             if (state.studyMode) {
@@ -4063,19 +4185,6 @@
         }
 
         function makeInsideTest(feature, node) {
-            if (node && typeof node.isPointInFill === "function") {
-                const useDOMPoint = typeof window.DOMPoint === "function";
-                return function (x, y) {
-                    try {
-                        return node.isPointInFill(useDOMPoint ? new DOMPoint(x, y) : { x: x, y: y });
-                    } catch (e) {
-                        return false;
-                    }
-                };
-            }
-
-            // Fallback for a feature that is not drawn (or an old engine):
-            // containment against the projected rings of its polygons
             const polys = [];
             polygonsOf(feature).forEach(rings => {
                 const proj = rings
@@ -4083,18 +4192,29 @@
                               .filter(p => p && isFinite(p[0]) && isFinite(p[1])));
                 if (proj.length && proj[0].length > 2) polys.push(proj);
             });
-            if (!polys.length) return function () { return false; };
-            return function (x, y) {
+
+            const polyTest = polys.length ? function (x, y) {
                 for (const rings of polys) {
                     if (!d3.polygonContains(rings[0], [x, y])) continue;
                     let inHole = false;
                     for (let i = 1; i < rings.length && !inHole; i++) {
-                        inHole = d3.polygonContains(rings[i], [x, y]);
+                        if (d3.polygonContains(rings[i], [x, y])) { inHole = true; break; }
                     }
                     if (!inHole) return true;
                 }
                 return false;
-            };
+            } : null;
+
+            const useDOMPoint = typeof window.DOMPoint === "function";
+            const domTest = (node && typeof node.isPointInFill === "function") ? function (x, y) {
+                try {
+                    return node.isPointInFill(useDOMPoint ? new DOMPoint(x, y) : { x: x, y: y });
+                } catch (e) {
+                    return false;
+                }
+            } : null;
+
+            return polyTest || domTest || function () { return false; };
         }
 
         // Two-pass chamfer distance: how far each grid sample sits from the
@@ -4184,6 +4304,11 @@
                     const i = r * cols + c;
                     if (!grid[i]) continue;
                     pts.push({ x: x0 + c * step, y: y0 + r * step, edt: dist[i] * step });
+                }
+            }
+            if (anchor && isFinite(anchor.cx) && isFinite(anchor.cy) && inside(anchor.cx, anchor.cy)) {
+                if (!pts.some(p => Math.hypot(p.x - anchor.cx, p.y - anchor.cy) < step)) {
+                    pts.push({ x: anchor.cx, y: anchor.cy, edt: Math.max(1.5, Math.min(anchor.w, anchor.h) / 3) });
                 }
             }
             pts.sort((p, q) => q.edt - p.edt);
@@ -4831,7 +4956,7 @@
                     const need = Math.min(rel.w, rel.h) / 2;
                     let tried = 0;
                     for (const p of spots) {                   // best room first
-                        if (p.edt !== undefined && p.edt < need) break;
+                        if (p.edt !== undefined && p.edt < need * 0.4 && tried > 6) break;
                         if (++tried > LABEL_SPOT_LIMIT) break;
                         const spot = anchorFor(p, rel);
                         if (!phase.fits(spot, rel)) continue;
@@ -4843,43 +4968,98 @@
                 return false;
             };
 
-            // 1 — on its own land, at a size worth reading
-            if (!(phaseA.length && run(phaseA, probe.pts, inside))) {
-                // 2 — beside it on open water: a name too big for the place
-                // goes in the sea next door, never on the place next door.
-                // Sifting a seaful of spots costs more than a whole pass
-                // across a country, so the caption is given its own allowance
+            const isTinyPlace = (anchor.w < 10 && anchor.h < 10) || (anchor.area < 90) ||
+                ["020", "028", "048", "052", "132", "174", "296", "308", "336", "438",
+                 "462", "470", "480", "492", "520", "583", "584", "585", "659", "662",
+                 "670", "674", "678", "690", "702", "776", "798", "882",
+                 "CA-PE", "US-DE", "US-RI", "US-DC"].includes(fid);
+
+            // 1 — On its own land, at standard readable font sizes (phaseA, fs >= 2.6)
+            let placedInside = phaseA.length && run(phaseA, probe.pts, inside);
+
+            // 2 — On its own land, at smaller font sizes (phaseC, fs down to LABEL_MIN_FONT)
+            // MUST be attempted before giving up on borders! Non-tiny countries (like Kenya)
+            // must ALWAYS be placed within their country borders and never out at sea!
+            if (!placedInside && phaseC.length) {
+                budget.left = LABEL_TEST_BUDGET;
+                placedInside = run(phaseC, probe.pts, inside);
+            }
+
+            // If room is there but taken by a neighbour in the current layout, rescue once
+            if (!placedInside && !labelRescueUsed.has(fid) && !isTinyPlace && probe.pts.length > 3 && (anchor.w > 12 || anchor.h > 12)) {
+                labelRescueUsed.add(fid);
+                relayoutMapLabels({ fid: fid, text: text });
+                return;
+            }
+
+            // For regular countries (NOT tiny places like Delaware, Nauru, etc.):
+            // They MUST stay strictly within their borders! If crowded by neighbours,
+            // test with relaxed padding or place at the deepest interior probe point inside borders.
+            if (!placed && !isTinyPlace) {
+                const relaxedInside = {
+                    fits: (p, rel) => {
+                        const box = boxAt(p, rel);
+                        if (labelBoxHits(box, 0.2)) return false;
+                        return boxInsideRegion(coast, box, budget, false);
+                    },
+                    holds: box => boxInsideRegion(coast, box, budget, false)
+                };
+                if (phaseC.length) {
+                    placedInside = run(phaseC, probe.pts, relaxedInside);
+                }
+
+                if (!placed) {
+                    // Guaranteed interior placement: select the best interior probe point
+                    // that is 100% inside this country's land, sized compactly to fit
+                    const bestPt = (probe.pts && probe.pts.length) ? probe.pts[0] : { x: anchor.cx, y: anchor.cy };
+                    const cand = wrapCandidatesFor(text)[0];
+                    const m = measureLabelLines(text, cand);
+                    const fs = Math.min(2.8, Math.max(LABEL_MIN_FONT, (anchor.w * 0.75 / m.w) * 100));
+                    const v = { lines: cand, m: m, fs: fs };
+                    const rel = relFor(v);
+                    const spot = anchorFor(bestPt, rel);
+                    const n = draw(spot.x, spot.y, v);
+                    const real = realBox(n) || boxAt(spot, rel);
+                    const atX = +n.attr("x"), atY = +n.attr("y");
+                    placed = {
+                        node: n, box: real,
+                        at: {
+                            x: atX, y: atY, v: v,
+                            ref: { x: bestPt.x, y: bestPt.y },
+                            rel: { x: real.x - atX, y: real.y - atY, w: real.w, h: real.h }
+                        }
+                    };
+                    labelBoxes.set(fid, real);
+                    hangMapLabel(n.node(), placed.at);
+                    scaleMapLabel(n.node(), currentZoomK());
+                    return;
+                }
+            }
+
+            // 3 — ONLY for tiny places (like Delaware, Nauru, Monaco, Vatican, etc.)
+            // whose land is physically too small to fit their label:
+            // Place nearby without being on another place's area or overlapping another label!
+            if (!placed && isTinyPlace) {
+                // If coastal, try placing nearby on open water
                 budget.left = LABEL_CAPTION_BUDGET;
                 const reach = Math.max(anchor.w, anchor.h) + captionSlack +
                               Math.max(capRel.w, capRel.h);
                 const water = waterSpots(anchor, reach, captionSlack,
                                          { w: capRel.w, h: capRel.h }, budget);
-                if (!water.length || !run(phaseB, water, beside)) {
-                    // 3 — on its own land, however small it has to be
-                    budget.left = LABEL_TEST_BUDGET;
-                    if (!(phaseC.length && run(phaseC, probe.pts, inside)) &&
-                        !labelRescueUsed.has(fid) && probe.pts.length > 3) {
-                        // The room is there but the neighbours have taken it —
-                        // lay every label out again in one calm pass and try
-                        // once more inside the new arrangement
-                        labelRescueUsed.add(fid);
-                        relayoutMapLabels({ fid: fid, text: text });
-                        return;
-                    }
+                if (water.length) {
+                    run(phaseB, water, beside);
                 }
             }
 
-            // 4 — Guaranteed fallback for micro-states, enclaves, and tiny places
-            // (Vatican City, San Marino, Liechtenstein, Monaco, Andorra, etc.)
-            // that cannot hold text inside their borders and have no open water.
-            // Place them cleanly anchored at or radiating outward from their center.
-            if (!placed) {
+            // 4 — Micro-states and tiny landlocked places (or if water didn't fit):
+            // Radiate outward nearby, ensuring it NEVER lands on another place's land and never overlaps another label!
+            if (!placed && isTinyPlace) {
                 const fallbackVariants = wrapCandidatesFor(text).map(lines => ({
                     lines: lines, m: measureLabelLines(text, lines), fs: 2.2
                 })).concat(phaseC.length ? phaseC.slice(-2) : []);
-                const step = Math.min(6, Math.max(1.5, Math.min(anchor.w, anchor.h) + 1));
+                const step = Math.min(4, Math.max(1.2, Math.min(anchor.w, anchor.h) + 0.8));
                 const spokes = [{ x: anchor.cx, y: anchor.cy }];
-                [1, 2, 3, 4, 6, 8, 12].forEach(k => {
+                [1, 2, 3, 4, 6].forEach(k => {
                     for (let a = 0; a < 8; a++) {
                         spokes.push({
                             x: anchor.cx + step * k * Math.cos(a * Math.PI / 4),
@@ -4893,9 +5073,10 @@
                         const spot = anchorFor(pt, rel);
                         const box = boxAt(spot, rel);
                         if (labelBoxHits(box, padForBox(box))) continue;
+                        if (boxTouchesForeignLand(box, fid, budget, true)) continue;
                         const n = draw(spot.x, spot.y, v);
                         const real = realBox(n);
-                        if (real && !labelBoxHits(real, padForBox(real))) {
+                        if (real && !labelBoxHits(real, padForBox(real)) && !boxTouchesForeignLand(real, fid, budget, true)) {
                             const atX = +n.attr("x"), atY = +n.attr("y");
                             placed = {
                                 node: n, box: real,
@@ -4913,8 +5094,7 @@
                 }
             }
 
-            // Absolute guarantee: if all spoke positions hit other label boxes,
-            // place right at anchor center so no country is ever unlabelled
+            // Absolute guarantee for micro-states if all spoke positions had collisions:
             if (!placed) {
                 const v = wrapCandidatesFor(text).map(lines => ({
                     lines: lines, m: measureLabelLines(text, lines), fs: 2.0
