@@ -286,11 +286,11 @@
             stroke: #7d2b1c !important;
         }
         .map-city-label {
-            font-size: 6.5px;
+            font-size: 16px;
             font-weight: 700;
             fill: #221a0f;
             stroke: #faf3e0;
-            stroke-width: 1.8px;
+            stroke-width: 3.8px;
             paint-order: stroke fill;
             pointer-events: none;
             text-anchor: middle;
@@ -302,11 +302,11 @@
         /* On-map text labels: ink on a paper halo, sized per region by JS
            so the name stays inside small countries instead of spilling out */
         .map-label {
-            font-size: 8px;
+            font-size: 16px;
             font-weight: 600;
             fill: #2f2312;
             stroke: #f7eeda;
-            stroke-width: 2.4px;
+            stroke-width: 4.8px;
             paint-order: stroke fill;
             pointer-events: none;
             text-anchor: middle;
@@ -2081,10 +2081,11 @@
                     svg.style("--map-stroke", (0.6 / event.transform.k) + "px");
                     updateMinimapViewport();
                     // Sea titles keep their on-screen size and line spacing,
-                    // as if printed on the paper itself rather than drawn on it
+                    // as if printed on the paper itself rather than drawn on it.
+                    // Never smaller than 16px on screen.
                     gOcean.selectAll(".ocean-label")
-                        .style("font-size", function () { return (+this.dataset.baseSize / event.transform.k) + "px"; })
-                        .style("stroke-width", function () { return (1.2 / event.transform.k) + "px"; })
+                        .style("font-size", function () { return (Math.max(+this.dataset.baseSize, 16) / event.transform.k) + "px"; })
+                        .style("stroke-width", function () { return (Math.max(1.2, Math.max(+this.dataset.baseSize, 16) * 0.25) / event.transform.k) + "px"; })
                         .each(function () {
                             const dy = (+this.dataset.baseDy) / event.transform.k;
                             d3.select(this).selectAll("tspan")
@@ -2155,20 +2156,22 @@
             OCEAN_LABELS.forEach(o => {
                 const [x, y] = projection([o.lon, o.lat]);
                 if (!isFinite(x) || !isFinite(y)) return;
+                // Never smaller than 16px on screen
+                const size = Math.max(o.size, 16);
                 const label = gOcean.append("text")
                     .attr("class", "ocean-label")
                     .attr("data-lon", o.lon)
                     .attr("data-lat", o.lat)
-                    .attr("data-base-size", o.size)
-                    .attr("data-base-dy", Math.round(o.size * 1.35))
+                    .attr("data-base-size", size)
+                    .attr("data-base-dy", Math.round(size * 1.35))
                     .attr("x", x)
                     .attr("y", y)
-                    .style("font-size", o.size + "px");
+                    .style("font-size", size + "px");
 
                 o.lines.forEach((line, i) => {
                     label.append("tspan")
                         .attr("x", x)
-                        .attr("dy", i === 0 ? 0 : Math.round(o.size * 1.35))
+                        .attr("dy", i === 0 ? 0 : Math.round(size * 1.35))
                         .text(line);
                 });
             });
@@ -2512,6 +2515,26 @@
                 });
         }
 
+        function cityDotScreen(isNat, k) {
+            const currentK = Math.max(0.1, k || 1);
+            const effK = Math.min(25, currentK);
+            const baseOuter = isNat ? 6.0 : 4.8;
+            // Dots grow on screen as the chart is magnified, so a zoomed-in
+            // capital stays easy to see and to hit. Sub-linear growth keeps
+            // them from covering small places (still shrinking in map units).
+            const grow = effK > 1 ? Math.min(Math.pow(effK, 0.22), 2.2) : 1;
+            return baseOuter * grow;
+        }
+
+        function cityLabelScreen(k) {
+            const currentK = Math.max(0.1, k || 1);
+            const effK = Math.min(25, currentK);
+            // Capital names start at 16px on screen and grow with the zoom
+            // so they stay readable when zoomed in, capping at 28px.
+            const grow = effK > 1 ? Math.pow(effK, 0.25) : 1;
+            return Math.min(28, Math.max(16, 16 * grow));
+        }
+
         function scaleCityMarkers(k) {
             if (!gMap) return;
             const currentK = Math.max(0.1, k || 1);
@@ -2519,23 +2542,25 @@
 
             // Bold and prominent when zoomed out:
             // provincial outer 4.8px, national 6.0px, stroke 1.3px/1.6px.
-            // When zooming in, on-screen radius tapers gently to ~3.7px-4.8px (clearly visible, not too small)
-            // while geographically shrinking 30x+ on the map so it never obscures PEI, Ottawa, etc.
+            // When zooming in, the dots grow on screen (up to ~2x) so a
+            // magnified capital stays easy to see and to hit, while still
+            // shrinking geographically on the map so they never obscure
+            // PEI, Ottawa, etc.
             const baseOuter = isNat => (isNat ? 6.0 : 4.8);
             const baseInner = isNat => (isNat ? 3.0 : 2.2);
             const baseSW = isNat => (isNat ? 1.6 : 1.3);
 
-            // Gentle taper so circles never shrink into tiny specks when zooming in
-            const visualShrink = effK > 1 ? Math.pow(effK, 0.08) : 1;
+            // Growth so circles get bigger on screen when zooming in
+            const visualGrow = effK > 1 ? Math.min(Math.pow(effK, 0.22), 2.2) : 1;
 
             gMap.selectAll(".map-city-marker").each(function(d) {
                 const el = d3.select(this);
                 const isNat = !!(d && d.isNational);
 
                 // Target on-screen sizes in pixels
-                const screenOuter = baseOuter(isNat) / visualShrink;
-                const screenInner = baseInner(isNat) / visualShrink;
-                const screenSW = Math.max(0.9, baseSW(isNat) / visualShrink);
+                const screenOuter = baseOuter(isNat) * visualGrow;
+                const screenInner = baseInner(isNat) * visualGrow;
+                const screenSW = Math.max(0.9, baseSW(isNat) * visualGrow);
 
                 // Convert to SVG map coordinate attributes (divided by current zoom k)
                 const rOuter = screenOuter / currentK;
@@ -3983,8 +4008,10 @@
         const LABEL_CAPTION_MIN = 4;
         const LABEL_CAPTION_MAX = 5;
         // How far a name may grow on screen as the chart is magnified — it
-        // follows the zoom only so far, then holds its size on the paper
-        const LABEL_SCREEN_CAP = 12;
+        // follows the zoom only so far, then holds its size on the paper.
+        // No name ever reads smaller than LABEL_SCREEN_MIN on screen.
+        const LABEL_SCREEN_MIN = 16;
+        const LABEL_SCREEN_CAP = 28;
         const LABEL_BOX_PAD = 1.2;     // paper halo + a breath between neighbours
         const LABEL_MAX_PROBES = 260;  // grid points sampled inside one region
         const LABEL_TEST_BUDGET = 24000;// fill probes one label may spend
@@ -4652,13 +4679,18 @@
             const kk = k > 0 ? k : 1;
 
             // City labels: recompute position directly from dot coordinates
-            // so the label always sits centred above the marker at every zoom
+            // so the label always sits centred above the marker at every zoom.
+            // Screen size starts at 16px and grows with the zoom (capped at
+            // 28px), so a zoomed-in capital stays readable.
             if (node._dotPt) {
                 const pt = node._dotPt;
                 const isNat = !!node._isNat;
-                const fsScreen = 6.8, strokeScreen = 1.6;
-                // Offset in screen pixels above dot centre — clears the marker
-                const offsetScreen = isNat ? 14 : 11;
+                const fsScreen = cityLabelScreen(kk);
+                const strokeScreen = fsScreen * 0.235;
+                // Offset in screen pixels above dot centre — clears the
+                // (also growing) marker plus half the label height
+                const dotScreen = cityDotScreen(isNat, kk);
+                const offsetScreen = dotScreen + fsScreen * 0.75 + 3;
                 const fs = fsScreen / kk;
                 const strokeW = strokeScreen / kk;
                 const ax = pt.x;
@@ -4672,9 +4704,14 @@
                 return;
             }
 
-            const fs = Math.min(base * kk, LABEL_SCREEN_CAP) / kk;
+            // Country names hold their size on the paper only up to
+            // LABEL_SCREEN_CAP, but never read smaller than
+            // LABEL_SCREEN_MIN on screen.
+            const fsScreen = Math.max(LABEL_SCREEN_MIN, Math.min(base * kk, LABEL_SCREEN_CAP));
+            const fs = fsScreen / kk;
             const baseStroke = +node.dataset.baseStroke || Math.max(0.4, base * 0.3);
-            const stroke = Math.min(baseStroke * kk, LABEL_SCREEN_CAP * 0.3) / kk;
+            const strokeScreen = Math.max(LABEL_SCREEN_MIN * 0.3, Math.min(baseStroke * kk, LABEL_SCREEN_CAP * 0.3));
+            const stroke = strokeScreen / kk;
             const count = node.querySelectorAll("tspan").length;
             const sel = d3.select(node)
                 .style("font-size", fs + "px")
@@ -4683,7 +4720,7 @@
             if (tie && at) {
                 // The name and its gap from the ground are scaled as one, so
                 // the name reads at whatever remove it was set at rest
-                const s = Math.min(base * kk, LABEL_SCREEN_CAP) / (base * kk);
+                const s = fsScreen / (base * kk);
                 const x = tie.x + (at.x - tie.x) * s;
                 const y = tie.y + (at.y - tie.y) * s;
                 sel.attr("x", x).attr("y", y)
@@ -4727,9 +4764,11 @@
                 const isNat = fid === "CA-CAP-OTT" ||
                     (CANADA_CAPITALS[fid] && CANADA_CAPITALS[fid].isNational);
                 const curK = currentZoomK() || 1;
-                const fsScreen = 6.8, strokeScreen = 1.6;
-                // Offset in screen pixels above dot centre — clears the marker
-                const offsetScreen = isNat ? 14 : 11;
+                const fsScreen = cityLabelScreen(curK), strokeScreen = fsScreen * 0.235;
+                // Offset in screen pixels above dot centre — clears the
+                // (also growing) marker plus half the label height
+                const dotScreen = cityDotScreen(isNat, curK);
+                const offsetScreen = dotScreen + fsScreen * 0.75 + 3;
                 const fs = fsScreen / curK;
                 const stroke = strokeScreen / curK;
                 const ax = pt[0];           // Centred horizontally on dot
