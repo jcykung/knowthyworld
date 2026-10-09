@@ -792,7 +792,7 @@
                     <span class="hidden sm:inline">Know Thy World</span>
                     <span class="sm:hidden font-extrabold text-xs tracking-wider text-brass-700">KTW</span>
                     <button id="btn-version" onclick="openChangelog()" class="header-version text-[9px] sm:text-[11px] py-0.5 px-1.5"
-                            title="What's new in this version">v1.5.0</button>
+                            title="What's new in this version">v1.6.0</button>
                 </h1>
                 <a class="header-byline hidden sm:inline-flex text-xs font-semibold text-moss-700 hover:text-moss-600 transition-colors select-none whitespace-nowrap items-center gap-1.5"
                    href="https://ko-fi.com/coolpuddytat" target="_blank" rel="noopener noreferrer" title="Buy me a coffee! on Ko-fi">
@@ -1150,7 +1150,7 @@
                     <div>
                         <h3 class="text-lg font-bold font-display text-ink-900">What's new</h3>
                         <p class="text-[10px] uppercase tracking-[0.18em] text-brass-600 font-bold">
-                            Know Thy World &nbsp;·&nbsp; <span id="changelog-version">v1.5.0</span>
+                            Know Thy World &nbsp;·&nbsp; <span id="changelog-version">v1.6.0</span>
                         </p>
                     </div>
                 </div>
@@ -5577,9 +5577,21 @@
         }
 
         // --- what's new -----------------------------------------------------
-        const APP_VERSION = 'v1.5.0';
+        const APP_VERSION = 'v1.6.0';
 
         const CHANGELOG = [
+            {
+                version: 'v1.6.0',
+                notes: [
+                    'Capital names read at 16px wherever they stand, and grow as the chart is magnified — with the dots growing alongside them, so a zoomed-in capital is easy to read and to hit. No label on the chart reads smaller than 16px.',
+                    'The hover wash trades hot pink for a deep terracotta that sits with the chart, and the glow round it is gone: a flat wash, no blur.',
+                    'Zooming dives toward the cursor: the + and − buttons, the zoom bar and the inset pinch all magnify about the hovered spot instead of the middle of the view.',
+                    'A flick keeps travelling after the pointer lifts: the chart glides and slows like a phone scroll, and any fresh gesture takes over at once.',
+                    'Clicks forgive a slip: a press that began on the highlighted place still answers for it when the release slides a pixel or two onto the sea beside it, and a tremor no longer swallows the click.',
+                    'Hover tooltips are gone entirely — the names live on the chart itself, so there is nothing left to pop up over them.',
+                    'Somaliland, Northern Cyprus, Siachen Glacier and their id-less company each light up alone now, instead of all flashing together as one group that belongs to no country.'
+                ]
+            },
             {
                 version: 'v1.5.0',
                 notes: [
