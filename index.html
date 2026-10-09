@@ -950,7 +950,7 @@
               class="header-version text-[9px] sm:text-[11px] py-0.5 px-1.5"
               title="What's new in this version"
             >
-              v1.6.0
+              v1.7.0
             </button>
           </h1>
           <a
@@ -1029,6 +1029,16 @@
               >Labels:
               <span id="txt-label-status" class="text-moss-600">ON</span></span
             >
+          </button>
+
+          <button
+            id="btn-print"
+            onclick="openPrintModal()"
+            class="hidden md:flex px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-parchment-400/80 hover:bg-parchment-500 text-ink-700 hover:text-ink-900 border border-parchment-700/60 text-xs font-semibold items-center gap-1.5 transition-all"
+            title="Print or save the current chart as PNG or PDF"
+          >
+            <i class="fa-solid fa-print text-brass-600 text-xs sm:text-sm"></i>
+            <span class="hidden lg:inline">Print</span>
           </button>
         </div>
 
@@ -1650,6 +1660,73 @@
       </div>
     </div>
 
+    <!-- MODAL: PRINT CHART (desktop only — the button is hidden on mobile) -->
+    <div
+      id="modal-print"
+      class="fixed inset-0 z-50 bg-ink-900/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 hidden animate-fade-in overflow-y-auto"
+    >
+      <div
+        class="glass-panel w-full max-w-sm rounded-2xl p-4 sm:p-6 shadow-2xl border border-parchment-700 flex flex-col gap-4 max-h-[90vh] my-auto animate-scale-up"
+      >
+        <div class="flex items-center justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <div class="p-2.5 rounded-xl bg-brass-500/20 text-brass-600">
+              <i class="fa-solid fa-print text-xl"></i>
+            </div>
+            <div>
+              <h3 class="text-lg font-bold text-ink-900 font-display">
+                Print chart
+              </h3>
+              <p class="text-[11px] sm:text-xs text-ink-500">
+                The chart alone — no UI, no answer colours
+              </p>
+            </div>
+          </div>
+          <button
+            onclick="closePrintModal()"
+            class="text-ink-500 hover:text-ink-900 p-2 -m-1 text-lg"
+            aria-label="Close print dialog"
+          >
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <p class="text-xs text-ink-600 leading-relaxed">
+          Exports exactly what the chart shows right now — land, sea and
+          on-map names — with none of the game interface and none of the
+          highlighting from answered or hovered places.
+        </p>
+
+        <div
+          id="print-status"
+          class="hidden text-xs font-semibold text-ochre-700 bg-ochre-500/10 border border-ochre-500/30 rounded-xl px-3 py-2"
+        ></div>
+
+        <div class="flex flex-col gap-2">
+          <button
+            onclick="downloadChartPNG()"
+            class="px-4 py-2.5 rounded-xl bg-brass-600 hover:bg-brass-500 text-parchment-50 text-xs font-bold shadow-lg shadow-ink-900/20 transition-all flex items-center justify-center gap-2"
+          >
+            <i class="fa-solid fa-image"></i>
+            <span>Download PNG</span>
+          </button>
+          <button
+            onclick="downloadChartPDF()"
+            class="px-4 py-2.5 rounded-xl bg-moss-600 hover:bg-moss-500 text-parchment-50 text-xs font-bold shadow-lg shadow-ink-900/20 transition-all flex items-center justify-center gap-2"
+          >
+            <i class="fa-solid fa-file-pdf"></i>
+            <span>Download PDF</span>
+          </button>
+          <button
+            onclick="closePrintModal()"
+            class="px-4 py-2 rounded-xl bg-parchment-400 hover:bg-parchment-500 text-ink-700 text-xs font-semibold transition-all"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- MODAL: CHANGELOG -->
     <div
       id="modal-changelog"
@@ -1673,7 +1750,7 @@
                 class="text-[10px] uppercase tracking-[0.18em] text-brass-600 font-bold"
               >
                 Know Thy World &nbsp;·&nbsp;
-                <span id="changelog-version">v1.6.0</span>
+                <span id="changelog-version">v1.7.0</span>
               </p>
             </div>
           </div>
@@ -3006,6 +3083,14 @@
       let ptrFlingLive = false; // exactly one tracked press is down
       let ptrFlingMulti = false; // a second pointer joined: never a fling
 
+      // Trackpad two-finger scroll arrives as wheel events with no gesture
+      // pointers, so d3's drag lifecycle never sees it — without the custom
+      // wheel handler below it would zoom instead of pan, and never glide.
+      let wheelTrail = []; // recent trackpad scroll deltas, for release speed
+      let wheelSettleTimer = 0; // fires the glide once the fingers lift
+      let wheelPanLatchedUntil = 0; // a trackpad stream keeps panning to its end
+      let wheelProgrammatic = false; // a wheel-pan step is driving the transform
+
       // Reserved footprints of placed map labels, in base projection units.
       // Zoom scales every label together, so an overlap-free arrangement at
       // rest stays overlap-free at any zoom level — only a resize (which
@@ -3114,6 +3199,7 @@
           "modal-changelog",
           "modal-custom-selection",
           "modal-summary",
+          "modal-print",
         ].some((id) => {
           const m = document.getElementById(id);
           return m && !m.classList.contains("hidden");
@@ -3205,6 +3291,7 @@
             k,
             false,
             RUBBER_ALLOW,
+            true,
           );
           if (Math.abs(cx - wantX) > 1e-6) panVelocity.x = 0;
           if (Math.abs(cy - wantY) > 1e-6) panVelocity.y = 0;
@@ -3281,24 +3368,27 @@
       // depends on the zoom: magnified until the globe covers the view, the
       // view must keep covering it. Zoomed out so the globe is smaller than
       // the view, home is the rest position — the centred chart that the
-      // reset button returns to. A slow release that leaves the globe out
-      // of the view bounces home; a fling may rest anywhere it still
-      // touches the view, and only a globe lost altogether is pulled back.
-      // Dragging past the limb is always allowed — the bounce happens on
-      // coming to rest.
-      const RUBBER_ALLOW = 140; // screen px past the limb before home pulls back
+      // reset button returns to. Coming to rest with less than a hand's
+      // breadth (100px) of the globe still in view bounces home; dragging
+      // past the limb is always allowed — the bounce happens on coming to
+      // rest.
+      const RUBBER_ALLOW = 100; // screen px past the limb before home pulls back
       const RUBBER_GUTTER = 12; // screen px of parchment left after the snap
+      const RUBBER_VISIBLE_MIN = 100; // screen px of globe that must stay in view
 
       // Home bounds shared by the rubber snap and the glide clamp:
       // magnified until the globe covers the view, the view must keep
       // covering it; zoomed out, home is the rest position
       // (mid * (1 - k) keeps the globe centre where the reset leaves it,
-      // agreeing with resetMapZoom's identity transform). A slow release
-      // outside the allowance bounces home; a fling only bounces when the
-      // globe has left the view altogether. The snap settles exactly home;
-      // a glide stops at the allowance edge, so it halts at the wall
-      // instead of jumping back from it.
-      function clampRubberTransform(tx, ty, k, strict, margin) {
+      // agreeing with resetMapZoom's identity transform). Coming to rest
+      // with less than RUBBER_VISIBLE_MIN of the globe still in view
+      // bounces home — a slow release and a fling alike. The snap settles
+      // exactly home; a glide stops at the allowance edge, so it halts at
+      // the wall instead of jumping back from it.
+      function clampRubberTransform(tx, ty, k, strict, margin, wallStop) {
+        // wallStop: for strides mid-motion (a glide, a trackpad scroll)
+        // an axis that would cross the wall stops dead instead of jumping
+        // home — the snap back home happens when motion comes to rest
         if (!svg || !pathGenerator) return [tx, ty];
         const m = margin === undefined ? RUBBER_GUTTER : margin;
         let b = null;
@@ -3327,17 +3417,22 @@
             return txy;
           }
           // The globe is smaller than the view: home is the rest
-          // position, with the globe centre where it started.
+          // position, with the globe centre where it started. Coming to
+          // rest with less than a hand's breadth of the globe still in
+          // view — slow release and fling alike — bounces back to the
+          // centred chart.
           const home = ((b0 + b1) / 2) * (1 - k);
-          if (strict) {
-            // A slow release that left the globe out of the view
-            // bounces back to the centred chart
-            if (g0 < -RUBBER_ALLOW || g1 > S + RUBBER_ALLOW) return home;
+          const visible = Math.min(g1, S) - Math.max(g0, 0);
+          if (visible < RUBBER_VISIBLE_MIN) {
+            if (!wallStop) return home;
+            // Stop dead at the wall: the nearest rest that keeps a
+            // hand's breadth of the globe in view
+            if (g0 > S - RUBBER_VISIBLE_MIN)
+              return S - RUBBER_VISIBLE_MIN - b0 * k;
+            if (g1 < RUBBER_VISIBLE_MIN)
+              return RUBBER_VISIBLE_MIN - b1 * k;
             return txy;
           }
-          // A fling may rest anywhere it still touches the view — only
-          // a globe lost altogether is pulled back to centre
-          if (g1 < -RUBBER_ALLOW || g0 > S + RUBBER_ALLOW) return home;
           return txy;
         };
         return [
@@ -3661,6 +3756,9 @@
             scaleCityMarkers(event.transform.k);
           })
           .on("end", () => {
+            // Wheel-pan steps drive the transform themselves and settle
+            // on their own timer — never snap mid-stream
+            if (wheelProgrammatic) return;
             // A lone-pointer pan that lifts with speed becomes a
             // glide and lands freely; a slow release that left the
             // globe out of the view bounces home instead
@@ -3673,6 +3771,95 @@
           });
 
         svg.call(zoomBehavior);
+
+        // Trackpad panning: a two-finger scroll is a stream of wheel
+        // events, not a drag, so d3 would zoom the chart and no fling
+        // could ever follow. Caught here on the container (capture, so it
+        // runs before d3's own wheel handler), a trackpad stream pans the
+        // chart instead and glides on release like any other flick. A
+        // pinch (ctrl/meta wheel) is left alone to zoom, and classic
+        // mouse-wheel notches — large integer steps with no sideways part
+        // and no stream behind them — still zoom too.
+        const mapContainer = document.getElementById("map-container");
+        if (mapContainer) {
+          mapContainer.addEventListener(
+            "wheel",
+            (e) => {
+              if (!svg || !zoomBehavior) return;
+              if (e.ctrlKey || e.metaKey) return; // pinch-zoom: d3's own handler
+              const now = performance.now();
+              const unit = e.deltaMode === 1 ? 16 : 1; // Firefox counts lines
+              const dx = e.deltaX * unit,
+                dy = e.deltaY * unit;
+              const latched = now < wheelPanLatchedUntil;
+              const looksTrackpad =
+                dx !== 0 || dy % 1 !== 0 || Math.abs(dy) < 50;
+              if (!latched && !looksTrackpad) return; // mouse notch: d3 zooms
+              e.preventDefault();
+              e.stopPropagation();
+              cancelPanInertia();
+              const node = svg.node();
+              const t = d3.zoomTransform(node);
+              const k = t.k || 1;
+              // The chart follows the fingers, as in a drag; the stride
+              // is clamped to the rubber wall so a scroll cannot sail
+              // straight through it
+              const wantX = t.x + dx,
+                wantY = t.y + dy;
+              const [cx, cy] = clampRubberTransform(
+                wantX,
+                wantY,
+                k,
+                false,
+                RUBBER_GUTTER,
+                true,
+              );
+              wheelProgrammatic = true;
+              panGliding = true;
+              try {
+                svg.call(
+                  zoomBehavior.translateBy,
+                  (cx - t.x) / k,
+                  (cy - t.y) / k,
+                );
+              } finally {
+                panGliding = false;
+                wheelProgrammatic = false;
+              }
+              // A trackpad fling starts small: latch the stream so its
+              // faster middle still pans instead of turning into a zoom
+              wheelPanLatchedUntil = now + 250;
+              wheelTrail.push({ dx, dy, t: now });
+              while (wheelTrail.length > 8) wheelTrail.shift();
+              while (wheelTrail.length > 2 && now - wheelTrail[0].t > 120)
+                wheelTrail.shift();
+              clearTimeout(wheelSettleTimer);
+              wheelSettleTimer = setTimeout(() => {
+                const trail = wheelTrail;
+                wheelTrail = [];
+                if (trail.length >= 2) {
+                  const dt = trail[trail.length - 1].t - trail[0].t;
+                  if (dt > 0) {
+                    let sx = 0,
+                      sy = 0;
+                    for (const w of trail) {
+                      sx += w.dx;
+                      sy += w.dy;
+                    }
+                    const vx = sx / dt,
+                      vy = sy / dt;
+                    if (Math.hypot(vx, vy) >= 0.15) {
+                      startPanInertia(vx, vy);
+                      return;
+                    }
+                  }
+                }
+                snapRubberBand(true);
+              }, 90);
+            },
+            { passive: false, capture: true },
+          );
+        }
 
         // Remember where the mouse is, so the +/- buttons and the zoom
         // bar can magnify about the hovered spot instead of the middle.
@@ -7905,9 +8092,17 @@
       }
 
       // --- what's new -----------------------------------------------------
-      const APP_VERSION = "v1.6.0";
+      const APP_VERSION = "v1.7.0";
 
       const CHANGELOG = [
+        {
+          version: "v1.7.0",
+          notes: [
+            "The chart holds its ground: coming to rest with less than 100px of the globe still in view bounces it back to the centred chart.",
+            "Trackpad scrolling pans the chart instead of zooming it, and the release glides with momentum like a mouse drag; classic mouse-wheel notches and pinches still zoom.",
+            "Print mode on desktop: a printer button beside Labels exports the chart alone — land, sea and names, with none of the game UI and none of the answer colours — as PNG or PDF.",
+          ],
+        },
         {
           version: "v1.6.0",
           notes: [
@@ -9258,6 +9453,269 @@
         }
         downloadBlob(blob, summaryFilename());
         showToast("Screenshot saved");
+      }
+
+      // --- print chart (desktop) ----------------------------------------
+      // Exports the chart alone — water, land, sea titles and on-map
+      // names — with none of the game UI and none of the answer colours.
+      // Answer and hover washes (guessed-*, reveal-flash, is-hovered) are
+      // stripped from a clean off-screen clone, and the resolved paint is
+      // inlined so the standalone file needs none of the page's CSS.
+      const PRINT_STATE_CLASSES = [
+        "guessed-correct",
+        "guessed-1st",
+        "guessed-2nd",
+        "guessed-3rd",
+        "guessed-failed",
+        "guessed-wrong",
+        "reveal-flash",
+        "is-hovered",
+        "pulse-tight",
+      ];
+      const PRINT_PAINT_PROPS = [
+        "fill",
+        "fill-opacity",
+        "stroke",
+        "stroke-opacity",
+        "stroke-width",
+        "stroke-dasharray",
+        "stroke-linecap",
+        "stroke-linejoin",
+        "opacity",
+        "font-family",
+        "font-size",
+        "font-weight",
+        "font-style",
+        "letter-spacing",
+        "text-anchor",
+        "paint-order",
+        "display",
+      ];
+      let printBusy = false;
+
+      function openPrintModal() {
+        // Print is a desktop affair — the button is hidden on mobile
+        if (
+          window.matchMedia &&
+          window.matchMedia("(max-width: 768px)").matches
+        )
+          return;
+        hideToast();
+        const m = document.getElementById("modal-print");
+        if (m) m.classList.remove("hidden");
+      }
+
+      function closePrintModal() {
+        const m = document.getElementById("modal-print");
+        if (m) m.classList.add("hidden");
+      }
+
+      function setPrintStatus(text) {
+        const el = document.getElementById("print-status");
+        if (!el) return;
+        if (!text) {
+          el.classList.add("hidden");
+          el.innerText = "";
+        } else {
+          el.classList.remove("hidden");
+          el.innerText = text;
+        }
+      }
+
+      function chartExportFilename(ext) {
+        const d = new Date();
+        const pad = (n) => String(n).padStart(2, "0");
+        return `Know-Thy-World-chart-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}.${ext}`;
+      }
+
+      // Renders the current chart view (at its current zoom and pan) to a
+      // canvas: a clean clone, stripped of answer colours, with its paint
+      // inlined and a parchment backing. Null when there is no chart yet.
+      function renderChartExportCanvas() {
+        return new Promise((resolve) => {
+          const src = document.getElementById("svg-map");
+          if (!src || !pathGenerator) {
+            resolve(null);
+            return;
+          }
+          const W =
+            Math.round(+src.getAttribute("width")) || src.clientWidth || 1200;
+          const H =
+            Math.round(+src.getAttribute("height")) || src.clientHeight || 800;
+
+          // Mounted off-screen so the resolved styles can be read; the
+          // live chart is never touched, so no highlight ever flickers
+          const holder = document.createElement("div");
+          holder.setAttribute("aria-hidden", "true");
+          holder.style.cssText =
+            "position:absolute;left:-10000px;top:0;width:" +
+            W +
+            "px;height:" +
+            H +
+            "px;pointer-events:none;overflow:hidden;";
+          const clone = src.cloneNode(true);
+          clone.removeAttribute("id");
+          holder.appendChild(clone);
+          document.body.appendChild(holder);
+
+          try {
+            clone.querySelectorAll("*").forEach((n) => {
+              if (!n.classList) return;
+              for (const c of PRINT_STATE_CLASSES) n.classList.remove(c);
+            });
+            const all = [clone, ...clone.querySelectorAll("*")];
+            for (const n of all) {
+              if (!(n instanceof Element)) continue;
+              const cs = window.getComputedStyle(n);
+              let s = "";
+              for (const p of PRINT_PAINT_PROPS) {
+                const v = cs.getPropertyValue(p);
+                if (v) s += p + ":" + v + ";";
+              }
+              if (s) n.setAttribute("style", s);
+            }
+
+            // Parchment backing: the live chart shows the page through
+            // the corners outside the water sphere
+            const bg = document.createElementNS(
+              "http://www.w3.org/2000/svg",
+              "rect",
+            );
+            bg.setAttribute("x", "0");
+            bg.setAttribute("y", "0");
+            bg.setAttribute("width", String(W));
+            bg.setAttribute("height", String(H));
+            bg.setAttribute("fill", "#f6ecd6");
+            clone.insertBefore(bg, clone.firstChild);
+
+            clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+            clone.setAttribute("width", String(W));
+            clone.setAttribute("height", String(H));
+            const svgText = new XMLSerializer().serializeToString(clone);
+            const url = URL.createObjectURL(
+              new Blob([svgText], { type: "image/svg+xml;charset=utf-8" }),
+            );
+            const img = new Image();
+            img.onload = () => {
+              try {
+                const scale = Math.min(2, 3000 / Math.max(W, H));
+                const c = document.createElement("canvas");
+                c.width = Math.max(1, Math.round(W * scale));
+                c.height = Math.max(1, Math.round(H * scale));
+                const g = c.getContext("2d");
+                g.fillStyle = "#f6ecd6";
+                g.fillRect(0, 0, c.width, c.height);
+                g.drawImage(img, 0, 0, c.width, c.height);
+                URL.revokeObjectURL(url);
+                holder.remove();
+                resolve(c);
+              } catch (err) {
+                URL.revokeObjectURL(url);
+                holder.remove();
+                resolve(null);
+              }
+            };
+            img.onerror = () => {
+              URL.revokeObjectURL(url);
+              holder.remove();
+              resolve(null);
+            };
+            img.src = url;
+          } catch (err) {
+            holder.remove();
+            resolve(null);
+          }
+        });
+      }
+
+      function canvasToBlob(canvas) {
+        return new Promise((res) => {
+          try {
+            canvas.toBlob((b) => res(b), "image/png");
+          } catch (e) {
+            res(null);
+          }
+        });
+      }
+
+      async function downloadChartPNG() {
+        if (printBusy) return;
+        printBusy = true;
+        setPrintStatus("Rendering chart…");
+        try {
+          const canvas = await renderChartExportCanvas();
+          if (!canvas) {
+            showToast("Couldn't render the chart");
+            return;
+          }
+          const blob = await canvasToBlob(canvas);
+          if (!blob) {
+            showToast("Couldn't render the chart");
+            return;
+          }
+          downloadBlob(blob, chartExportFilename("png"));
+          showToast("Chart saved");
+        } finally {
+          setPrintStatus("");
+          printBusy = false;
+        }
+      }
+
+      function ensureJsPDF() {
+        if (window.jspdf && window.jspdf.jsPDF)
+          return Promise.resolve(window.jspdf.jsPDF);
+        return new Promise((res, rej) => {
+          const s = document.createElement("script");
+          s.src =
+            "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+          s.onload = () =>
+            window.jspdf && window.jspdf.jsPDF
+              ? res(window.jspdf.jsPDF)
+              : rej(new Error("jsPDF unavailable"));
+          s.onerror = () => rej(new Error("jsPDF unavailable"));
+          document.head.appendChild(s);
+        });
+      }
+
+      async function downloadChartPDF() {
+        if (printBusy) return;
+        printBusy = true;
+        setPrintStatus("Rendering chart…");
+        try {
+          const canvas = await renderChartExportCanvas();
+          if (!canvas) {
+            showToast("Couldn't render the chart");
+            return;
+          }
+          setPrintStatus("Building PDF…");
+          let jsPDF;
+          try {
+            jsPDF = await ensureJsPDF();
+          } catch (e) {
+            showToast("PDF library unavailable — saved as PNG instead");
+            const blob = await canvasToBlob(canvas);
+            if (blob) downloadBlob(blob, chartExportFilename("png"));
+            return;
+          }
+          const imgData = canvas.toDataURL("image/png");
+          // A full-bleed page in the chart's own aspect ratio
+          const pxToPt = 72 / 96;
+          const src = document.getElementById("svg-map");
+          const W = (+src.getAttribute("width") || 1200) * pxToPt;
+          const H = (+src.getAttribute("height") || 800) * pxToPt;
+          const pdf = new jsPDF({
+            orientation: W >= H ? "landscape" : "portrait",
+            unit: "pt",
+            format: [W, H],
+            compress: true,
+          });
+          pdf.addImage(imgData, "PNG", 0, 0, W, H);
+          pdf.save(chartExportFilename("pdf"));
+          showToast("Chart saved");
+        } finally {
+          setPrintStatus("");
+          printBusy = false;
+        }
       }
 
       // Close the results and leave the finished chart on the table to read
