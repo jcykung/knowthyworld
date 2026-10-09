@@ -950,7 +950,7 @@
               class="header-version text-[9px] sm:text-[11px] py-0.5 px-1.5"
               title="What's new in this version"
             >
-              v1.7.1
+              v1.7.2
             </button>
           </h1>
           <a
@@ -1775,7 +1775,7 @@
                 class="text-[10px] uppercase tracking-[0.18em] text-brass-600 font-bold"
               >
                 Know Thy World &nbsp;·&nbsp;
-                <span id="changelog-version">v1.7.1</span>
+                <span id="changelog-version">v1.7.2</span>
               </p>
             </div>
           </div>
@@ -3594,7 +3594,11 @@
 
         // The clock starts on the first guess, not a moment sooner
         resetTimer();
-        const started = prepareTargetQueue();
+
+        // Study may begin with nothing chosen at all: a blank chart with
+        // no targets and no names
+        const blank = wanted === "study" && !!(opts && opts.blank);
+        const started = blank ? startBlankStudy() : prepareTargetQueue();
 
         // Nothing was selected: send them to the picker rather than
         // showing a finished round they never played
@@ -5846,6 +5850,26 @@
       }
 
       // Returns false when nothing at all was chosen — the round cannot start
+      // A study round with nothing on it: no targets, no names, just the
+      // chart to look at — or to print. True, like any started round.
+      function startBlankStudy() {
+        state.selection = [];
+        state.targets = [];
+        state.totalQuestions = 0;
+        state.maxPossiblePoints = 0;
+        state.score = 0;
+        state.mistakes = 0;
+        state.streak = 0;
+        state.bestStreak = 0;
+        state.currentTarget = null;
+        state.currentAttempts = 0;
+        state.hintsRemaining = 3;
+        state.completedTargetIds.clear();
+        state.guessedMap.clear();
+        updateStatsUI();
+        return true;
+      }
+
       function prepareTargetQueue() {
         let targetList = [];
         const subunits = subdivisionsInQuiz();
@@ -8145,9 +8169,16 @@
       }
 
       // --- what's new -----------------------------------------------------
-      const APP_VERSION = "v1.7.1";
+      const APP_VERSION = "v1.7.2";
 
       const CHANGELOG = [
+        {
+          version: "v1.7.2",
+          notes: [
+            "Study starts with nothing ticked: a blank chart with no targets and no names — to look at, or to print.",
+            "A print taken fully zoomed out centres the chart top to bottom instead of leaving the site's gap above it.",
+          ],
+        },
         {
           version: "v1.7.1",
           notes: [
@@ -8326,7 +8357,7 @@
         if (hint) {
           hint.textContent =
             m === "study"
-              ? "Every area in your selection is named on the chart."
+              ? "Every area in your selection is named on the chart — or untick everything for a blank one."
               : "Names appear as you find them.";
         }
 
@@ -8347,6 +8378,7 @@
         if (mode !== "study" && mode !== "test") return;
         pickerMode = mode;
         setModeIndicator(mode);
+        syncSelectionCount();
       }
 
       // What the Start button will run: the mode the header button just named,
@@ -8975,6 +9007,9 @@
           el.innerHTML = `<span class="text-ochre-700 font-semibold">Canada is left out while ${caps} of its capital cities are ticked</span> — the same ground, asked twice.`;
         } else if (states > 0) {
           el.innerHTML = `<span class="text-ochre-700 font-semibold">The United States is left out while ${states} of its states are ticked</span> — the same ground, asked twice.`;
+        } else if (tempSelectedIds.size === 0 && pickerMode === "study") {
+          el.textContent =
+            "Nothing ticked — Start opens a blank chart to look at or print.";
         } else {
           el.textContent =
             "Tick the areas you want on the map, then press Start.";
@@ -8986,9 +9021,11 @@
         if (counter) counter.innerText = tempSelectedIds.size;
         updateSelectionStatus();
 
-        // An empty set has nothing to start, so the button says as much
+        // An empty set starts nothing in a test — but in study it starts
+        // a blank chart — so the button only closes for a test
         const start = document.getElementById("btn-picker-start");
-        if (start) start.disabled = tempSelectedIds.size === 0;
+        if (start)
+          start.disabled = tempSelectedIds.size === 0 && pickerMode !== "study";
       }
 
       function handleCustomSearch(query) {
@@ -9179,9 +9216,12 @@
       }
 
       // The Start button at the foot of the list: it runs the round in the
-      // mode the header picked, and never asks which one that was
+      // mode the header picked, and never asks which one that was. Study
+      // alone may start with nothing ticked: a blank chart to look at —
+      // or to print — with no targets and no names.
       function applyCustomSelectionAndRestart(mode) {
-        if (tempSelectedIds.size === 0) {
+        const m = mode === "study" || mode === "test" ? mode : undefined;
+        if (tempSelectedIds.size === 0 && m !== "study") {
           showToast("Tick at least one area first");
           return;
         }
@@ -9189,12 +9229,14 @@
         if (sameIdSet([...tempSelectedIds], naturalSelectionIds())) {
           state.customSelectedIds = null; // back to the standard scope
         } else {
+          // An empty set names a blank chart, for study only
           state.customSelectedIds = new Set(tempSelectedIds);
         }
 
         closeCustomSelectionModal();
         restartQuiz({
-          mode: mode === "study" || mode === "test" ? mode : undefined,
+          mode: m,
+          blank: tempSelectedIds.size === 0,
         });
       }
 
@@ -9683,6 +9725,25 @@
               repaint(".city-outer", "fill:#ffffff;stroke:#000000;");
               repaint(".city-inner", "fill:#000000;");
             }
+
+            // Fully zoomed out, the site holds the chart high to leave the
+            // question room above it — print centres it top to bottom too,
+            // by the projection's own centre rather than a magic number
+            try {
+              const tk = d3.zoomTransform(src).k || 1;
+              if (!(tk > PAN_LOCK_K) && projection) {
+                const dy = H / 2 - projection.translate()[1];
+                if (Math.abs(dy) > 0.5) {
+                  const wrap = document.createElementNS(
+                    "http://www.w3.org/2000/svg",
+                    "g",
+                  );
+                  wrap.setAttribute("transform", "translate(0," + dy + ")");
+                  while (clone.firstChild) wrap.appendChild(clone.firstChild);
+                  clone.appendChild(wrap);
+                }
+              }
+            } catch (e) {}
 
             // Paper backing: the live chart shows the page through
             // the corners outside the water sphere
