@@ -9949,8 +9949,19 @@
                 rc.setAttribute("width", "96");
                 rc.setAttribute("height", "96");
                 if (mono) {
+                  // Ink-only paper: washes go white and linework goes
+                  // black — except the lettering, which inks black like
+                  // every other label. A blanket wash would turn the
+                  // label group's fill white and leave N/E/S/W
+                  // paper-white on paper; the pivot dot carries no
+                  // stroke of its own, so it is inked too.
                   rc.querySelectorAll("*").forEach((n) => {
                     if (!(n instanceof Element)) return;
+                    if ((n.tagName || "").toLowerCase() === "text") {
+                      n.setAttribute("fill", "#000000");
+                      n.removeAttribute("stroke");
+                      return;
+                    }
                     if (
                       n.getAttribute("fill") &&
                       n.getAttribute("fill") !== "none"
@@ -9962,6 +9973,11 @@
                     )
                       n.setAttribute("stroke", "#000000");
                   });
+                  rc
+                    .querySelectorAll("g[font-size]")
+                    .forEach((n) => n.setAttribute("fill", "#000000"));
+                  const pivot = rc.querySelector('circle[r="3"]');
+                  if (pivot) pivot.setAttribute("fill", "#000000");
                 }
                 clone.appendChild(rc);
               }
