@@ -1916,6 +1916,41 @@
             }
         }
 
+        // Arrow keys and WASD walk the chart, so the map can be crossed
+        // without a mouse. Held keys repeat through the OS and step the
+        // chart along; holding Shift takes longer strides.
+        const KEY_PAN_STEP = 80; // screen px per press
+        function panChartBy(dx, dy) {
+            if (!svg || !zoomBehavior) return;
+            cancelPanInertia();
+            const k = d3.zoomTransform(svg.node()).k || 1;
+            // translateBy takes world units — divide the screen step by the
+            // zoom, or the stride grows with the magnification
+            svg.call(zoomBehavior.translateBy, dx / k, dy / k);
+        }
+
+        function anyModalOpen() {
+            return ["modal-settings", "modal-changelog", "modal-custom-selection", "modal-summary"]
+                .some(id => { const m = document.getElementById(id); return m && !m.classList.contains("hidden"); });
+        }
+
+        document.addEventListener("keydown", (e) => {
+            if (e.ctrlKey || e.metaKey || e.altKey) return;
+            const t = e.target;
+            if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;
+            if (anyModalOpen()) return;
+            const key = (e.key || "").toLowerCase();
+            const step = e.shiftKey ? KEY_PAN_STEP * 4 : KEY_PAN_STEP;
+            let dx = 0, dy = 0;
+            if (e.key === "ArrowLeft" || key === "a") dx = step;
+            else if (e.key === "ArrowRight" || key === "d") dx = -step;
+            else if (e.key === "ArrowUp" || key === "w") dy = step;
+            else if (e.key === "ArrowDown" || key === "s") dy = -step;
+            else return;
+            e.preventDefault();
+            panChartBy(dx, dy);
+        });
+
         // A flick keeps travelling after the pointer lifts, slowing like a
         // phone scroll: the drag's velocity decays exponentially until it
         // falls below notice.
