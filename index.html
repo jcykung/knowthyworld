@@ -950,7 +950,7 @@
               class="header-version text-[9px] sm:text-[11px] py-0.5 px-1.5"
               title="What's new in this version"
             >
-              v1.7.0
+              v1.7.1
             </button>
           </h1>
           <a
@@ -1698,6 +1698,31 @@
         </p>
 
         <div
+          class="grid grid-cols-2 gap-1 p-1 rounded-xl bg-parchment-300/70 border border-parchment-700/60"
+          role="group"
+          aria-label="Print colours"
+        >
+          <button
+            id="btn-print-colour"
+            onclick="setPrintMode(false)"
+            class="px-3 py-2 rounded-lg text-xs font-bold bg-brass-600 text-parchment-50 transition-all"
+          >
+            Colour
+          </button>
+          <button
+            id="btn-print-mono"
+            onclick="setPrintMode(true)"
+            class="px-3 py-2 rounded-lg text-xs font-bold text-ink-600 transition-all"
+          >
+            Black &amp; white
+          </button>
+        </div>
+        <p class="text-[11px] text-ink-500 leading-relaxed -mt-2">
+          Black &amp; white drops every background wash and label halo and
+          inks the borders black — made for the photocopier.
+        </p>
+
+        <div
           id="print-status"
           class="hidden text-xs font-semibold text-ochre-700 bg-ochre-500/10 border border-ochre-500/30 rounded-xl px-3 py-2"
         ></div>
@@ -1750,7 +1775,7 @@
                 class="text-[10px] uppercase tracking-[0.18em] text-brass-600 font-bold"
               >
                 Know Thy World &nbsp;·&nbsp;
-                <span id="changelog-version">v1.7.0</span>
+                <span id="changelog-version">v1.7.1</span>
               </p>
             </div>
           </div>
@@ -3158,7 +3183,7 @@
           ? svg.transition().duration(300).call(zoomBehavior.scaleBy, factor, p)
           : svg.transition().duration(300).call(zoomBehavior.scaleBy, factor);
         t.on("end.snap", () => {
-          snapRubberBand(true);
+          snapRubberBand();
         });
       }
 
@@ -3186,8 +3211,9 @@
       const KEY_PAN_STEP = 80; // screen px per press
       function panChartBy(dx, dy) {
         if (!svg || !zoomBehavior) return;
-        cancelPanInertia();
         const k = d3.zoomTransform(svg.node()).k || 1;
+        if (panLocked(k)) return; // fully zoomed out: nothing to walk
+        cancelPanInertia();
         // translateBy takes world units — divide the screen step by the
         // zoom, or the stride grows with the magnification
         svg.call(zoomBehavior.translateBy, dx / k, dy / k);
@@ -3252,7 +3278,7 @@
         const landGlide = () => {
           panInertiaRAF = 0;
           panVelocity = null;
-          snapRubberBand(false); // safety net; a clamped glide is already home
+          snapRubberBand(); // safety net; a clamped glide is already at the wall
         };
         const step = (now) => {
           if (!panVelocity || !svg || !zoomBehavior) {
@@ -3285,14 +3311,7 @@
           // other axis slides on
           const wantX = t.x + panVelocity.x * dt,
             wantY = t.y + panVelocity.y * dt;
-          const [cx, cy] = clampRubberTransform(
-            wantX,
-            wantY,
-            k,
-            false,
-            RUBBER_ALLOW,
-            true,
-          );
+          const [cx, cy] = clampRubberTransform(wantX, wantY, k);
           if (Math.abs(cx - wantX) > 1e-6) panVelocity.x = 0;
           if (Math.abs(cy - wantY) > 1e-6) panVelocity.y = 0;
           if (panVelocity.x === 0 && panVelocity.y === 0) {
@@ -3317,6 +3336,7 @@
 
       function maybeStartPanGlide() {
         if (!svg || !zoomBehavior || panVelocity || panInertiaRAF) return;
+        if (panLocked()) return; // fully zoomed out: nothing glides
         // Primary: the gesture's own movement through d3's transform
         // stream. Untouched where it works (touch), so mobile feels
         // exactly as it did.
@@ -3364,33 +3384,34 @@
         return { x: vx, y: vy };
       }
 
-      // Rubber-band panning, after the manner of phone scroll views. Home
-      // depends on the zoom: magnified until the globe covers the view, the
-      // view must keep covering it. Zoomed out so the globe is smaller than
-      // the view, home is the rest position — the centred chart that the
-      // reset button returns to. Coming to rest with less than a hand's
-      // breadth (100px) of the globe still in view bounces home; dragging
-      // past the limb is always allowed — the bounce happens on coming to
-      // rest.
-      const RUBBER_ALLOW = 100; // screen px past the limb before home pulls back
-      const RUBBER_GUTTER = 12; // screen px of parchment left after the snap
-      const RUBBER_VISIBLE_MIN = 100; // screen px of globe that must stay in view
+      // Rubber-band panning, after the manner of phone scroll views. Fully
+      // zoomed out the chart does not pan at all; magnified, it may travel
+      // until 200px of it is left in the view. Dragging past the edge is
+      // always allowed — coming to rest bounces back to the edge itself,
+      // never to the centre.
+      const RUBBER_EDGE = 200; // px of the chart that must stay in the viewport
+      const PAN_LOCK_K = 1.001; // at or below: fully zoomed out, no panning
 
-      // Home bounds shared by the rubber snap and the glide clamp:
+      // Single-flight flags so programmed motions never stack and stutter:
+      // a snap settling, and a live rest-lock correction driving the
+      // transform underneath a gesture
+      let rubberSnapping = false;
+      let zoomCorrecting = false;
+
+      // Whether the chart sits at rest size, where panning is locked
+      function panLocked(k) {
+        const kk = k === undefined ? currentZoomK() : k;
+        return !(kk > PAN_LOCK_K);
+      }
+
+      // Edge bounds shared by the snap-back and the motion clamps:
       // magnified until the globe covers the view, the view must keep
-      // covering it; zoomed out, home is the rest position
-      // (mid * (1 - k) keeps the globe centre where the reset leaves it,
-      // agreeing with resetMapZoom's identity transform). Coming to rest
-      // with less than RUBBER_VISIBLE_MIN of the globe still in view
-      // bounces home — a slow release and a fling alike. The snap settles
-      // exactly home; a glide stops at the allowance edge, so it halts at
-      // the wall instead of jumping back from it.
-      function clampRubberTransform(tx, ty, k, strict, margin, wallStop) {
-        // wallStop: for strides mid-motion (a glide, a trackpad scroll)
-        // an axis that would cross the wall stops dead instead of jumping
-        // home — the snap back home happens when motion comes to rest
+      // covering it to within an edge of parchment; smaller than the view,
+      // an edge of the globe must stay in view. Overshoot always settles
+      // back at the wall itself. Strides mid-motion stop dead at the wall
+      // while the other axis slides on.
+      function clampRubberTransform(tx, ty, k) {
         if (!svg || !pathGenerator) return [tx, ty];
-        const m = margin === undefined ? RUBBER_GUTTER : margin;
         let b = null;
         try {
           b = pathGenerator.bounds({ type: "Sphere" });
@@ -3405,32 +3426,31 @@
           !isFinite(b[1][1])
         )
           return [tx, ty];
+        if (!(k > PAN_LOCK_K)) {
+          // Fully zoomed out: the chart does not pan at all — home is
+          // the rest position, with the globe centre where it started
+          const mx = (b[0][0] + b[1][0]) / 2,
+            my = (b[0][1] + b[1][1]) / 2;
+          return [mx * (1 - k), my * (1 - k)];
+        }
         const W = +svg.attr("width"),
           H = +svg.attr("height");
         const clampAxis = (b0, b1, S, txy) => {
           const g0 = b0 * k + txy,
             g1 = b1 * k + txy;
           if (g1 - g0 >= S) {
-            // The globe covers the view: keep it covering
-            if (g0 > RUBBER_ALLOW) return m - b0 * k;
-            if (g1 < S - RUBBER_ALLOW) return S - m - b1 * k;
+            // The globe covers the view: keep it covering to within an
+            // edge of parchment; overshoot settles back at the wall
+            if (g0 > RUBBER_EDGE) return RUBBER_EDGE - b0 * k;
+            if (g1 < S - RUBBER_EDGE) return S - RUBBER_EDGE - b1 * k;
             return txy;
           }
-          // The globe is smaller than the view: home is the rest
-          // position, with the globe centre where it started. Coming to
-          // rest with less than a hand's breadth of the globe still in
-          // view — slow release and fling alike — bounces back to the
-          // centred chart.
-          const home = ((b0 + b1) / 2) * (1 - k);
+          // The globe is smaller than the view: keep an edge of it in
+          // view, settling back at the nearest wall
           const visible = Math.min(g1, S) - Math.max(g0, 0);
-          if (visible < RUBBER_VISIBLE_MIN) {
-            if (!wallStop) return home;
-            // Stop dead at the wall: the nearest rest that keeps a
-            // hand's breadth of the globe in view
-            if (g0 > S - RUBBER_VISIBLE_MIN)
-              return S - RUBBER_VISIBLE_MIN - b0 * k;
-            if (g1 < RUBBER_VISIBLE_MIN)
-              return RUBBER_VISIBLE_MIN - b1 * k;
+          if (visible < RUBBER_EDGE) {
+            if (g0 > S - RUBBER_EDGE) return S - RUBBER_EDGE - b0 * k;
+            if (g1 < RUBBER_EDGE) return RUBBER_EDGE - b1 * k;
             return txy;
           }
           return txy;
@@ -3441,26 +3461,35 @@
         ];
       }
 
-      function snapRubberBand(strict) {
-        if (!svg || !zoomBehavior) return;
+      // Coming to rest past the edge bounces back to the wall itself on
+      // one smooth motion: named so a new snap supersedes any in flight
+      // instead of stacking onto it, with a duration that grows with the
+      // distance so long bounces stay unhurried. (An earlier jitter came
+      // from the zoom lifecycle's own end echoing each programmed step
+      // and restarting the snap mid-flight — those echoes are ignored
+      // now, so the one motion runs to completion.)
+      function snapRubberBand() {
+        if (!svg || !zoomBehavior || rubberSnapping) return;
         const t = d3.zoomTransform(svg.node());
-        const [nx, ny] = clampRubberTransform(
-          t.x,
-          t.y,
-          t.k,
-          strict,
-          RUBBER_GUTTER,
-        );
-        if (Math.abs(nx - t.x) < 0.5 && Math.abs(ny - t.y) < 0.5) return;
+        const [nx, ny] = clampRubberTransform(t.x, t.y, t.k);
+        if (Math.abs(nx - t.x) < 1 && Math.abs(ny - t.y) < 1) return;
         cancelPanInertia();
+        rubberSnapping = true;
+        const dist = Math.hypot(nx - t.x, ny - t.y);
         svg
-          .transition()
-          .duration(350)
+          .transition("rubber")
+          .duration(Math.min(650, 240 + dist * 0.5))
           .ease(d3.easeCubicOut)
           .call(
             zoomBehavior.transform,
             d3.zoomIdentity.translate(nx, ny).scale(t.k),
-          );
+          )
+          .on("end.rubber", () => {
+            rubberSnapping = false;
+          })
+          .on("interrupt.rubber", () => {
+            rubberSnapping = false;
+          });
       }
 
       // TIMER FUNCTIONS
@@ -3671,6 +3700,31 @@
             dragSampling = !(se.touches && se.touches.length > 1);
           })
           .on("zoom", (event) => {
+            // Fully zoomed out the chart is pinned to rest: correct the
+            // gesture's transform (which keeps d3's own state honest too)
+            // and let the corrected event re-run this handler
+            if (!zoomCorrecting && panLocked(event.transform.k)) {
+              const [hx, hy] = clampRubberTransform(
+                event.transform.x,
+                event.transform.y,
+                event.transform.k,
+              );
+              if (
+                Math.abs(event.transform.x - hx) > 0.5 ||
+                Math.abs(event.transform.y - hy) > 0.5
+              ) {
+                zoomCorrecting = true;
+                try {
+                  svg.call(
+                    zoomBehavior.transform,
+                    d3.zoomIdentity.translate(hx, hy).scale(event.transform.k),
+                  );
+                } finally {
+                  zoomCorrecting = false;
+                }
+                return;
+              }
+            }
             // A fresh gesture (or any programmed move) ends a running
             // glide; the glide's own steps are marked and left alone.
             if (!event.sourceEvent) {
@@ -3756,18 +3810,19 @@
             scaleCityMarkers(event.transform.k);
           })
           .on("end", () => {
-            // Wheel-pan steps drive the transform themselves and settle
-            // on their own timer — never snap mid-stream
-            if (wheelProgrammatic) return;
+            // Echoes of our own programmed motions (a settling snap, a
+            // rest-lock correction, wheel-pan steps) settle themselves —
+            // only a real gesture's end may bounce or glide
+            if (wheelProgrammatic || zoomCorrecting || rubberSnapping) return;
             // A lone-pointer pan that lifts with speed becomes a
-            // glide and lands freely; a slow release that left the
-            // globe out of the view bounces home instead
+            // glide and lands freely; a slow release past the edge
+            // bounces back to the wall instead
             if (dragSampling) {
               dragSampling = false;
               maybeStartPanGlide();
             }
             if (panVelocity || panInertiaRAF) return;
-            snapRubberBand(true);
+            snapRubberBand();
           });
 
         svg.call(zoomBehavior);
@@ -3776,10 +3831,12 @@
         // events, not a drag, so d3 would zoom the chart and no fling
         // could ever follow. Caught here on the container (capture, so it
         // runs before d3's own wheel handler), a trackpad stream pans the
-        // chart instead and glides on release like any other flick. A
-        // pinch (ctrl/meta wheel) is left alone to zoom, and classic
-        // mouse-wheel notches — large integer steps with no sideways part
-        // and no stream behind them — still zoom too.
+        // chart instead and glides on release like any other flick. The
+        // chart moves scroll-style, opposite the fingers. A pinch
+        // (ctrl/meta wheel) is left alone to zoom, classic mouse-wheel
+        // notches — large integer steps with no sideways part and no
+        // stream behind them — still zoom too, as does any scroll made
+        // while fully zoomed out, where panning is locked.
         const mapContainer = document.getElementById("map-container");
         if (mapContainer) {
           mapContainer.addEventListener(
@@ -3789,31 +3846,27 @@
               if (e.ctrlKey || e.metaKey) return; // pinch-zoom: d3's own handler
               const now = performance.now();
               const unit = e.deltaMode === 1 ? 16 : 1; // Firefox counts lines
-              const dx = e.deltaX * unit,
-                dy = e.deltaY * unit;
+              // Reversed: scroll-style, the chart travelling opposite the
+              // fingers rather than following them as in a drag
+              const dx = -e.deltaX * unit,
+                dy = -e.deltaY * unit;
               const latched = now < wheelPanLatchedUntil;
               const looksTrackpad =
                 dx !== 0 || dy % 1 !== 0 || Math.abs(dy) < 50;
               if (!latched && !looksTrackpad) return; // mouse notch: d3 zooms
-              e.preventDefault();
-              e.stopPropagation();
-              cancelPanInertia();
               const node = svg.node();
               const t = d3.zoomTransform(node);
               const k = t.k || 1;
-              // The chart follows the fingers, as in a drag; the stride
-              // is clamped to the rubber wall so a scroll cannot sail
-              // straight through it
+              if (panLocked(k)) return; // fully zoomed out: d3 zooms instead
+              e.preventDefault();
+              e.stopPropagation();
+              cancelPanInertia();
+              svg.interrupt(); // a scroll takes over from a settling snap
+              // The stride stops dead at the rubber wall so a scroll
+              // cannot sail straight through it
               const wantX = t.x + dx,
                 wantY = t.y + dy;
-              const [cx, cy] = clampRubberTransform(
-                wantX,
-                wantY,
-                k,
-                false,
-                RUBBER_GUTTER,
-                true,
-              );
+              const [cx, cy] = clampRubberTransform(wantX, wantY, k);
               wheelProgrammatic = true;
               panGliding = true;
               try {
@@ -3854,7 +3907,7 @@
                     }
                   }
                 }
-                snapRubberBand(true);
+                snapRubberBand();
               }, 90);
             },
             { passive: false, capture: true },
@@ -8092,9 +8145,18 @@
       }
 
       // --- what's new -----------------------------------------------------
-      const APP_VERSION = "v1.7.0";
+      const APP_VERSION = "v1.7.1";
 
       const CHANGELOG = [
+        {
+          version: "v1.7.1",
+          notes: [
+            "Fully zoomed out, the chart is pinned: it only starts panning once magnified.",
+            "Panning room is a 200px rule: release past the edge and the chart bounces back to the edge itself, never to the centre — on one smooth motion instead of a jitter.",
+            "Trackpad two-finger scroll moves the chart scroll-style, opposite the fingers.",
+            "Print offers black & white: white paper, black borders, no label halos — made for the photocopier.",
+          ],
+        },
         {
           version: "v1.7.0",
           notes: [
@@ -9492,6 +9554,23 @@
         "display",
       ];
       let printBusy = false;
+      let printMono = false; // black & white: white paper, black borders
+
+      function setPrintMode(mono) {
+        printMono = !!mono;
+        const on = ["bg-brass-600", "text-parchment-50"];
+        const off = ["text-ink-600"];
+        const c = document.getElementById("btn-print-colour");
+        if (c) {
+          c.classList.remove(...(printMono ? on : off));
+          c.classList.add(...(printMono ? off : on));
+        }
+        const m = document.getElementById("btn-print-mono");
+        if (m) {
+          m.classList.remove(...(printMono ? off : on));
+          m.classList.add(...(printMono ? on : off));
+        }
+      }
 
       function openPrintModal() {
         // Print is a desktop affair — the button is hidden on mobile
@@ -9525,13 +9604,15 @@
       function chartExportFilename(ext) {
         const d = new Date();
         const pad = (n) => String(n).padStart(2, "0");
-        return `Know-Thy-World-chart-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}.${ext}`;
+        return `Know-Thy-World-chart-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${printMono ? "-bw" : ""}.${ext}`;
       }
 
       // Renders the current chart view (at its current zoom and pan) to a
       // canvas: a clean clone, stripped of answer colours, with its paint
-      // inlined and a parchment backing. Null when there is no chart yet.
-      function renderChartExportCanvas() {
+      // inlined and a paper backing. Black & white drops every background
+      // wash and label halo and inks the borders black, for photocopying.
+      // Null when there is no chart yet.
+      function renderChartExportCanvas(mono) {
         return new Promise((resolve) => {
           const src = document.getElementById("svg-map");
           if (!src || !pathGenerator) {
@@ -9575,8 +9656,37 @@
               if (s) n.setAttribute("style", s);
             }
 
-            // Parchment backing: the live chart shows the page through
+            if (mono) {
+              // White paper: no sea, no land wash, no label halos —
+              // black borders and black type for the photocopier. Later
+              // declarations win inside one style attribute, so these
+              // repaint over the inlined page colours above.
+              const repaint = (sel, css) =>
+                clone.querySelectorAll(sel).forEach((n) => {
+                  if (n instanceof Element)
+                    n.setAttribute(
+                      "style",
+                      (n.getAttribute("style") || "") + css,
+                    );
+                });
+              repaint(".map-water", "fill:#ffffff;stroke:none;");
+              repaint(
+                ".map-country:not(.map-island-line)",
+                "fill:#ffffff;stroke:#000000;",
+              );
+              repaint(".map-island-line", "fill:transparent;stroke:none;");
+              repaint(".graticule", "display:none;");
+              repaint(
+                ".map-label,.map-city-label,.ocean-label",
+                "fill:#000000;stroke:none;",
+              );
+              repaint(".city-outer", "fill:#ffffff;stroke:#000000;");
+              repaint(".city-inner", "fill:#000000;");
+            }
+
+            // Paper backing: the live chart shows the page through
             // the corners outside the water sphere
+            const paper = mono ? "#ffffff" : "#f6ecd6";
             const bg = document.createElementNS(
               "http://www.w3.org/2000/svg",
               "rect",
@@ -9585,7 +9695,7 @@
             bg.setAttribute("y", "0");
             bg.setAttribute("width", String(W));
             bg.setAttribute("height", String(H));
-            bg.setAttribute("fill", "#f6ecd6");
+            bg.setAttribute("fill", paper);
             clone.insertBefore(bg, clone.firstChild);
 
             clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
@@ -9603,7 +9713,7 @@
                 c.width = Math.max(1, Math.round(W * scale));
                 c.height = Math.max(1, Math.round(H * scale));
                 const g = c.getContext("2d");
-                g.fillStyle = "#f6ecd6";
+                g.fillStyle = mono ? "#ffffff" : "#f6ecd6";
                 g.fillRect(0, 0, c.width, c.height);
                 g.drawImage(img, 0, 0, c.width, c.height);
                 URL.revokeObjectURL(url);
@@ -9643,7 +9753,7 @@
         printBusy = true;
         setPrintStatus("Rendering chart…");
         try {
-          const canvas = await renderChartExportCanvas();
+          const canvas = await renderChartExportCanvas(printMono);
           if (!canvas) {
             showToast("Couldn't render the chart");
             return;
@@ -9682,7 +9792,7 @@
         printBusy = true;
         setPrintStatus("Rendering chart…");
         try {
-          const canvas = await renderChartExportCanvas();
+          const canvas = await renderChartExportCanvas(printMono);
           if (!canvas) {
             showToast("Couldn't render the chart");
             return;
