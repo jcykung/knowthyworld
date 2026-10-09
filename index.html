@@ -452,7 +452,7 @@
             to   { fill: #0ea5bd; }
         }
 
-        /* HIGHLIGHT ON HOVER — and one glow for a whole place. The chart
+        /* HIGHLIGHT ON HOVER — one flat wash for a whole place. The chart
            sets .is-hovered on every piece carrying the same id, so pointing
            at any island of an archipelago lights all of them at once; CSS
            alone could never reach a country's siblings. Declared after every
@@ -468,7 +468,6 @@
                 fill: #d8584e !important;
                 stroke: #8f3122 !important;
                 stroke-width: calc(var(--map-stroke, 0.6px) * 2);
-                filter: drop-shadow(0 0 5px rgba(216, 88, 78, 0.85));
                 transition: none;
             }
         }
