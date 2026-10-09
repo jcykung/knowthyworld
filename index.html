@@ -166,7 +166,7 @@
             cursor: pointer;
         }
 
-        /* Pointing at a coastline lights it hot pink — and the chart lights
+        /* Pointing at a coastline lights it in the highlight colour — and the chart lights
            every other piece of the same place at the same moment, so one
            island brings its whole archipelago up together (the class is set
            by the chart below, because CSS cannot reach a country's
@@ -240,8 +240,8 @@
         @media (hover: hover) and (pointer: fine) {
             .map-city-marker:hover .city-outer,
             .map-city-marker.is-hovered .city-outer {
-                fill: #ff1493 !important;
-                stroke: #a2005a !important;
+                fill: #d8584e !important;
+                stroke: #8f3122 !important;
             }
             .map-city-marker:hover .city-inner,
             .map-city-marker.is-hovered .city-inner {
@@ -452,7 +452,7 @@
             to   { fill: #0ea5bd; }
         }
 
-        /* HOT PINK ON HOVER — and one glow for a whole place. The chart
+        /* HIGHLIGHT ON HOVER — and one glow for a whole place. The chart
            sets .is-hovered on every piece carrying the same id, so pointing
            at any island of an archipelago lights all of them at once; CSS
            alone could never reach a country's siblings. Declared after every
@@ -460,15 +460,15 @@
            always reads over an answered colour, and never over a name. */
         @media (hover: hover) and (pointer: fine) {
             .map-country:hover {
-                fill: #ff2e93 !important;
-                stroke: #b8005e !important;
+                fill: #d8584e !important;
+                stroke: #8f3122 !important;
             }
             .map-country.is-hovered,
             .advanced-mode .map-country.is-hovered {
-                fill: #ff2e93 !important;
-                stroke: #b8005e !important;
+                fill: #d8584e !important;
+                stroke: #8f3122 !important;
                 stroke-width: calc(var(--map-stroke, 0.6px) * 2);
-                filter: drop-shadow(0 0 5px rgba(255, 46, 147, 0.85));
+                filter: drop-shadow(0 0 5px rgba(216, 88, 78, 0.85));
                 transition: none;
             }
         }
@@ -2328,7 +2328,7 @@
         // --- the glow one place shares -------------------------------------
         // A country drawn as a scatter of islands is one place to the
         // student: point at any one of them and every piece wearing that id
-        // lights hot pink together. CSS can never reach a country's
+        // lights in the highlight colour together. CSS can never reach a country's
         // siblings, so the chart moves the class itself, from the map's own
         // pointer events — and still never lets a hover reveal a name.
         let glowFid = null;
