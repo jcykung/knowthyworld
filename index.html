@@ -278,8 +278,8 @@
             fill: #fdf8eb !important;
         }
         .map-city-marker.reveal-flash .city-outer {
-            fill: #00ffff !important;
-            stroke: #008b8b !important;
+            fill: #80b9b9 !important;
+            stroke: #466666 !important;
         }
         .map-city-marker.guessed-wrong .city-outer {
             fill: #b4472f !important;
@@ -436,20 +436,20 @@
             100% { opacity: 1; }
         }
 
-        /* Out of tries: the answer flares cyan so the eye is pulled straight
+        /* Out of tries: the answer flares blue so the eye is pulled straight
            to it while the chart swings the region into view. The flare then
            fades back to the ordinary "revealed" red once it has been seen.
            Declared last so it outranks every persistent fill above. */
         .map-country.reveal-flash,
         .advanced-mode .map-country.reveal-flash {
-            fill: #3fd6e8 !important;
-            stroke: #166877 !important;
-            animation: reveal-cyan 0.42s ease-in-out infinite alternate;
+            fill: #80b9b9 !important;
+            stroke: #466666 !important;
+            animation: reveal-blue 0.42s ease-in-out infinite alternate;
         }
 
-        @keyframes reveal-cyan {
-            from { fill: #3fd6e8; }
-            to   { fill: #0ea5bd; }
+        @keyframes reveal-blue {
+            from { fill: #80b9b9; }
+            to   { fill: #699898; }
         }
 
         /* HIGHLIGHT ON HOVER — one flat wash for a whole place. The chart
@@ -1941,17 +1941,27 @@
                 }
                 const dt = Math.min(64, Math.max(0, now - panLastFrame));
                 panLastFrame = now;
+                if (dt <= 0) {
+                    panInertiaRAF = requestAnimationFrame(step);
+                    return;
+                }
                 const decay = Math.exp(-dt / 200);
                 panVelocity.x *= decay;
                 panVelocity.y *= decay;
-                if (Math.hypot(panVelocity.x, panVelocity.y) < 0.02 || dt <= 0 || now - panGlideStart > 2500) {
-                    panInertiaRAF = 0; panVelocity = null; return;
+                if (Math.hypot(panVelocity.x, panVelocity.y) < 0.02 || now - panGlideStart > 2500) {
+                    panInertiaRAF = 0; panVelocity = null;
+                    snapRubberBand(); // a glide landing outside eases home
+                    return;
                 }
+                // translateBy takes world units — its shift is multiplied by
+                // the zoom — so divide the screen-pixel glide by k. Without
+                // this the glide launches k times too fast when magnified.
+                const k = d3.zoomTransform(svg.node()).k || 1;
                 // The glide's own steps are marked so the zoom handler
                 // does not mistake them for a fresh programmed move
                 panGliding = true;
                 try {
-                    svg.call(zoomBehavior.translateBy, panVelocity.x * dt, panVelocity.y * dt);
+                    svg.call(zoomBehavior.translateBy, (panVelocity.x * dt) / k, (panVelocity.y * dt) / k);
                 } finally {
                     panGliding = false;
                 }
@@ -1971,6 +1981,44 @@
             const vx = (b.x - a.x) / dt, vy = (b.y - a.y) / dt;
             if (Math.hypot(vx, vy) < 0.15) return; // a nudge, not a swipe
             startPanInertia(vx, vy);
+        }
+
+        // Rubber-band panning, after the manner of phone scroll views: the
+        // projected globe with a gutter of parchment is home. Dragging past
+        // its limb is allowed, but coming to rest outside eases back with a
+        // short slide — the bounce.
+        const RUBBER_ALLOW = 140; // screen px past the limb before home pulls back
+        const RUBBER_GUTTER = 12; // screen px of parchment left after the snap
+
+        function snapRubberBand() {
+            if (!svg || !zoomBehavior || !pathGenerator) return;
+            let b = null;
+            try { b = pathGenerator.bounds({ type: "Sphere" }); } catch (e) { return; }
+            if (!b || !isFinite(b[0][0]) || !isFinite(b[0][1]) || !isFinite(b[1][0]) || !isFinite(b[1][1])) return;
+            const W = +svg.attr("width"), H = +svg.attr("height");
+            const t = d3.zoomTransform(svg.node());
+            const k = t.k;
+            const clampAxis = (b0, b1, S, txy) => {
+                const g0 = b0 * k + txy, g1 = b1 * k + txy;
+                if ((g1 - g0) >= S) {
+                    // The globe covers the view: keep it covering
+                    if (g0 > RUBBER_ALLOW) return RUBBER_GUTTER - b0 * k;
+                    if (g1 < S - RUBBER_ALLOW) return S - RUBBER_GUTTER - b1 * k;
+                    return txy;
+                }
+                // The globe sits inside the view: keep it inside
+                if (g0 < -RUBBER_ALLOW) return RUBBER_GUTTER - b0 * k;
+                if (g1 > S + RUBBER_ALLOW) return S - RUBBER_GUTTER - b1 * k;
+                return txy;
+            };
+            const nx = clampAxis(b[0][0], b[1][0], W, t.x);
+            const ny = clampAxis(b[0][1], b[1][1], H, t.y);
+            if (Math.abs(nx - t.x) < 0.5 && Math.abs(ny - t.y) < 0.5) return;
+            cancelPanInertia();
+            svg.transition().duration(350).ease(d3.easeCubicOut).call(
+                zoomBehavior.transform,
+                d3.zoomIdentity.translate(nx, ny).scale(k)
+            );
         }
 
         // TIMER FUNCTIONS
@@ -2194,6 +2242,12 @@
                     // ballooning into a banner as the land beneath them grows
                     scaleMapLabels(event.transform.k);
                     scaleCityMarkers(event.transform.k);
+                })
+                .on("end", () => {
+                    // Coming to rest outside home eases back; a running glide
+                    // snaps when it lands instead
+                    if (panVelocity || panInertiaRAF) return;
+                    snapRubberBand();
                 });
 
             svg.call(zoomBehavior);
@@ -2212,6 +2266,7 @@
                 panSamples = [];
                 if (panPointerCount > 1) panMultiTouch = true;
                 cancelPanInertia();
+                svg.interrupt(); // a grab stops a settling snap at once
                 pressFid = (e.pointerType !== "touch" && e.button === 0)
                     ? countryFidOf(e.target) : null;
             });
@@ -2222,7 +2277,13 @@
                 panMultiTouch = false;
                 panSamples = [];
             };
-            svg.on("pointerup.inertia pointercancel.inertia", endPanPointer);
+            svg.on("pointerup.inertia", endPanPointer);
+            // A cancelled gesture never flings — just let go of it
+            svg.on("pointercancel.inertia", () => {
+                panPointerCount = Math.max(0, panPointerCount - 1);
+                if (panPointerCount === 0) panMultiTouch = false;
+                panSamples = [];
+            });
 
             // A press that began on the highlighted place answers for it
             // even if the release slipped a pixel or two onto the sea beside
@@ -4115,7 +4176,7 @@
                         return f === targetId || parentCountryOf(f) === targetId;
                     });
 
-                // The answer flares cyan for a beat — impossible to miss —
+                // The answer flares blue for a beat — impossible to miss —
                 // then settles into the ordinary "revealed" red
                 pieces.classed("guessed-failed", true).classed("reveal-flash", true);
                 setTimeout(() => pieces.classed("reveal-flash", false), 1700);
