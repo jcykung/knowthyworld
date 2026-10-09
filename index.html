@@ -950,7 +950,7 @@
               class="header-version text-[9px] sm:text-[11px] py-0.5 px-1.5"
               title="What's new in this version"
             >
-              v1.7.2
+              v1.7.6
             </button>
           </h1>
           <a
@@ -1775,7 +1775,7 @@
                 class="text-[10px] uppercase tracking-[0.18em] text-brass-600 font-bold"
               >
                 Know Thy World &nbsp;·&nbsp;
-                <span id="changelog-version">v1.7.2</span>
+                <span id="changelog-version">v1.7.6</span>
               </p>
             </div>
           </div>
@@ -3156,6 +3156,9 @@
         { lines: ["PACIFIC", "OCEAN"], lon: 152, lat: 14, size: 14 },
         { lines: ["INDIAN", "OCEAN"], lon: 76, lat: -30, size: 14 },
         { lines: ["SOUTHERN", "OCEAN"], lon: 30, lat: -60, size: 12 },
+        // Over the open water north of the Beaufort Sea, well west of the
+        // Nunavut islands its wide letter-spacing could otherwise reach
+        { lines: ["ARCTIC", "OCEAN"], lon: -150, lat: 80, size: 12 },
       ];
 
       // MAP ZOOM CONTROLS
@@ -7777,7 +7780,7 @@
         // nothing loses a name it has today.
         if (!placed && isTinyPlace) {
           // If coastal, try placing nearby on open water
-          const runCaptionPass = (slack) => {
+          const runCaptionPass = (slack, narrowFirst) => {
             captionSlack = slack;
             budget.left = LABEL_CAPTION_BUDGET;
             const reach =
@@ -7793,12 +7796,15 @@
               Math.max(capRel.w, capRel.h),
             );
             if (water.length) {
-              run(phaseB, water, beside);
+              // Far water takes a compact stack: the narrowest wrapping
+              // first, so a long name hugs its island on nearby water
+              // instead of sprawling in one line onto distant water
+              run(narrowFirst ? [...phaseB].reverse() : phaseB, water, beside);
             }
           };
           runCaptionPass(Math.max(captionFs * 2.5, 16));
           if (!placed) {
-            runCaptionPass(captionSlackFull);
+            runCaptionPass(captionSlackFull, true);
           }
         }
 
@@ -8169,9 +8175,33 @@
       }
 
       // --- what's new -----------------------------------------------------
-      const APP_VERSION = "v1.7.2";
+      const APP_VERSION = "v1.7.6";
 
       const CHANGELOG = [
+        {
+          version: "v1.7.6",
+          notes: [
+            "Long-named specks like Prince Edward Island stack their caption instead of sprawling it: far water is tried narrowest-first, so the name stays a compact stack near its island.",
+          ],
+        },
+        {
+          version: "v1.7.5",
+          notes: [
+            "The Arctic Ocean title slides west over open water, clear of the Nunavut islands.",
+          ],
+        },
+        {
+          version: "v1.7.4",
+          notes: [
+            "The Arctic Ocean is named on the chart at last, north of the Beaufort Sea — no ocean is missing now.",
+          ],
+        },
+        {
+          version: "v1.7.3",
+          notes: [
+            "Black & white prints are truly ink-only: the halo is stripped from every word of every label, including multi-line names and sea titles.",
+          ],
+        },
         {
           version: "v1.7.2",
           notes: [
@@ -9719,7 +9749,7 @@
               repaint(".map-island-line", "fill:transparent;stroke:none;");
               repaint(".graticule", "display:none;");
               repaint(
-                ".map-label,.map-city-label,.ocean-label",
+                ".map-label,.map-label *,.ocean-label,.ocean-label *",
                 "fill:#000000;stroke:none;",
               );
               repaint(".city-outer", "fill:#ffffff;stroke:#000000;");
