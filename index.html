@@ -2996,6 +2996,16 @@
       let panGlideStart = 0;
       let panGliding = false;
 
+      // Pointer-measured fling velocity — one uniform trail for mouse,
+      // trackpad click-drag, pen and touch, in client pixels. The
+      // zoom-event samples below stay the primary source; this trail is
+      // the fallback for releases where that stream went stale or never
+      // sampled, which is what left desktop drags stopping dead while
+      // touch drags glided.
+      let ptrFlingSamples = [];
+      let ptrFlingLive = false; // exactly one tracked press is down
+      let ptrFlingMulti = false; // a second pointer joined: never a fling
+
       // Reserved footprints of placed map labels, in base projection units.
       // Zoom scales every label together, so an overlap-free arrangement at
       // rest stays overlap-free at any zoom level — only a resize (which
@@ -3219,17 +3229,52 @@
       }
 
       function maybeStartPanGlide() {
-        if (!svg || !zoomBehavior || panSamples.length < 2) return;
+        if (!svg || !zoomBehavior || panVelocity || panInertiaRAF) return;
+        // Primary: the gesture's own movement through d3's transform
+        // stream. Untouched where it works (touch), so mobile feels
+        // exactly as it did.
+        if (panSamples.length >= 2) {
+          const now = performance.now();
+          const b = panSamples[panSamples.length - 1];
+          if (now - b.t <= 90) {
+            // Fresh release — not held still before letting go.
+            const a = panSamples[0];
+            const dt = b.t - a.t;
+            if (dt > 0 && dt <= 150) {
+              const vx = (b.x - a.x) / dt,
+                vy = (b.y - a.y) / dt;
+              // A nudge is not a swipe.
+              if (Math.hypot(vx, vy) >= 0.15) {
+                startPanInertia(vx, vy);
+                return;
+              }
+            }
+          }
+        }
+        // Fallback: the pointer's own trail. Desktop mouse/trackpad
+        // releases can arrive with a stale or empty transform sample;
+        // the hand's speed is still right here in the trail.
+        const pv = takePointerFling();
+        if (pv) startPanInertia(pv.x, pv.y);
+      }
+
+      // Read the release velocity out of the pointer trail. Null unless a
+      // lone-pointer gesture just moved fast: multi-pointer gestures,
+      // stale trails and nudges all decline, exactly like the transform
+      // path above.
+      function takePointerFling() {
+        if (ptrFlingMulti || ptrFlingSamples.length < 2) return null;
         const now = performance.now();
-        const b = panSamples[panSamples.length - 1];
-        if (now - b.t > 90) return; // held still before release — no fling
-        const a = panSamples[0];
+        const b = ptrFlingSamples[ptrFlingSamples.length - 1];
+        // d3's end can land a beat after the lift; allow a little lag.
+        if (now - b.t > 120) return null;
+        const a = ptrFlingSamples[0];
         const dt = b.t - a.t;
-        if (!(dt > 0) || dt > 150) return;
+        if (!(dt > 0) || dt > 150) return null;
         const vx = (b.x - a.x) / dt,
           vy = (b.y - a.y) / dt;
-        if (Math.hypot(vx, vy) < 0.15) return; // a nudge, not a swipe
-        startPanInertia(vx, vy);
+        if (Math.hypot(vx, vy) < 0.15) return null;
+        return { x: vx, y: vy };
       }
 
       // Rubber-band panning, after the manner of phone scroll views. Home
@@ -3705,6 +3750,55 @@
             }
             touchStartCoords = null;
           }
+        });
+
+        // Fling trail: sample the pressing pointer itself, whatever kind
+        // it is. Right/middle mouse never pans the chart (d3's filter
+        // allows button 0 only), so it is never tracked; a second
+        // pointer joining mid-gesture marks a pinch, which may never
+        // fling — mirroring dragSampling in the zoom lifecycle above.
+        svg.on("pointerdown.fling", (e) => {
+          if (e.pointerType === "mouse" && e.button !== 0) return;
+          if (e.isPrimary === false) {
+            ptrFlingMulti = true;
+            ptrFlingLive = false;
+            return;
+          }
+          ptrFlingMulti = false;
+          ptrFlingLive = true;
+          ptrFlingSamples = [
+            { x: e.clientX, y: e.clientY, t: performance.now() },
+          ];
+        });
+
+        // Window-scoped so a release outside the chart still leaves a
+        // fresh trail behind; sampled only while a tracked press is down,
+        // so the idle cost is one branch per move. Registered once —
+        // initD3Map runs once per page.
+        window.addEventListener(
+          "pointermove",
+          (e) => {
+            if (!ptrFlingLive || ptrFlingMulti) return;
+            const now = performance.now();
+            ptrFlingSamples.push({ x: e.clientX, y: e.clientY, t: now });
+            while (ptrFlingSamples.length > 8) ptrFlingSamples.shift();
+            while (
+              ptrFlingSamples.length > 2 &&
+              now - ptrFlingSamples[0].t > 120
+            )
+              ptrFlingSamples.shift();
+          },
+          { passive: true },
+        );
+        const endPtrFling = (e) => {
+          if (e.isPrimary === false) return;
+          ptrFlingLive = false;
+        };
+        window.addEventListener("pointerup", endPtrFling, {
+          passive: true,
+        });
+        window.addEventListener("pointercancel", endPtrFling, {
+          passive: true,
         });
 
         gMap = svg.append("g");
