@@ -950,7 +950,7 @@
               class="header-version text-[9px] sm:text-[11px] py-0.5 px-1.5"
               title="What's new in this version"
             >
-              v1.7.6
+              v1.7.9
             </button>
           </h1>
           <a
@@ -1678,7 +1678,7 @@
                 Print chart
               </h3>
               <p class="text-[11px] sm:text-xs text-ink-500">
-                The chart alone — no UI, no answer colours
+                The chart as shown — no game UI, no answer colours
               </p>
             </div>
           </div>
@@ -1692,9 +1692,10 @@
         </div>
 
         <p class="text-xs text-ink-600 leading-relaxed">
-          Exports exactly what the chart shows right now — land, sea and
-          on-map names — with none of the game interface and none of the
-          highlighting from answered or hovered places.
+          Exports exactly what the chart shows right now — land, sea,
+          on-map names and the compass rose — with none of the game
+          interface and none of the highlighting from answered or hovered
+          places.
         </p>
 
         <div
@@ -1775,7 +1776,7 @@
                 class="text-[10px] uppercase tracking-[0.18em] text-brass-600 font-bold"
               >
                 Know Thy World &nbsp;·&nbsp;
-                <span id="changelog-version">v1.7.6</span>
+                <span id="changelog-version">v1.7.9</span>
               </p>
             </div>
           </div>
@@ -1858,6 +1859,15 @@
                 title="Be asked to find each area in turn"
               >
                 <i class="fa-solid fa-stopwatch"></i><span>Test</span>
+              </button>
+              <button
+                id="btn-picker-print"
+                onclick="printFromPicker()"
+                class="hidden md:flex px-4 py-2 rounded-xl text-xs font-bold items-center gap-2 bg-parchment-400/80 hover:bg-parchment-500 text-ink-700 hover:text-ink-900 border border-parchment-700/60 transition-all"
+                title="Start this round and print the chart"
+              >
+                <i class="fa-solid fa-print text-brass-600"></i
+                ><span>Print</span>
               </button>
             </div>
             <span id="txt-mode-hint" class="text-[11px] text-ink-500"></span>
@@ -3136,6 +3146,34 @@
       // Names are laid out a few at a time so the chart appears at once and
       // fills in over the next moment; a new round cancels the old pass.
       let labelJob = 0;
+      // While a layout pass is still running, a print waits for it first —
+      // so an export never misses names that are about to appear
+      let labelLayoutActive = false;
+      const labelSettleWaiters = [];
+      function noteLabelsSettled() {
+        if (!labelLayoutActive) return;
+        labelLayoutActive = false;
+        const waiters = labelSettleWaiters.splice(0);
+        for (const res of waiters) {
+          try {
+            res();
+          } catch (e) {}
+        }
+      }
+      function whenLabelsSettled(timeoutMs) {
+        if (!labelLayoutActive) return Promise.resolve();
+        return new Promise((res) => {
+          labelSettleWaiters.push(res);
+          setTimeout(
+            () => {
+              const i = labelSettleWaiters.indexOf(res);
+              if (i >= 0) labelSettleWaiters.splice(i, 1);
+              res();
+            },
+            Math.max(500, timeoutMs || 5000),
+          );
+        });
+      }
 
       // A typeface that arrives after the first measurement makes every
       // measurement taken without it wrong — so start again when it lands
@@ -8134,7 +8172,10 @@
       // per frame, so the chart itself is up at once and the names arrive
       // behind it instead of holding the page hostage to a wait
       function renderSelectionLabels() {
-        if (!gMap || !state.showLabels) return;
+        if (!gMap || !state.showLabels) {
+          noteLabelsSettled();
+          return;
+        }
         const job = ++labelJob;
         const items = [];
         (state.selection || []).forEach((t) => {
@@ -8158,6 +8199,7 @@
         items.sort((a, b) => a.area - b.area);
 
         let i = 0;
+        labelLayoutActive = true;
         const step = () => {
           if (job !== labelJob) return; // a new round has begun without it
           const t0 = performance.now();
@@ -8170,14 +8212,33 @@
             return;
           }
           gMap.selectAll(".map-label").style("display", "block");
+          noteLabelsSettled();
         };
         step();
       }
 
       // --- what's new -----------------------------------------------------
-      const APP_VERSION = "v1.7.6";
+      const APP_VERSION = "v1.7.9";
 
       const CHANGELOG = [
+        {
+          version: "v1.7.9",
+          notes: [
+            "Prints set type in the chart's own typefaces, so edge labels land exactly where the screen shows them instead of clipping under fallback metrics.",
+          ],
+        },
+        {
+          version: "v1.7.8",
+          notes: [
+            "Prints are truly what-you-see: the compass rose prints with the chart, zoomed borders print as fine as they read, and a download pressed mid-layout waits for the names first.",
+          ],
+        },
+        {
+          version: "v1.7.7",
+          notes: [
+            "A Print button sits beside Test in the area picker: it starts the picked round and opens the print dialog onto the fresh chart.",
+          ],
+        },
         {
           version: "v1.7.6",
           notes: [
@@ -8414,7 +8475,7 @@
       // What the Start button will run: the mode the header button just named,
       // or the mode already in force when the list is opened another way.
       function startFromPicker() {
-        applyCustomSelectionAndRestart(pickerMode);
+        applyCustomSelectionAndRestart();
       }
 
       // All three hints spent means the chart gave the answer away — the
@@ -9245,29 +9306,45 @@
         renderAfterTick();
       }
 
-      // The Start button at the foot of the list: it runs the round in the
-      // mode the header picked, and never asks which one that was. Study
-      // alone may start with nothing ticked: a blank chart to look at —
-      // or to print — with no targets and no names.
-      function applyCustomSelectionAndRestart(mode) {
-        const m = mode === "study" || mode === "test" ? mode : undefined;
+      // What the picker holds, committed to the round: the mode in force
+      // and whether the chart starts blank. Null when a test has nothing
+      // to ask about.
+      function commitPickerSelection() {
+        const m =
+          pickerMode === "study" || pickerMode === "test" ? pickerMode : "test";
         if (tempSelectedIds.size === 0 && m !== "study") {
           showToast("Tick at least one area first");
-          return;
+          return null;
         }
-
         if (sameIdSet([...tempSelectedIds], naturalSelectionIds())) {
           state.customSelectedIds = null; // back to the standard scope
         } else {
           // An empty set names a blank chart, for study only
           state.customSelectedIds = new Set(tempSelectedIds);
         }
+        return { mode: m, blank: tempSelectedIds.size === 0 };
+      }
 
+      // The Start button at the foot of the list: it runs the round in the
+      // mode the header picked, and never asks which one that was. Study
+      // alone may start with nothing ticked: a blank chart to look at —
+      // or to print — with no targets and no names.
+      function applyCustomSelectionAndRestart() {
+        const c = commitPickerSelection();
+        if (!c) return;
         closeCustomSelectionModal();
-        restartQuiz({
-          mode: m,
-          blank: tempSelectedIds.size === 0,
-        });
+        restartQuiz({ mode: c.mode, blank: c.blank });
+      }
+
+      // Print the picked areas: starts the round exactly as Start would,
+      // then opens the print dialog onto the fresh chart — a labelled
+      // sheet in study, a clean quiz map in test
+      function printFromPicker() {
+        const c = commitPickerSelection();
+        if (!c) return;
+        closeCustomSelectionModal();
+        restartQuiz({ mode: c.mode, blank: c.blank });
+        openPrintModal();
       }
 
       function toggleSound() {
@@ -9622,6 +9699,7 @@
         "font-style",
         "letter-spacing",
         "text-anchor",
+        "dominant-baseline",
         "paint-order",
         "display",
       ];
@@ -9679,12 +9757,63 @@
         return `Know-Thy-World-chart-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${printMono ? "-bw" : ""}.${ext}`;
       }
 
+      // The export rasterizes in an isolated image where the page's
+      // webfonts do not exist — fallback serif runs taller than the chart
+      // typeface, so labels at the viewport edge clip. Embed the latin
+      // faces as data URIs and the print reads exactly like the screen.
+      // Cached after the first print; any failure falls back to system
+      // serif, exactly as before.
+      let printFontCSSPromise = null;
+      function printFontCSS() {
+        if (!printFontCSSPromise)
+          printFontCSSPromise = buildPrintFontCSS();
+        return printFontCSSPromise;
+      }
+      async function buildPrintFontCSS() {
+        try {
+          const cssUrl =
+            "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=IM+Fell+English:ital@0;1&display=swap";
+          const css = await (await fetch(cssUrl)).text();
+          // The response arrives in /* subset */ + @font-face pairs — keep
+          // the latin faces the chart actually sets, skipping the rest
+          const parts = css.split(/\/\*\s*([a-z-]+)\s*\*\//);
+          const keep = [];
+          for (let i = 1; i + 1 < parts.length; i += 2) {
+            if (parts[i] !== "latin") continue;
+            const block = parts[i + 1];
+            if (/font-family:\s*'(EB Garamond|IM Fell English)'/.test(block))
+              keep.push(block);
+          }
+          if (!keep.length) return "";
+          const out = [];
+          for (const block of keep) {
+            const m = /url\((https:[^)]+)\)/.exec(block);
+            if (!m) continue;
+            const blob = await (await fetch(m[1])).blob();
+            const dataUrl = await new Promise((res, rej) => {
+              const reader = new FileReader();
+              reader.onload = () => res(reader.result);
+              reader.onerror = rej;
+              reader.readAsDataURL(blob);
+            });
+            out.push(
+              block
+                .replace(m[1], dataUrl)
+                .replace(/font-display:\s*swap/, "font-display:block"),
+            );
+          }
+          return out.join("\n");
+        } catch (e) {
+          return "";
+        }
+      }
+
       // Renders the current chart view (at its current zoom and pan) to a
       // canvas: a clean clone, stripped of answer colours, with its paint
       // inlined and a paper backing. Black & white drops every background
       // wash and label halo and inks the borders black, for photocopying.
       // Null when there is no chart yet.
-      function renderChartExportCanvas(mono) {
+      function renderChartExportCanvas(mono, fontCSS) {
         return new Promise((resolve) => {
           const src = document.getElementById("svg-map");
           if (!src || !pathGenerator) {
@@ -9717,6 +9846,12 @@
               for (const c of PRINT_STATE_CLASSES) n.classList.remove(c);
             });
             const all = [clone, ...clone.querySelectorAll("*")];
+            // Border weight resolves from this variable on the live chart —
+            // carry it over so zoomed borders print as fine as they read
+            try {
+              const liveStroke = src.style.getPropertyValue("--map-stroke");
+              if (liveStroke) clone.style.setProperty("--map-stroke", liveStroke);
+            } catch (e) {}
             for (const n of all) {
               if (!(n instanceof Element)) continue;
               const cs = window.getComputedStyle(n);
@@ -9778,6 +9913,17 @@
             // Paper backing: the live chart shows the page through
             // the corners outside the water sphere
             const paper = mono ? "#ffffff" : "#f6ecd6";
+            // Chart typefaces, embedded: without them the isolated image
+            // falls back to system serif, whose taller metrics clip labels
+            // at the viewport edge
+            if (fontCSS) {
+              const st = document.createElementNS(
+                "http://www.w3.org/2000/svg",
+                "style",
+              );
+              st.textContent = fontCSS;
+              clone.insertBefore(st, clone.firstChild);
+            }
             const bg = document.createElementNS(
               "http://www.w3.org/2000/svg",
               "rect",
@@ -9788,6 +9934,38 @@
             bg.setAttribute("height", String(H));
             bg.setAttribute("fill", paper);
             clone.insertBefore(bg, clone.firstChild);
+
+            // The compass rose stands on the chart itself, so it prints
+            // with it — unlike the game interface around the chart. It
+            // keeps its screen spot: 20px in, 20px up from the corner.
+            try {
+              const rose = document.querySelector(".compass-rose");
+              if (rose && getComputedStyle(rose).display !== "none") {
+                const rc = rose.cloneNode(true);
+                rc.removeAttribute("class");
+                rc.removeAttribute("style");
+                rc.setAttribute("x", "20");
+                rc.setAttribute("y", String(Math.max(0, H - 20 - 96)));
+                rc.setAttribute("width", "96");
+                rc.setAttribute("height", "96");
+                if (mono) {
+                  rc.querySelectorAll("*").forEach((n) => {
+                    if (!(n instanceof Element)) return;
+                    if (
+                      n.getAttribute("fill") &&
+                      n.getAttribute("fill") !== "none"
+                    )
+                      n.setAttribute("fill", "#ffffff");
+                    if (
+                      n.getAttribute("stroke") &&
+                      n.getAttribute("stroke") !== "none"
+                    )
+                      n.setAttribute("stroke", "#000000");
+                  });
+                }
+                clone.appendChild(rc);
+              }
+            } catch (e) {}
 
             clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
             clone.setAttribute("width", String(W));
@@ -9842,9 +10020,13 @@
       async function downloadChartPNG() {
         if (printBusy) return;
         printBusy = true;
-        setPrintStatus("Rendering chart…");
         try {
-          const canvas = await renderChartExportCanvas(printMono);
+          setPrintStatus("Laying out names…");
+          await whenLabelsSettled(5000);
+          setPrintStatus("Loading print fonts…");
+          const fontCSS = await printFontCSS();
+          setPrintStatus("Rendering chart…");
+          const canvas = await renderChartExportCanvas(printMono, fontCSS);
           if (!canvas) {
             showToast("Couldn't render the chart");
             return;
@@ -9881,9 +10063,13 @@
       async function downloadChartPDF() {
         if (printBusy) return;
         printBusy = true;
-        setPrintStatus("Rendering chart…");
         try {
-          const canvas = await renderChartExportCanvas(printMono);
+          setPrintStatus("Laying out names…");
+          await whenLabelsSettled(5000);
+          setPrintStatus("Loading print fonts…");
+          const fontCSS = await printFontCSS();
+          setPrintStatus("Rendering chart…");
+          const canvas = await renderChartExportCanvas(printMono, fontCSS);
           if (!canvas) {
             showToast("Couldn't render the chart");
             return;
