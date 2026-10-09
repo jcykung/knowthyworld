@@ -1832,8 +1832,7 @@
         // running glide's decay state.
         let lastCursorPt = null;
         let panSamples = [];
-        let panPointerCount = 0;
-        let panMultiTouch = false;
+        let dragSampling = false; // the running gesture is a lone-pointer pan
         let panInertiaRAF = 0;
         let panVelocity = null;
         let panLastFrame = 0;
@@ -2196,6 +2195,18 @@
                 // A pixel or two of tremor between press and release still
                 // counts as a click, so shaky hands can land tiny places
                 .clickDistance(5)
+                .on("start", (event) => {
+                    // A gesture begins: forget the last drag and decide
+                    // whether this one may end in a fling — a lone-pointer
+                    // pan may, a wheel, double-click or pinch may not
+                    panSamples = [];
+                    const se = event.sourceEvent;
+                    if (!se || se.type === "wheel" || se.type === "dblclick") {
+                        dragSampling = false;
+                        return;
+                    }
+                    dragSampling = !(se.touches && se.touches.length > 1);
+                })
                 .on("zoom", (event) => {
                     // A fresh gesture (or any programmed move) ends a running
                     // glide; the glide's own steps are marked and left alone.
@@ -2203,13 +2214,19 @@
                         if (!panGliding) cancelPanInertia();
                     } else {
                         cancelPanInertia();
-                        const seType = event.sourceEvent.type;
-                        if ((seType === "pointermove" || seType === "mousemove" || seType === "touchmove") &&
-                            panPointerCount === 1 && !panMultiTouch) {
-                            const now = performance.now();
-                            panSamples.push({ x: event.transform.x, y: event.transform.y, t: now });
-                            while (panSamples.length > 6) panSamples.shift();
-                            while (panSamples.length > 2 && now - panSamples[0].t > 120) panSamples.shift();
+                        const se = event.sourceEvent;
+                        if (dragSampling && se.type !== "wheel" && se.type !== "dblclick") {
+                            if (se.type === "touchmove" && se.touches && se.touches.length > 1) {
+                                // A second finger joined: the gesture is a
+                                // pinch now, never a fling
+                                dragSampling = false;
+                                panSamples = [];
+                            } else {
+                                const now = performance.now();
+                                panSamples.push({ x: event.transform.x, y: event.transform.y, t: now });
+                                while (panSamples.length > 6) panSamples.shift();
+                                while (panSamples.length > 2 && now - panSamples[0].t > 120) panSamples.shift();
+                            }
                         }
                     }
                     if (event.sourceEvent) {
@@ -2244,8 +2261,13 @@
                     scaleCityMarkers(event.transform.k);
                 })
                 .on("end", () => {
-                    // Coming to rest outside home eases back; a running glide
-                    // snaps when it lands instead
+                    // A lone-pointer pan that lifts with speed becomes a
+                    // glide; anything else coming to rest outside home eases
+                    // back, and a running glide snaps when it lands instead
+                    if (dragSampling) {
+                        dragSampling = false;
+                        maybeStartPanGlide();
+                    }
                     if (panVelocity || panInertiaRAF) return;
                     snapRubberBand();
                 });
@@ -2259,30 +2281,14 @@
                 lastCursorPt = d3.pointer(e, svg.node());
             });
 
-            // Track the gesture's pointers: a lone pointer that lifts with
-            // speed becomes a glide; a pinch never does.
+            // Remember the press for the near-miss click rescue below.
+            // (The fling is tracked through the zoom lifecycle instead: a
+            // release outside the chart still ends the gesture there.)
             svg.on("pointerdown.inertia", (e) => {
-                panPointerCount++;
-                panSamples = [];
-                if (panPointerCount > 1) panMultiTouch = true;
                 cancelPanInertia();
                 svg.interrupt(); // a grab stops a settling snap at once
                 pressFid = (e.pointerType !== "touch" && e.button === 0)
                     ? countryFidOf(e.target) : null;
-            });
-            const endPanPointer = () => {
-                panPointerCount = Math.max(0, panPointerCount - 1);
-                if (panPointerCount > 0) { panSamples = []; return; }
-                if (!panMultiTouch) maybeStartPanGlide();
-                panMultiTouch = false;
-                panSamples = [];
-            };
-            svg.on("pointerup.inertia", endPanPointer);
-            // A cancelled gesture never flings — just let go of it
-            svg.on("pointercancel.inertia", () => {
-                panPointerCount = Math.max(0, panPointerCount - 1);
-                if (panPointerCount === 0) panMultiTouch = false;
-                panSamples = [];
             });
 
             // A press that began on the highlighted place answers for it
