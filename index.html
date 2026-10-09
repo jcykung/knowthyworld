@@ -1827,6 +1827,19 @@
         let svg, gMap, gOcean, projection, pathGenerator, zoomBehavior;
         let isTouchInteracting = false, isTouchDragging = false;
 
+        // Cursor-centred zoom + inertial panning: the mouse spot last seen
+        // over the chart, recent drag samples for fling velocity, and the
+        // running glide's decay state.
+        let lastCursorPt = null;
+        let panSamples = [];
+        let panPointerCount = 0;
+        let panMultiTouch = false;
+        let panInertiaRAF = 0;
+        let panVelocity = null;
+        let panLastFrame = 0;
+        let panGlideStart = 0;
+        let panGliding = false;
+
         // Reserved footprints of placed map labels, in base projection units.
         // Zoom scales every label together, so an overlap-free arrangement at
         // rest stays overlap-free at any zoom level — only a resize (which
@@ -1870,22 +1883,94 @@
         ];
 
         // MAP ZOOM CONTROLS
+        // The +/- buttons magnify about the cursor's spot on the chart
+        // rather than the middle of the view, so hovering a place and
+        // pressing + dives toward that place. Falls back to the middle
+        // when the cursor has never been over the chart.
+        function cursorZoomPoint() {
+            if (!svg || !lastCursorPt) return undefined;
+            const W = +svg.attr("width"), H = +svg.attr("height");
+            const x = lastCursorPt[0], y = lastCursorPt[1];
+            return (x >= 0 && y >= 0 && x <= W && y <= H) ? [x, y] : undefined;
+        }
+
+        function zoomAboutCursor(factor) {
+            if (!svg || !zoomBehavior) return;
+            cancelPanInertia();
+            const p = cursorZoomPoint();
+            if (p) svg.transition().duration(300).call(zoomBehavior.scaleBy, factor, p);
+            else svg.transition().duration(300).call(zoomBehavior.scaleBy, factor);
+        }
+
         function zoomInMap() {
-            if (svg && zoomBehavior) {
-                svg.transition().duration(300).call(zoomBehavior.scaleBy, 1.4);
-            }
+            zoomAboutCursor(1.4);
         }
 
         function zoomOutMap() {
-            if (svg && zoomBehavior) {
-                svg.transition().duration(300).call(zoomBehavior.scaleBy, 0.7);
-            }
+            zoomAboutCursor(0.7);
         }
 
         function resetMapZoom() {
             if (svg && zoomBehavior) {
+                cancelPanInertia();
                 svg.transition().duration(500).call(zoomBehavior.transform, d3.zoomIdentity);
             }
+        }
+
+        // A flick keeps travelling after the pointer lifts, slowing like a
+        // phone scroll: the drag's velocity decays exponentially until it
+        // falls below notice.
+        function cancelPanInertia() {
+            if (panInertiaRAF) cancelAnimationFrame(panInertiaRAF);
+            panInertiaRAF = 0;
+            panVelocity = null;
+        }
+
+        function startPanInertia(vx, vy) {
+            cancelPanInertia();
+            const speed = Math.hypot(vx, vy);
+            if (!(speed > 0)) return;
+            const cap = 3; // px/ms — bounds one wild flick to ~600px of glide
+            const s = speed > cap ? cap / speed : 1;
+            panVelocity = { x: vx * s, y: vy * s };
+            panLastFrame = performance.now();
+            panGlideStart = panLastFrame;
+            const step = (now) => {
+                if (!panVelocity || !svg || !zoomBehavior) {
+                    panInertiaRAF = 0; panVelocity = null; return;
+                }
+                const dt = Math.min(64, Math.max(0, now - panLastFrame));
+                panLastFrame = now;
+                const decay = Math.exp(-dt / 200);
+                panVelocity.x *= decay;
+                panVelocity.y *= decay;
+                if (Math.hypot(panVelocity.x, panVelocity.y) < 0.02 || dt <= 0 || now - panGlideStart > 2500) {
+                    panInertiaRAF = 0; panVelocity = null; return;
+                }
+                // The glide's own steps are marked so the zoom handler
+                // does not mistake them for a fresh programmed move
+                panGliding = true;
+                try {
+                    svg.call(zoomBehavior.translateBy, panVelocity.x * dt, panVelocity.y * dt);
+                } finally {
+                    panGliding = false;
+                }
+                panInertiaRAF = requestAnimationFrame(step);
+            };
+            panInertiaRAF = requestAnimationFrame(step);
+        }
+
+        function maybeStartPanGlide() {
+            if (!svg || !zoomBehavior || panSamples.length < 2) return;
+            const now = performance.now();
+            const b = panSamples[panSamples.length - 1];
+            if (now - b.t > 90) return; // held still before release — no fling
+            const a = panSamples[0];
+            const dt = b.t - a.t;
+            if (!(dt > 0) || dt > 150) return;
+            const vx = (b.x - a.x) / dt, vy = (b.y - a.y) / dt;
+            if (Math.hypot(vx, vy) < 0.15) return; // a nudge, not a swipe
+            startPanInertia(vx, vy);
         }
 
         // TIMER FUNCTIONS
@@ -2065,6 +2150,21 @@
                 // past 200x does it become a target rather than a dot.
                 .scaleExtent([1, 300])
                 .on("zoom", (event) => {
+                    // A fresh gesture (or any programmed move) ends a running
+                    // glide; the glide's own steps are marked and left alone.
+                    if (!event.sourceEvent) {
+                        if (!panGliding) cancelPanInertia();
+                    } else {
+                        cancelPanInertia();
+                        const seType = event.sourceEvent.type;
+                        if ((seType === "pointermove" || seType === "mousemove" || seType === "touchmove") &&
+                            panPointerCount === 1 && !panMultiTouch) {
+                            const now = performance.now();
+                            panSamples.push({ x: event.transform.x, y: event.transform.y, t: now });
+                            while (panSamples.length > 6) panSamples.shift();
+                            while (panSamples.length > 2 && now - panSamples[0].t > 120) panSamples.shift();
+                        }
+                    }
                     if (event.sourceEvent) {
                         if (event.sourceEvent.pointerType === "touch" || (event.sourceEvent.touches && event.sourceEvent.touches.length > 0)) {
                             isTouchDragging = true;
@@ -2098,6 +2198,30 @@
                 });
 
             svg.call(zoomBehavior);
+
+            // Remember where the mouse is, so the +/- buttons and the zoom
+            // bar can magnify about the hovered spot instead of the middle.
+            svg.on("pointermove.cursor", (e) => {
+                if (e.pointerType === "touch") return;
+                lastCursorPt = d3.pointer(e, svg.node());
+            });
+
+            // Track the gesture's pointers: a lone pointer that lifts with
+            // speed becomes a glide; a pinch never does.
+            svg.on("pointerdown.inertia", () => {
+                panPointerCount++;
+                panSamples = [];
+                if (panPointerCount > 1) panMultiTouch = true;
+                cancelPanInertia();
+            });
+            const endPanPointer = () => {
+                panPointerCount = Math.max(0, panPointerCount - 1);
+                if (panPointerCount > 0) { panSamples = []; return; }
+                if (!panMultiTouch) maybeStartPanGlide();
+                panMultiTouch = false;
+                panSamples = [];
+            };
+            svg.on("pointerup.inertia pointercancel.inertia", endPanPointer);
 
             let touchStartCoords = null;
             svg.on("pointerdown.touchguard", (e) => {
@@ -3427,8 +3551,8 @@
 
             // A pinch on a trackpad does not arrive as two pointers — it
             // arrives as a wheel with the control key held down — so it is
-            // caught here and opens the chart the same way, about the view
-            // the chart already has
+            // caught here and opens the chart the same way, about the world
+            // point under the cursor rather than the middle of the view
             node.onwheel = e => {
                 if (!e.ctrlKey || !svg || !zoomBehavior) return;
                 e.preventDefault();
@@ -3436,16 +3560,20 @@
                 const extent = zoomBehavior.scaleExtent();
                 const k = Math.max(extent[0], Math.min(extent[1],
                                       t.k * Math.exp(-e.deltaY * 0.01)));
-                viewAt(chartCentre(), k);
+                viewAt(toWorld(e.clientX, e.clientY), k);
             };
 
             // The bar under the inset does the same thing for anybody who
-            // would rather push something than learn a gesture
+            // would rather push something than learn a gesture — about the
+            // hovered spot when there is one, else in place
             const slider = document.getElementById("minimap-zoom");
             if (slider) {
                 slider.oninput = () => {
                     if (!svg || !zoomBehavior) return;
-                    viewAt(chartCentre(), sliderToZoom(+slider.value));
+                    const k = sliderToZoom(+slider.value);
+                    const p = (typeof cursorZoomPoint === "function") ? cursorZoomPoint() : undefined;
+                    if (p) svg.call(zoomBehavior.scaleTo, k, p);
+                    else viewAt(chartCentre(), k);
                 };
             }
             syncMinimapZoom();
