@@ -2043,9 +2043,6 @@
                     .classed("reveal-flash", false)
                     .classed("guessed-wrong", false);
 
-                // Old hover tooltips would spoil the fresh round
-                gMap.selectAll(".map-country").select("title").text("");
-
                 gMap.selectAll(".map-city-marker")
                     .classed("guessed-correct", false)
                     .classed("guessed-1st", false)
@@ -2054,7 +2051,6 @@
                     .classed("guessed-failed", false)
                     .classed("reveal-flash", false)
                     .classed("guessed-wrong", false);
-                gMap.selectAll(".map-city-marker").select("title").text("");
 
                 // Remove existing labels
                 gMap.selectAll(".map-label").remove();
@@ -2149,6 +2145,9 @@
                 // is under a twentieth of a pixel wide at rest, and only
                 // past 200x does it become a target rather than a dot.
                 .scaleExtent([1, 300])
+                // A pixel or two of tremor between press and release still
+                // counts as a click, so shaky hands can land tiny places
+                .clickDistance(5)
                 .on("zoom", (event) => {
                     // A fresh gesture (or any programmed move) ends a running
                     // glide; the glide's own steps are marked and left alone.
@@ -2208,11 +2207,13 @@
 
             // Track the gesture's pointers: a lone pointer that lifts with
             // speed becomes a glide; a pinch never does.
-            svg.on("pointerdown.inertia", () => {
+            svg.on("pointerdown.inertia", (e) => {
                 panPointerCount++;
                 panSamples = [];
                 if (panPointerCount > 1) panMultiTouch = true;
                 cancelPanInertia();
+                pressFid = (e.pointerType !== "touch" && e.button === 0)
+                    ? countryFidOf(e.target) : null;
             });
             const endPanPointer = () => {
                 panPointerCount = Math.max(0, panPointerCount - 1);
@@ -2222,6 +2223,21 @@
                 panSamples = [];
             };
             svg.on("pointerup.inertia pointercancel.inertia", endPanPointer);
+
+            // A press that began on the highlighted place answers for it
+            // even if the release slipped a pixel or two onto the sea beside
+            // it. Direct hits never reach here — they answer on their own
+            // path — so this only rescues near misses on tiny places.
+            svg.on("click.highlight", (e) => {
+                if (e.target && e.target.closest &&
+                    e.target.closest("path.map-country, .map-city-marker")) return;
+                const fid = pressFid;
+                pressFid = null;
+                if (!fid || fid !== glowFid) return;
+                const feature = findTargetFeature(fid);
+                if (!feature || !feature.geometry || feature.geometry.type === "Point") return;
+                handleCountryClick(e, feature);
+            });
 
             let touchStartCoords = null;
             svg.on("pointerdown.touchguard", (e) => {
@@ -2327,11 +2343,26 @@
                 }
                 state.worldFeatures = topojson.feature(worldData, worldData.objects.countries).features;
 
-                // Kosovo ships without an id; give it the quiz's internal code
+                // Kosovo ships without an id; give it the quiz's internal code.
+                // The other id-less regions (Somaliland, N. Cyprus, Siachen
+                // Glacier, Indian Ocean Ter.) are scenery, but each still
+                // needs an id of its own — sharing one blank id would light
+                // them all up as a single group on hover, though they belong
+                // to no country in common.
+                const UNCODED_REGION_IDS = [
+                    { match: /kosovo/i, id: KOSOVO_ID },
+                    { match: /somaliland/i, id: "X-SOMALILAND" },
+                    { match: /n\.?\s*cyprus|northern\s*cyprus/i, id: "X-NCYPRUS" },
+                    { match: /siachen/i, id: "X-SIACHEN" },
+                    { match: /indian\s*ocean/i, id: "X-INDIAN-OCEAN" }
+                ];
+                let uncodedCount = 0;
                 state.worldFeatures.forEach(f => {
-                    if ((f.id === undefined || f.id === null) && /kosovo/i.test((f.properties && f.properties.name) || "")) {
-                        f.id = KOSOVO_ID;
-                    }
+                    if (f.id !== undefined && f.id !== null && f.id !== "") return;
+                    const name = (f.properties && f.properties.name) || "";
+                    const hit = UNCODED_REGION_IDS.find(r => r.match.test(name));
+                    // Belt and braces: no two regions ever share the blank id
+                    f.id = hit ? hit.id : ("X-UNCODED-" + (++uncodedCount));
                 });
 
                 // Draw the nations Natural Earth leaves out entirely, so that
@@ -2455,6 +2486,10 @@
         // siblings, so the chart moves the class itself, from the map's own
         // pointer events — and still never lets a hover reveal a name.
         let glowFid = null;
+        // Where the current press began (a country/ring data-id, else null),
+        // so a click that slips a pixel off a tiny place still answers for
+        // it while it is the highlighted one.
+        let pressFid = null;
 
         function countryFidOf(node) {
             const path = node && node.closest ? node.closest("path.map-country") : null;
@@ -2542,11 +2577,7 @@
                 .attr("class", "map-country")
                 .attr("d", pathGenerator)
                 .attr("data-id", d => featureFid(d))
-                .on("click", handleCountryClick)
-                // Deliberately left blank: a hover tooltip would hand the player
-                // the answer. The name is written in only once it is identified.
-                .append("title")
-                .text("");
+                .on("click", handleCountryClick);
 
             // Rims go on afterwards and are slid in beneath the countries, so
             // every country paints over its own ring and a ring can never land
@@ -2609,12 +2640,6 @@
                 .attr("stroke", "#8b2500")
                 .attr("stroke-width", "0.8")
                 .attr("stroke-dasharray", "1.5 1.5");
-
-            // Title tooltip
-            markers.append("title")
-                .text(d => (state.studyMode || state.completedTargetIds.has(d.id))
-                    ? (d.isNational ? `${d.name} (National Capital)` : `${d.name} (${d.province})`)
-                    : "");
 
             // Re-apply guess status if already answered
             markers.each(function(d) {
@@ -2759,8 +2784,6 @@
                 if (state.showLabels) {
                     renderAreaLabel(findTargetFeature(targetId) || { geometry: { type: "Point", coordinates: d.coordinates }, properties: { customId: targetId } }, targetName);
                 }
-
-                element.select("title").text(targetName);
 
                 updateStatsUI();
 
@@ -3988,14 +4011,6 @@
                     renderAreaLabel(findTargetFeature(targetId) || d, targetName);
                 }
 
-                // Now that it is identified, hovering can show the real name —
-                // but a province's tooltip must keep its own name for its own turn
-                if (!viaSubUnit) {
-                    gMap.selectAll('.map-country[data-id="' + clickedId + '"]')
-                        .select("title")
-                        .text(targetName);
-                }
-
                 // Brief swell of the pen
                 element.classed("pulse-tight", true);
                 setTimeout(() => element.classed("pulse-tight", false), 350);
@@ -4090,7 +4105,6 @@
                         renderAreaLabel(targetFeature, targetName);
                     }
 
-                    marker.select("title").text(targetName);
                     centreOnFeature(targetFeature, { duration: 650 });
                     return;
                 }
@@ -4110,13 +4124,6 @@
                 if (state.showLabels) {
                     renderAreaLabel(targetFeature, targetName);
                 }
-
-                // Reveal the name in the tooltip only after it has been shown.
-                // (A province keeps its own tooltip: it may still be a target.)
-                gMap.selectAll(".map-country")
-                    .filter(d => featureFid(d) === targetId)
-                    .select("title")
-                    .text(targetName);
 
                 // Bring it to the middle of the chart so the student can study it
                 centreOnFeature(targetFeature, { duration: 650 });
@@ -4874,8 +4881,8 @@
         //      its own name is wide;
         //   3. inside its own land at whatever size still fits, for a place
         //      with no water to spare its name.
-        // A place with no room at all goes unlabelled: the hover tooltip
-        // still tells the story, and a name drawn on a neighbour is no name.
+        // A place with no room at all goes unlabelled: a name drawn on a
+        // neighbour is no name.
         function placeLabel(feature, fid, text) {
             if (!gMap || !feature || !text || !fid || fid === "undefined") return;
             if (labelBoxes.has(fid)) return;
