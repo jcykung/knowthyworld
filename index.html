@@ -1952,7 +1952,7 @@
         });
 
         // A flick keeps travelling after the pointer lifts, slowing like a
-        // phone scroll: the drag's velocity decays exponentially until it
+        // phone scroll: the drag's velocity damps 0.95 per frame until it
         // falls below notice.
         function cancelPanInertia() {
             if (panInertiaRAF) cancelAnimationFrame(panInertiaRAF);
@@ -1964,11 +1964,15 @@
             cancelPanInertia();
             const speed = Math.hypot(vx, vy);
             if (!(speed > 0)) return;
-            const cap = 3; // px/ms — bounds one wild flick to ~600px of glide
+            const cap = 3; // px/ms — bounds one wild flick to ~950px of glide
             const s = speed > cap ? cap / speed : 1;
             panVelocity = { x: vx * s, y: vy * s };
             panLastFrame = performance.now();
             panGlideStart = panLastFrame;
+            const landGlide = () => {
+                panInertiaRAF = 0; panVelocity = null;
+                snapRubberBand(false); // safety net; a clamped glide is already home
+            };
             const step = (now) => {
                 if (!panVelocity || !svg || !zoomBehavior) {
                     panInertiaRAF = 0; panVelocity = null; return;
@@ -1979,23 +1983,36 @@
                     panInertiaRAF = requestAnimationFrame(step);
                     return;
                 }
-                const decay = Math.exp(-dt / 200);
+                // Friction: 0.95 per frame, normalised so faster and slower
+                // screens glide the same distance in the same time
+                const decay = Math.pow(0.95, dt / 16.667);
                 panVelocity.x *= decay;
                 panVelocity.y *= decay;
                 if (Math.hypot(panVelocity.x, panVelocity.y) < 0.02 || now - panGlideStart > 2500) {
-                    panInertiaRAF = 0; panVelocity = null;
-                    snapRubberBand(); // a glide landing outside eases home
+                    landGlide();
+                    return;
+                }
+                const t = d3.zoomTransform(svg.node());
+                const k = t.k || 1;
+                // Clamp the stride to the boundary limits: an axis that would
+                // leave home stops dead instead of pushing through, while the
+                // other axis slides on
+                const wantX = t.x + panVelocity.x * dt, wantY = t.y + panVelocity.y * dt;
+                const [cx, cy] = clampRubberTransform(wantX, wantY, k, false, RUBBER_ALLOW);
+                if (Math.abs(cx - wantX) > 1e-6) panVelocity.x = 0;
+                if (Math.abs(cy - wantY) > 1e-6) panVelocity.y = 0;
+                if (panVelocity.x === 0 && panVelocity.y === 0) {
+                    landGlide();
                     return;
                 }
                 // translateBy takes world units — its shift is multiplied by
                 // the zoom — so divide the screen-pixel glide by k. Without
                 // this the glide launches k times too fast when magnified.
-                const k = d3.zoomTransform(svg.node()).k || 1;
                 // The glide's own steps are marked so the zoom handler
                 // does not mistake them for a fresh programmed move
                 panGliding = true;
                 try {
-                    svg.call(zoomBehavior.translateBy, (panVelocity.x * dt) / k, (panVelocity.y * dt) / k);
+                    svg.call(zoomBehavior.translateBy, (cx - t.x) / k, (cy - t.y) / k);
                 } finally {
                     panGliding = false;
                 }
@@ -2019,43 +2036,59 @@
 
         // Rubber-band panning, after the manner of phone scroll views. Home
         // depends on the zoom: magnified until the globe covers the view, the
-        // view must keep covering it; zoomed out with the whole globe showing,
-        // the globe may rest anywhere it still touches the view. Dragging past
-        // the limb is always allowed, but coming to rest outside eases back
-        // with a short slide — the bounce.
+        // view must keep covering it. Zoomed out, a slow drag that leaves the
+        // globe out of the view bounces home; a fling may rest anywhere it
+        // still touches the view, and only a globe lost altogether is pulled
+        // back. Dragging past the limb is always allowed — the bounce happens
+        // on coming to rest.
         const RUBBER_ALLOW = 140; // screen px past the limb before home pulls back
         const RUBBER_GUTTER = 12; // screen px of parchment left after the snap
 
-        function snapRubberBand() {
-            if (!svg || !zoomBehavior || !pathGenerator) return;
+        // Home bounds shared by the rubber snap and the glide clamp:
+        // magnified until the globe covers the view, the view must keep
+        // covering it; zoomed out, strict keeps the globe inside the view
+        // while a fling may rest anywhere it still touches it. The snap
+        // settles at the gutter; a glide stops at the allowance edge, so it
+        // halts at the wall instead of jumping back from it.
+        function clampRubberTransform(tx, ty, k, strict, margin) {
+            if (!svg || !pathGenerator) return [tx, ty];
+            const m = (margin === undefined) ? RUBBER_GUTTER : margin;
             let b = null;
-            try { b = pathGenerator.bounds({ type: "Sphere" }); } catch (e) { return; }
-            if (!b || !isFinite(b[0][0]) || !isFinite(b[0][1]) || !isFinite(b[1][0]) || !isFinite(b[1][1])) return;
+            try { b = pathGenerator.bounds({ type: "Sphere" }); } catch (e) { return [tx, ty]; }
+            if (!b || !isFinite(b[0][0]) || !isFinite(b[0][1]) || !isFinite(b[1][0]) || !isFinite(b[1][1])) return [tx, ty];
             const W = +svg.attr("width"), H = +svg.attr("height");
-            const t = d3.zoomTransform(svg.node());
-            const k = t.k;
             const clampAxis = (b0, b1, S, txy) => {
                 const g0 = b0 * k + txy, g1 = b1 * k + txy;
                 if ((g1 - g0) >= S) {
                     // The globe covers the view: keep it covering
-                    if (g0 > RUBBER_ALLOW) return RUBBER_GUTTER - b0 * k;
-                    if (g1 < S - RUBBER_ALLOW) return S - RUBBER_GUTTER - b1 * k;
+                    if (g0 > RUBBER_ALLOW) return m - b0 * k;
+                    if (g1 < S - RUBBER_ALLOW) return S - m - b1 * k;
                     return txy;
                 }
-                // The globe sits inside the view: it may rest anywhere it
-                // still touches the view — only a globe lost altogether is
-                // pulled back, by its nearer limb
+                if (strict) {
+                    // A slow release belongs inside the view
+                    if (g0 < -RUBBER_ALLOW) return RUBBER_GUTTER - b0 * k;
+                    if (g1 > S + RUBBER_ALLOW) return S - RUBBER_GUTTER - b1 * k;
+                    return txy;
+                }
+                // A fling may rest anywhere it still touches the view — only
+                // a globe lost altogether is pulled back, by its nearer limb
                 if (g1 < -RUBBER_ALLOW) return RUBBER_GUTTER - b1 * k;
                 if (g0 > S + RUBBER_ALLOW) return S - RUBBER_GUTTER - b0 * k;
                 return txy;
             };
-            const nx = clampAxis(b[0][0], b[1][0], W, t.x);
-            const ny = clampAxis(b[0][1], b[1][1], H, t.y);
+            return [clampAxis(b[0][0], b[1][0], W, tx), clampAxis(b[0][1], b[1][1], H, ty)];
+        }
+
+        function snapRubberBand(strict) {
+            if (!svg || !zoomBehavior) return;
+            const t = d3.zoomTransform(svg.node());
+            const [nx, ny] = clampRubberTransform(t.x, t.y, t.k, strict, RUBBER_GUTTER);
             if (Math.abs(nx - t.x) < 0.5 && Math.abs(ny - t.y) < 0.5) return;
             cancelPanInertia();
             svg.transition().duration(350).ease(d3.easeCubicOut).call(
                 zoomBehavior.transform,
-                d3.zoomIdentity.translate(nx, ny).scale(k)
+                d3.zoomIdentity.translate(nx, ny).scale(t.k)
             );
         }
 
@@ -2264,7 +2297,7 @@
                                 const now = performance.now();
                                 panSamples.push({ x: event.transform.x, y: event.transform.y, t: now });
                                 while (panSamples.length > 6) panSamples.shift();
-                                while (panSamples.length > 2 && now - panSamples[0].t > 120) panSamples.shift();
+                                while (panSamples.length > 2 && now - panSamples[0].t > 100) panSamples.shift();
                             }
                         }
                     }
@@ -2301,14 +2334,14 @@
                 })
                 .on("end", () => {
                     // A lone-pointer pan that lifts with speed becomes a
-                    // glide; anything else coming to rest outside home eases
-                    // back, and a running glide snaps when it lands instead
+                    // glide and lands freely; a slow release that left the
+                    // globe out of the view bounces home instead
                     if (dragSampling) {
                         dragSampling = false;
                         maybeStartPanGlide();
                     }
                     if (panVelocity || panInertiaRAF) return;
-                    snapRubberBand();
+                    snapRubberBand(true);
                 });
 
             svg.call(zoomBehavior);
@@ -4864,15 +4897,14 @@
         }
 
         // Open water near a place, nearest the place first: where its caption
-        // may stand. The sea immediately round a small island is ruled out
-        // with the caption's own box in hand — a name far wider than the
-        // place it names has to be set beyond the name's own width before it
-        // is clear of the place, and of every island or neighbour around it.
-        // Only the spots that pass are returned, still nearest first.
-        function waterSpots(anchor, reach, slack, box, budget) {
+        // may stand. The probe box stays small — any centre a caption box
+        // clears also clears the probe, so no fittable centre is pruned —
+        // while each caption is tested at its own true size. The far cutoff
+        // still spans the widest caption, so far water is searched too.
+        function waterSpots(anchor, reach, slack, box, budget, farDim) {
             const cx = anchor.cx, cy = anchor.cy;
             const step = Math.max(1, Math.min(3, (2 * reach) / 64));
-            const far = slack + Math.max(box.w, box.h);
+            const far = slack + (farDim !== undefined ? farDim : Math.max(box.w, box.h));
             const all = [];
             const x0 = cx - reach, x1 = cx + reach, y0 = cy - reach, y1 = cy + reach;
             const nx = Math.max(3, Math.min(72, Math.ceil((x1 - x0) / step) + 1));
@@ -4975,8 +5007,11 @@
             const tie = node._tiedTo, at = node._tiedAt;
             if (tie && at) {
                 // The name and its gap from the ground are scaled as one, so
-                // the name reads at whatever remove it was set at rest
-                const s = fsScreen / (base * kk);
+                // the name reads at whatever remove it was set at rest.
+                // The rest size carries the same floor as the live size —
+                // without it a floored name is flung many times too far.
+                const fsScreenAtRest = Math.max(LABEL_SCREEN_MIN, Math.min(base, LABEL_SCREEN_CAP));
+                const s = fsScreen / (fsScreenAtRest * kk);
                 const x = tie.x + (at.x - tie.x) * s;
                 const y = tie.y + (at.y - tie.y) * s;
                 sel.attr("x", x).attr("y", y)
@@ -5162,9 +5197,21 @@
             const phaseB = wrapCandidatesFor(text).map(lines => ({
                 lines: lines, m: measureLabelLines(text, lines), fs: captionFs
             }));
+            // A caption is planned at the size it will actually read: the
+            // 16px floor means a small base reads many times larger than
+            // planned, so tiny captions are measured at their true size —
+            // otherwise every box reserved for them is a lie.
+            const placeK = currentZoomK() || 1;
+            const effFs = fs => Math.max(LABEL_SCREEN_MIN, Math.min(fs * placeK, LABEL_SCREEN_CAP)) / placeK;
+            phaseB.forEach(v => { v.fs = effFs(v.fs); });
             phaseB.sort((a, b) => a.lines.length - b.lines.length);
             const capRel = relFor(phaseB[0]);
-            const captionSlack = Math.max(captionFs * 2.5, Math.max(capRel.w, capRel.h) * 1.2, 16);
+            const captionSlackFull = Math.max(captionFs * 2.5, Math.max(capRel.w, capRel.h) * 1.2, 16);
+            // First pass stays close: a wide name that cannot fit nearby
+            // falls through to a narrower wrapping instead of wandering off
+            // to where its full width fits. The full reach remains as a
+            // fallback, so no place that is named today goes unlabelled.
+            let captionSlack = Math.max(captionFs * 2.5, 16);
 
             // Draw the name so its glyphs land exactly on the box planned for
             // them: SVG text does not scale exactly (small type snaps
@@ -5381,15 +5428,25 @@
             // 3 — ONLY for tiny places (like Delaware, Nauru, Monaco, Vatican, etc.)
             // whose land is physically too small to fit their label:
             // Place nearby without being on another place's area or overlapping another label!
+            // The close pass runs first, so a narrow wrapping wins a nearby
+            // spot over a wide one far away; the full reach runs after, so
+            // nothing loses a name it has today.
             if (!placed && isTinyPlace) {
                 // If coastal, try placing nearby on open water
-                budget.left = LABEL_CAPTION_BUDGET;
-                const reach = Math.max(anchor.w, anchor.h) + captionSlack +
-                              Math.max(capRel.w, capRel.h);
-                const water = waterSpots(anchor, reach, captionSlack,
-                                         { w: capRel.w, h: capRel.h }, budget);
-                if (water.length) {
-                    run(phaseB, water, beside);
+                const runCaptionPass = (slack) => {
+                    captionSlack = slack;
+                    budget.left = LABEL_CAPTION_BUDGET;
+                    const reach = Math.max(anchor.w, anchor.h) + captionSlack +
+                                  Math.max(capRel.w, capRel.h);
+                    const water = waterSpots(anchor, reach, captionSlack,
+                                             { w: 8, h: 8 }, budget, Math.max(capRel.w, capRel.h));
+                    if (water.length) {
+                        run(phaseB, water, beside);
+                    }
+                };
+                runCaptionPass(Math.max(captionFs * 2.5, 16));
+                if (!placed) {
+                    runCaptionPass(captionSlackFull);
                 }
             }
 
@@ -5397,8 +5454,8 @@
             // Radiate outward nearby, ensuring it NEVER lands on another place's land and never overlaps another label!
             if (!placed && isTinyPlace) {
                 const fallbackVariants = wrapCandidatesFor(text).map(lines => ({
-                    lines: lines, m: measureLabelLines(text, lines), fs: 2.2
-                })).concat(phaseC.length ? phaseC.slice(-2) : []);
+                    lines: lines, m: measureLabelLines(text, lines), fs: effFs(2.2)
+                })).concat((phaseC.length ? phaseC.slice(-2) : []).map(v => ({ lines: v.lines, m: v.m, fs: effFs(v.fs) })));
                 const step = Math.min(4, Math.max(1.2, Math.min(anchor.w, anchor.h) + 0.8));
                 const spokes = [{ x: anchor.cx, y: anchor.cy }];
                 [1, 2, 3, 4, 6].forEach(k => {
@@ -5680,6 +5737,16 @@
                 const f = findTargetFeature(t.id);
                 if (f) items.push({ feature: f, fid: t.id, text: t.displayName || t.name });
             });
+
+            // The tightest spots choose their ground first — a big neighbour
+            // must never blanket the water a speck-sized place needs. Mirrors
+            // the relayout order, so the first layout already lands where a
+            // resize would put everything.
+            items.forEach(it => {
+                const a = largestPartAnchor(it.feature);
+                it.area = a ? a.area : Infinity;
+            });
+            items.sort((a, b) => a.area - b.area);
 
             let i = 0;
             const step = () => {
