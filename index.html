@@ -293,7 +293,8 @@
             stroke-width: 1.8px;
             paint-order: stroke fill;
             pointer-events: none;
-            dominant-baseline: central;
+            text-anchor: middle;
+            dominant-baseline: auto;
             font-family: 'EB Garamond', Georgia, serif;
             letter-spacing: 0.02em;
         }
@@ -4649,6 +4650,28 @@
             const base = +node.dataset.baseSize;
             if (!(base > 0)) return;
             const kk = k > 0 ? k : 1;
+
+            // City labels: recompute position directly from dot coordinates
+            // so the label always sits centred above the marker at every zoom
+            if (node._dotPt) {
+                const pt = node._dotPt;
+                const isNat = !!node._isNat;
+                const fsScreen = 6.8, strokeScreen = 1.6;
+                // Offset in screen pixels above dot centre — clears the marker
+                const offsetScreen = isNat ? 14 : 11;
+                const fs = fsScreen / kk;
+                const strokeW = strokeScreen / kk;
+                const ax = pt.x;
+                const ay = pt.y - (offsetScreen / kk);
+                d3.select(node)
+                    .attr("x", ax)
+                    .attr("y", ay)
+                    .style("font-size", fs + "px")
+                    .style("stroke-width", strokeW + "px")
+                    .selectAll("tspan").attr("x", ax);
+                return;
+            }
+
             const fs = Math.min(base * kk, LABEL_SCREEN_CAP) / kk;
             const baseStroke = +node.dataset.baseStroke || Math.max(0.4, base * 0.3);
             const stroke = Math.min(baseStroke * kk, LABEL_SCREEN_CAP * 0.3) / kk;
@@ -4694,23 +4717,29 @@
             if (labelBoxes.has(fid)) return;
             if (gMap.select(`.map-label[data-label-id="${fid}"]`).size() > 0) return;
 
-            // City Point labels: positioned cleanly beside the marker
+            // City Point labels: centred above the marker dot
             if (fid.startsWith("CA-CAP-") || (feature.geometry && feature.geometry.type === "Point")) {
                 const coords = (feature.geometry && feature.geometry.coordinates) ||
                     (CANADA_CAPITALS[fid] ? CANADA_CAPITALS[fid].coordinates : null);
                 if (!coords || !projection) return;
                 const pt = projection(coords);
                 if (!pt) return;
-                const fs = 3.6;
-                const stroke = 0.8;
-                const ax = pt[0] + 5;
-                const ay = pt[1] - 1;
+                const isNat = fid === "CA-CAP-OTT" ||
+                    (CANADA_CAPITALS[fid] && CANADA_CAPITALS[fid].isNational);
+                const curK = currentZoomK() || 1;
+                const fsScreen = 6.8, strokeScreen = 1.6;
+                // Offset in screen pixels above dot centre — clears the marker
+                const offsetScreen = isNat ? 14 : 11;
+                const fs = fsScreen / curK;
+                const stroke = strokeScreen / curK;
+                const ax = pt[0];           // Centred horizontally on dot
+                const ay = pt[1] - (offsetScreen / curK); // Above the dot
                 const n = gMap.append("text")
                     .attr("class", "map-label map-city-label")
                     .attr("x", ax)
                     .attr("y", ay)
-                    .attr("data-base-size", fs)
-                    .attr("data-base-stroke", stroke)
+                    .attr("data-base-size", fsScreen)
+                    .attr("data-base-stroke", strokeScreen)
                     .attr("data-label-id", fid)
                     .attr("data-full-text", text)
                     .style("font-size", fs + "px")
@@ -4719,10 +4748,16 @@
                 if (!state.showLabels) {
                     n.style("display", "none");
                 }
-                const at = { ref: { x: pt[0], y: pt[1] }, x: ax, y: ay };
-                hangMapLabel(n.node(), at);
-                scaleMapLabel(n.node(), currentZoomK());
-                labelBoxes.set(fid, { x: ax, y: ay - fs, w: text.length * fs * 0.6, h: fs * 1.2 });
+                // Store dot coordinates for zoom recalculation
+                n.node()._dotPt = { x: pt[0], y: pt[1] };
+                n.node()._isNat = isNat;
+                scaleMapLabel(n.node(), curK);
+                labelBoxes.set(fid, {
+                    x: ax - (text.length * fs * 0.3),
+                    y: ay - fs * 0.8,
+                    w: text.length * fs * 0.6,
+                    h: fs * 1.2
+                });
                 return;
             }
 
