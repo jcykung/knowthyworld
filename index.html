@@ -1838,6 +1838,10 @@
         let panLastFrame = 0;
         let panGlideStart = 0;
         let panGliding = false;
+        // The rubber-squished position that is actually rendered on screen.
+        // During a drag past the boundary this differs from D3's raw transform;
+        // at rest (and during programmed transitions) it is kept in sync.
+        let panVisualTransform = null;
 
         // Reserved footprints of placed map labels, in base projection units.
         // Zoom scales every label together, so an overlap-free arrangement at
@@ -1912,6 +1916,7 @@
         function resetMapZoom() {
             if (svg && zoomBehavior) {
                 cancelPanInertia();
+                panVisualTransform = null;
                 svg.transition().duration(500).call(zoomBehavior.transform, d3.zoomIdentity);
             }
         }
@@ -1952,12 +1957,78 @@
         });
 
         // A flick keeps travelling after the pointer lifts, slowing like a
-        // phone scroll: the drag's velocity damps 0.95 per frame until it
+        // phone scroll: the drag's velocity damps with each frame until it
         // falls below notice.
         function cancelPanInertia() {
             if (panInertiaRAF) cancelAnimationFrame(panInertiaRAF);
             panInertiaRAF = 0;
             panVelocity = null;
+            // Don't clear panVisualTransform here — it's still valid as the
+            // last-known render position and will be updated by the next event.
+        }
+
+        // Apply rubber-band resistance to a proposed screen-pixel delta while
+        // the user is actively dragging. Axes inside the soft zone move freely;
+        // axes past it yield with diminishing returns (iOS-style elasticity).
+        // `tx/ty` is the CURRENT visual position before this step.
+        function rubberDragDelta(dx, dy, tx, ty, k) {
+            if (!svg || !pathGenerator) return [dx, dy];
+            let b = null;
+            try { b = pathGenerator.bounds({ type: "Sphere" }); } catch (e) { return [dx, dy]; }
+            if (!b) return [dx, dy];
+            const W = +svg.attr("width"), H = +svg.attr("height");
+
+            const resistAxis = (b0, b1, S, txy, delta) => {
+                if (delta === 0) return 0;
+                const g0 = b0 * k + txy, g1 = b1 * k + txy;
+                const globeSpan = g1 - g0;
+
+                // The soft boundary for this axis: the furthest the leading
+                // edge may travel before resistance kicks in.
+                let bound;
+                if (globeSpan >= S) {
+                    // Large globe: the leading edge of the globe must stay
+                    // within RUBBER_DRAG_ZONE of the viewport edge.
+                    bound = delta > 0
+                        ? RUBBER_DRAG_ZONE           // left/top edge
+                        : S - RUBBER_DRAG_ZONE;      // right/bottom edge (g1 side)
+                } else {
+                    // Small globe: translate relative to the centred position.
+                    const centred = S / 2 - ((b0 + b1) / 2) * k;
+                    bound = delta > 0
+                        ? centred + RUBBER_DRAG_ZONE
+                        : centred - RUBBER_DRAG_ZONE;
+                }
+
+                // How far past the boundary is the current position?
+                let pastNow;
+                if (delta > 0) {
+                    // Positive delta = moving right/down = g0 / txy increases
+                    const pos = globeSpan >= S ? g0 : txy;
+                    pastNow = Math.max(0, pos - bound);
+                } else {
+                    const pos = globeSpan >= S ? g1 : txy;
+                    pastNow = Math.max(0, bound - pos);
+                }
+
+                if (pastNow === 0 && Math.abs(delta) > 0) {
+                    // Not yet past the boundary: move freely until we hit it,
+                    // then apply resistance to any overshoot within this step.
+                    const freeRoom = delta > 0
+                        ? (globeSpan >= S ? Math.max(0, bound - g0) : Math.max(0, bound - txy))
+                        : (globeSpan >= S ? Math.max(0, g1 - bound) : Math.max(0, txy - bound));
+                    const freePart = Math.min(Math.abs(delta), freeRoom);
+                    const overPart = Math.abs(delta) - freePart;
+                    return Math.sign(delta) * (freePart + overPart * RUBBER_DRAG_K);
+                }
+
+                // Already past the boundary: entire delta is resisted.
+                return Math.sign(delta) * Math.abs(delta) * RUBBER_DRAG_K;
+            };
+
+            const rdx = resistAxis(b[0][0], b[1][0], W, tx, dx);
+            const rdy = resistAxis(b[0][1], b[1][1], H, ty, dy);
+            return [rdx, rdy];
         }
 
         function startPanInertia(vx, vy) {
@@ -1971,7 +2042,7 @@
             panGlideStart = panLastFrame;
             const landGlide = () => {
                 panInertiaRAF = 0; panVelocity = null;
-                snapRubberBand(false); // safety net; a clamped glide is already home
+                snapRubberBand(false); // snap home after the glide settles
             };
             const step = (now) => {
                 if (!panVelocity || !svg || !zoomBehavior) {
@@ -1992,12 +2063,12 @@
                     landGlide();
                     return;
                 }
-                const t = d3.zoomTransform(svg.node());
-                const k = t.k || 1;
-                // Clamp the stride to the boundary limits: an axis that would
-                // leave home stops dead instead of pushing through, while the
-                // other axis slides on
-                const wantX = t.x + panVelocity.x * dt, wantY = t.y + panVelocity.y * dt;
+                // Glide operates on the visual (rubber-squished) position so
+                // the fling feels continuous with the drag that started it.
+                const vt = panVisualTransform || d3.zoomTransform(svg.node());
+                const k = vt.k || 1;
+                const wantX = vt.x + panVelocity.x * dt;
+                const wantY = vt.y + panVelocity.y * dt;
                 const [cx, cy] = clampRubberTransform(wantX, wantY, k, false, RUBBER_ALLOW);
                 if (Math.abs(cx - wantX) > 1e-6) panVelocity.x = 0;
                 if (Math.abs(cy - wantY) > 1e-6) panVelocity.y = 0;
@@ -2005,14 +2076,15 @@
                     landGlide();
                     return;
                 }
-                // translateBy takes world units — its shift is multiplied by
-                // the zoom — so divide the screen-pixel glide by k. Without
-                // this the glide launches k times too fast when magnified.
-                // The glide's own steps are marked so the zoom handler
-                // does not mistake them for a fresh programmed move
+                // Apply the glide step: update both visual and D3 states in
+                // lock-step so the inertia glide is not rubber-resisted.
+                panVisualTransform = { x: cx, y: cy, k };
                 panGliding = true;
                 try {
-                    svg.call(zoomBehavior.translateBy, (cx - t.x) / k, (cy - t.y) / k);
+                    svg.call(
+                        zoomBehavior.transform,
+                        d3.zoomIdentity.translate(cx, cy).scale(k)
+                    );
                 } finally {
                     panGliding = false;
                 }
@@ -2029,27 +2101,41 @@
             const a = panSamples[0];
             const dt = b.t - a.t;
             if (!(dt > 0) || dt > 150) return;
-            const vx = (b.x - a.x) / dt, vy = (b.y - a.y) / dt;
+            // Derive velocity from cursor screen coords — these reflect what the
+            // user's hand actually did, even when the rubber resistance squished
+            // the visual movement below the raw pointer speed.
+            const vx = (b.screenX - a.screenX) / dt;
+            const vy = (b.screenY - a.screenY) / dt;
             if (Math.hypot(vx, vy) < 0.15) return; // a nudge, not a swipe
             startPanInertia(vx, vy);
         }
 
         // Rubber-band panning, after the manner of phone scroll views. Home
-        // depends on the zoom: magnified until the globe covers the view, the
-        // view must keep covering it. Zoomed out, a slow drag that leaves the
-        // globe out of the view bounces home; a fling may rest anywhere it
-        // still touches the view, and only a globe lost altogether is pulled
-        // back. Dragging past the limb is always allowed — the bounce happens
-        // on coming to rest.
-        const RUBBER_ALLOW = 140; // screen px past the limb before home pulls back
-        const RUBBER_GUTTER = 12; // screen px of parchment left after the snap
+        // depends on the zoom: when the globe fills the view it must keep
+        // covering it; when it doesn't, it snaps back to centre.
+        const RUBBER_ALLOW = 140;    // screen px past the limb before home pulls back
+        const RUBBER_GUTTER = 12;   // screen px of parchment left after the snap
+        const RUBBER_DRAG_ZONE = 60; // px of free travel before drag resistance starts
+        const RUBBER_DRAG_K = 0.35;  // drag elasticity (0 = rigid, 1 = free)
 
-        // Home bounds shared by the rubber snap and the glide clamp:
-        // magnified until the globe covers the view, the view must keep
-        // covering it; zoomed out, strict keeps the globe inside the view
-        // while a fling may rest anywhere it still touches it. The snap
-        // settles at the gutter; a glide stops at the allowance edge, so it
-        // halts at the wall instead of jumping back from it.
+        // Compute the centred home translation for a given k when the globe
+        // does not fill the view — place it in the middle of the viewport.
+        function centreTransform(k) {
+            if (!svg || !pathGenerator) return [0, 0];
+            let b = null;
+            try { b = pathGenerator.bounds({ type: "Sphere" }); } catch (e) { return [0, 0]; }
+            if (!b) return [0, 0];
+            const W = +svg.attr("width"), H = +svg.attr("height");
+            return [
+                W / 2 - ((b[0][0] + b[1][0]) / 2) * k,
+                H / 2 - ((b[0][1] + b[1][1]) / 2) * k
+            ];
+        }
+
+        // Clamp a proposed (tx, ty) at the given scale k.
+        // strict = true  → slow release — globe must stay inside the view
+        //          false → a fling may rest anywhere it still touches the view
+        // margin        → how far past the canonical bound we allow
         function clampRubberTransform(tx, ty, k, strict, margin) {
             if (!svg || !pathGenerator) return [tx, ty];
             const m = (margin === undefined) ? RUBBER_GUTTER : margin;
@@ -2059,22 +2145,22 @@
             const W = +svg.attr("width"), H = +svg.attr("height");
             const clampAxis = (b0, b1, S, txy) => {
                 const g0 = b0 * k + txy, g1 = b1 * k + txy;
-                if ((g1 - g0) >= S) {
-                    // The globe covers the view: keep it covering
+                const globeSpan = g1 - g0;
+                if (globeSpan >= S) {
+                    // Globe covers the view: keep it covering
                     if (g0 > RUBBER_ALLOW) return m - b0 * k;
                     if (g1 < S - RUBBER_ALLOW) return S - m - b1 * k;
                     return txy;
                 }
+                // Globe is smaller than the view — home is centred
+                const centred = S / 2 - ((b0 + b1) / 2) * k;
                 if (strict) {
-                    // A slow release belongs inside the view
-                    if (g0 < -RUBBER_ALLOW) return RUBBER_GUTTER - b0 * k;
-                    if (g1 > S + RUBBER_ALLOW) return S - RUBBER_GUTTER - b1 * k;
+                    if (g0 < -RUBBER_ALLOW || g1 > S + RUBBER_ALLOW) return centred;
                     return txy;
                 }
-                // A fling may rest anywhere it still touches the view — only
-                // a globe lost altogether is pulled back, by its nearer limb
-                if (g1 < -RUBBER_ALLOW) return RUBBER_GUTTER - b1 * k;
-                if (g0 > S + RUBBER_ALLOW) return S - RUBBER_GUTTER - b0 * k;
+                // A fling may rest anywhere it still touches the view
+                if (g1 < -RUBBER_ALLOW) return centred;
+                if (g0 > S + RUBBER_ALLOW) return centred;
                 return txy;
             };
             return [clampAxis(b[0][0], b[1][0], W, tx), clampAxis(b[0][1], b[1][1], H, ty)];
@@ -2082,13 +2168,32 @@
 
         function snapRubberBand(strict) {
             if (!svg || !zoomBehavior) return;
-            const t = d3.zoomTransform(svg.node());
-            const [nx, ny] = clampRubberTransform(t.x, t.y, t.k, strict, RUBBER_GUTTER);
-            if (Math.abs(nx - t.x) < 0.5 && Math.abs(ny - t.y) < 0.5) return;
+            // Snap from the VISUAL position — this is what the user sees, so
+            // the transition must start from here, not from D3's raw state
+            // (which may differ when rubber drag was active).
+            const vt = panVisualTransform || d3.zoomTransform(svg.node());
+            const [nx, ny] = clampRubberTransform(vt.x, vt.y, vt.k, strict, RUBBER_GUTTER);
+            const needsSnap = Math.abs(nx - vt.x) >= 0.5 || Math.abs(ny - vt.y) >= 0.5;
+            // Synchronise D3's internal state to the visual position first so
+            // the transition's starting point matches what is on screen.
+            if (Math.abs(vt.x - d3.zoomTransform(svg.node()).x) >= 0.5 ||
+                Math.abs(vt.y - d3.zoomTransform(svg.node()).y) >= 0.5) {
+                panGliding = true;
+                try {
+                    svg.call(
+                        zoomBehavior.transform,
+                        d3.zoomIdentity.translate(vt.x, vt.y).scale(vt.k)
+                    );
+                } finally {
+                    panGliding = false;
+                }
+            }
+            panVisualTransform = null;
+            if (!needsSnap) return;
             cancelPanInertia();
-            svg.transition().duration(350).ease(d3.easeCubicOut).call(
+            svg.transition().duration(380).ease(d3.easeCubicOut).call(
                 zoomBehavior.transform,
-                d3.zoomIdentity.translate(nx, ny).scale(t.k)
+                d3.zoomIdentity.translate(nx, ny).scale(vt.k)
             );
         }
 
@@ -2278,6 +2383,13 @@
                         return;
                     }
                     dragSampling = !(se.touches && se.touches.length > 1);
+                    // Sync the visual transform to D3's current state at the
+                    // start of every gesture so rubber-drag always has a
+                    // valid starting point.
+                    if (svg) {
+                        const t = d3.zoomTransform(svg.node());
+                        panVisualTransform = { x: t.x, y: t.y, k: t.k };
+                    }
                 })
                 .on("zoom", (event) => {
                     // A fresh gesture (or any programmed move) ends a running
@@ -2289,15 +2401,32 @@
                         const se = event.sourceEvent;
                         if (dragSampling && se.type !== "wheel" && se.type !== "dblclick") {
                             if (se.type === "touchmove" && se.touches && se.touches.length > 1) {
-                                // A second finger joined: the gesture is a
-                                // pinch now, never a fling
+                                // A second finger joined: the gesture is now a
+                                // pinch — never a fling
                                 dragSampling = false;
                                 panSamples = [];
                             } else {
+                                // Record both the transform position and the raw
+                                // screen coords. Velocity is derived from screen
+                                // coords so a rubber-resisted drag still produces
+                                // a natural-feeling fling when released.
                                 const now = performance.now();
-                                panSamples.push({ x: event.transform.x, y: event.transform.y, t: now });
-                                while (panSamples.length > 6) panSamples.shift();
-                                while (panSamples.length > 2 && now - panSamples[0].t > 100) panSamples.shift();
+                                let sampleX = event.transform.x, sampleY = event.transform.y;
+                                if (se.clientX !== undefined) {
+                                    sampleX = se.clientX; sampleY = se.clientY;
+                                } else if (se.touches && se.touches[0]) {
+                                    sampleX = se.touches[0].clientX;
+                                    sampleY = se.touches[0].clientY;
+                                }
+                                panSamples.push({
+                                    x: event.transform.x,
+                                    y: event.transform.y,
+                                    screenX: sampleX,
+                                    screenY: sampleY,
+                                    t: now
+                                });
+                                while (panSamples.length > 8) panSamples.shift();
+                                while (panSamples.length > 2 && now - panSamples[0].t > 120) panSamples.shift();
                             }
                         }
                     }
@@ -2307,35 +2436,53 @@
                             clearHoverGlow();
                         }
                     }
-                    gMap.attr("transform", event.transform);
-                    gOcean.attr("transform", event.transform);
+
+                    // Compute the transform to render. For live user drags we apply
+                    // rubber resistance past the boundary (iOS-style), showing less
+                    // movement than the raw drag. Programmed moves (transitions,
+                    // inertia glide) render the exact D3 transform.
+                    let tx = event.transform.x, ty = event.transform.y;
+                    const tk = event.transform.k;
+
+                    if (dragSampling && event.sourceEvent && !panGliding) {
+                        // Compute incremental delta from the last sample so
+                        // resistance is based on the current visual position.
+                        const prev = panVisualTransform || { x: 0, y: 0, k: tk };
+                        if (panSamples.length >= 2) {
+                            const cur  = panSamples[panSamples.length - 1];
+                            const last = panSamples[panSamples.length - 2];
+                            const rawDx = cur.x - last.x, rawDy = cur.y - last.y;
+                            const [rdx, rdy] = rubberDragDelta(rawDx, rawDy, prev.x, prev.y, tk);
+                            tx = prev.x + rdx;
+                            ty = prev.y + rdy;
+                        }
+                        panVisualTransform = { x: tx, y: ty, k: tk };
+                    } else {
+                        // Programmed move — keep visual in sync with D3's state
+                        panVisualTransform = { x: tx, y: ty, k: tk };
+                    }
+
+                    gMap.attr("transform", `translate(${tx},${ty}) scale(${tk})`);
+                    gOcean.attr("transform", `translate(${tx},${ty}) scale(${tk})`);
                     // Borders keep the same fine line on the paper however
-                    // far the chart is magnified: a line that thinned away
-                    // with the zoom would leave the smallest places with no
-                    // edge to point along just when their edges matter most
-                    svg.style("--map-stroke", (0.6 / event.transform.k) + "px");
+                    // far the chart is magnified
+                    svg.style("--map-stroke", (0.6 / tk) + "px");
                     updateMinimapViewport();
-                    // Sea titles keep their on-screen size and line spacing,
-                    // as if printed on the paper itself rather than drawn on it.
-                    // Never smaller than 16px on screen.
+                    // Sea titles keep their on-screen size and line spacing
                     gOcean.selectAll(".ocean-label")
-                        .style("font-size", function () { return (Math.max(+this.dataset.baseSize, 16) / event.transform.k) + "px"; })
-                        .style("stroke-width", function () { return (Math.max(1.2, Math.max(+this.dataset.baseSize, 16) * 0.25) / event.transform.k) + "px"; })
+                        .style("font-size", function () { return (Math.max(+this.dataset.baseSize, 16) / tk) + "px"; })
+                        .style("stroke-width", function () { return (Math.max(1.2, Math.max(+this.dataset.baseSize, 16) * 0.25) / tk) + "px"; })
                         .each(function () {
-                            const dy = (+this.dataset.baseDy) / event.transform.k;
+                            const dy = (+this.dataset.baseDy) / tk;
                             d3.select(this).selectAll("tspan")
                                 .each(function (d, i) { d3.select(this).attr("dy", i === 0 ? 0 : dy); });
                         });
-                    // …and so do the names of countries: they hold their
-                    // place on the chart and their size on the paper, never
-                    // ballooning into a banner as the land beneath them grows
-                    scaleMapLabels(event.transform.k);
-                    scaleCityMarkers(event.transform.k);
+                    scaleMapLabels(tk);
+                    scaleCityMarkers(tk);
                 })
                 .on("end", () => {
-                    // A lone-pointer pan that lifts with speed becomes a
-                    // glide and lands freely; a slow release that left the
-                    // globe out of the view bounces home instead
+                    // A lone-pointer pan that lifts with speed becomes a glide;
+                    // a slow release that left the globe out of view snaps home.
                     if (dragSampling) {
                         dragSampling = false;
                         maybeStartPanGlide();
@@ -2359,6 +2506,13 @@
             svg.on("pointerdown.inertia", (e) => {
                 cancelPanInertia();
                 svg.interrupt(); // a grab stops a settling snap at once
+                // Seed the visual transform from the current rendered state so
+                // the first rubber-drag step has a correct starting position.
+                // After interrupt() the D3 state matches what's on screen.
+                if (svg && zoomBehavior) {
+                    const t = d3.zoomTransform(svg.node());
+                    panVisualTransform = { x: t.x, y: t.y, k: t.k };
+                }
                 pressFid = (e.pointerType !== "touch" && e.button === 0)
                     ? countryFidOf(e.target) : null;
             });
@@ -3790,7 +3944,9 @@
             syncMinimapZoom();
             const rect = document.getElementById("minimap-viewport");
             if (!rect || !miniFit || !svg) return;
-            const t = d3.zoomTransform(svg.node());
+            // Use the rubber-squished visual position when it exists so the
+            // minimap indicator reflects what is actually drawn on screen.
+            const t = panVisualTransform || d3.zoomTransform(svg.node());
             const W = +svg.attr("width"), H = +svg.attr("height");
             const x0 = -t.x / t.k, y0 = -t.y / t.k;
             const x1 = (W - t.x) / t.k, y1 = (H - t.y) / t.k;
