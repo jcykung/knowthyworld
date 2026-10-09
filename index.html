@@ -10142,6 +10142,16 @@
         const width = container.clientWidth;
         const height = container.clientHeight;
 
+        // The projection is rebuilt here, so every coordinate the label
+        // layout is holding has just moved: retire the placement cache
+        // (its keys carry the stamp) and the land/globe indexes, or the
+        // settling relayout below restores every name at its stale spot
+        // while the redrawn land sits elsewhere.
+        labelPlacementStamp++;
+        labelPlacementCache.clear();
+        landIndex = null;
+        globeWidthCache = null;
+
         svg.attr("width", width).attr("height", height);
         projection.scale(width / 5.8).translate([width / 2, height / 1.8]);
         gMap
