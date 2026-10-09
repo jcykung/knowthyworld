@@ -2017,10 +2017,12 @@
             startPanInertia(vx, vy);
         }
 
-        // Rubber-band panning, after the manner of phone scroll views: the
-        // projected globe with a gutter of parchment is home. Dragging past
-        // its limb is allowed, but coming to rest outside eases back with a
-        // short slide — the bounce.
+        // Rubber-band panning, after the manner of phone scroll views. Home
+        // depends on the zoom: magnified until the globe covers the view, the
+        // view must keep covering it; zoomed out with the whole globe showing,
+        // the globe may rest anywhere it still touches the view. Dragging past
+        // the limb is always allowed, but coming to rest outside eases back
+        // with a short slide — the bounce.
         const RUBBER_ALLOW = 140; // screen px past the limb before home pulls back
         const RUBBER_GUTTER = 12; // screen px of parchment left after the snap
 
@@ -2040,9 +2042,11 @@
                     if (g1 < S - RUBBER_ALLOW) return S - RUBBER_GUTTER - b1 * k;
                     return txy;
                 }
-                // The globe sits inside the view: keep it inside
-                if (g0 < -RUBBER_ALLOW) return RUBBER_GUTTER - b0 * k;
-                if (g1 > S + RUBBER_ALLOW) return S - RUBBER_GUTTER - b1 * k;
+                // The globe sits inside the view: it may rest anywhere it
+                // still touches the view — only a globe lost altogether is
+                // pulled back, by its nearer limb
+                if (g1 < -RUBBER_ALLOW) return RUBBER_GUTTER - b1 * k;
+                if (g0 > S + RUBBER_ALLOW) return S - RUBBER_GUTTER - b0 * k;
                 return txy;
             };
             const nx = clampAxis(b[0][0], b[1][0], W, t.x);
