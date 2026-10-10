@@ -3215,6 +3215,8 @@
       function zoomAboutCursor(factor) {
         if (!svg || !zoomBehavior) return;
         cancelPanInertia();
+        svg.interrupt("rubber"); // a zoom takes over from a settling bounce
+        rubberSnapping = false;
         const p = cursorZoomPoint();
         // A zoom-out can strand the globe outside the view, so settle
         // back home when the magnification transition comes to rest. An
@@ -3238,6 +3240,8 @@
       function resetMapZoom() {
         if (svg && zoomBehavior) {
           cancelPanInertia();
+          svg.interrupt("rubber"); // recentring takes over from any bounce
+          rubberSnapping = false;
           svg
             .transition()
             .duration(500)
@@ -3254,6 +3258,8 @@
         const k = d3.zoomTransform(svg.node()).k || 1;
         if (panLocked(k)) return; // fully zoomed out: nothing to walk
         cancelPanInertia();
+        svg.interrupt("rubber"); // a key step takes over from any bounce
+        rubberSnapping = false;
         // translateBy takes world units — divide the screen step by the
         // zoom, or the stride grows with the magnification
         svg.call(zoomBehavior.translateBy, dx / k, dy / k);
@@ -3308,6 +3314,7 @@
 
       function startPanInertia(vx, vy) {
         cancelPanInertia();
+        if (panLocked()) return; // at rest the chart never glides
         const speed = Math.hypot(vx, vy);
         if (!(speed > 0)) return;
         const cap = 3; // px/ms — bounds one wild flick to ~950px of glide
@@ -3346,16 +3353,25 @@
           }
           const t = d3.zoomTransform(svg.node());
           const k = t.k || 1;
+          if (panLocked(k)) {
+            // Zoomed back out mid-glide: the chart is pinned at rest,
+            // so stop here instead of driving (or bouncing) a locked chart.
+            landGlide();
+            return;
+          }
           // Clamp the stride to the boundary limits: an axis that would
-          // leave home stops dead instead of pushing through, while the
-          // other axis slides on
+          // leave home bounces past the wall and back, while the other
+          // axis slides on to its stride
           const wantX = t.x + panVelocity.x * dt,
             wantY = t.y + panVelocity.y * dt;
           const [cx, cy] = clampRubberTransform(wantX, wantY, k);
-          if (Math.abs(cx - wantX) > 1e-6) panVelocity.x = 0;
-          if (Math.abs(cy - wantY) > 1e-6) panVelocity.y = 0;
-          if (panVelocity.x === 0 && panVelocity.y === 0) {
-            landGlide();
+          const hitX = Math.abs(cx - wantX) > 1e-6;
+          const hitY = Math.abs(cy - wantY) > 1e-6;
+          if (hitX || hitY) {
+            const hvx = hitX ? panVelocity.x : 0;
+            const hvy = hitY ? panVelocity.y : 0;
+            // The free axis keeps its one stride; the walled axis bounces.
+            flingRubberBounce(hitX ? cx : wantX, hitY ? cy : wantY, k, hvx, hvy);
             return;
           }
           // translateBy takes world units — its shift is multiplied by
@@ -3426,11 +3442,16 @@
 
       // Rubber-band panning, after the manner of phone scroll views. Fully
       // zoomed out the chart does not pan at all; magnified, it may travel
-      // until 200px of it is left in the view. Dragging past the edge is
-      // always allowed — coming to rest bounces back to the edge itself,
-      // never to the centre.
+      // until 200px of it is left in the view. Drags share the glide's
+      // walls, stretching a short rubber past them while held — coming to
+      // rest bounces back to the edge itself, never to the centre.
       const RUBBER_EDGE = 200; // px of the chart that must stay in the viewport
       const PAN_LOCK_K = 1.001; // at or below: fully zoomed out, no panning
+      // Rubber feel: how far past the wall a gesture may stretch before
+      // it is held, and how hard the wall pulls back.
+      const RUBBER_DRAG_MAX = 90; // px past the wall a drag may stretch
+      const RUBBER_DRAG_SOFT = 0.35; // resistance past the wall while dragging
+      const RUBBER_FLING_MAX = 80; // px past the wall a fling may overshoot
 
       // Single-flight flags so programmed motions never stack and stutter:
       // a snap settling, and a live rest-lock correction driving the
@@ -3448,7 +3469,7 @@
       // magnified until the globe covers the view, the view must keep
       // covering it to within an edge of parchment; smaller than the view,
       // an edge of the globe must stay in view. Overshoot always settles
-      // back at the wall itself. Strides mid-motion stop dead at the wall
+      // back at the wall itself. A fling striking the wall bounces off it
       // while the other axis slides on.
       function clampRubberTransform(tx, ty, k) {
         if (!svg || !pathGenerator) return [tx, ty];
@@ -3501,29 +3522,133 @@
         ];
       }
 
-      // Coming to rest past the edge bounces back to the wall itself on
-      // one smooth motion: named so a new snap supersedes any in flight
-      // instead of stacking onto it, with a duration that grows with the
-      // distance so long bounces stay unhurried. (An earlier jitter came
-      // from the zoom lifecycle's own end echoing each programmed step
-      // and restarting the snap mid-flight — those echoes are ignored
-      // now, so the one motion runs to completion.)
+      // Coming to rest past the edge glides smoothly back to the wall
+      // itself on one unbroken motion, so the return never stutters:
+      // the stretch the drag is already holding past the wall IS the
+      // overshoot, and this is the bounce home. Named so a new snap
+      // supersedes any in flight instead of stacking onto it, with a
+      // duration that grows with the distance so long bounces stay
+      // unhurried. (An earlier jitter came from the zoom lifecycle's own
+      // end echoing each programmed step and restarting the snap
+      // mid-flight — those echoes are ignored now, so the one motion runs
+      // to completion.)
       function snapRubberBand() {
         if (!svg || !zoomBehavior || rubberSnapping) return;
         const t = d3.zoomTransform(svg.node());
         const [nx, ny] = clampRubberTransform(t.x, t.y, t.k);
-        if (Math.abs(nx - t.x) < 1 && Math.abs(ny - t.y) < 1) return;
+        const dist = Math.hypot(nx - t.x, ny - t.y);
+        if (dist < 1) return;
         cancelPanInertia();
         rubberSnapping = true;
-        const dist = Math.hypot(nx - t.x, ny - t.y);
         svg
           .transition("rubber")
-          .duration(Math.min(650, 240 + dist * 0.5))
+          .duration(Math.min(450, 200 + dist * 0.6))
           .ease(d3.easeCubicOut)
           .call(
             zoomBehavior.transform,
             d3.zoomIdentity.translate(nx, ny).scale(t.k),
           )
+          .on("end.rubber", () => {
+            rubberSnapping = false;
+          })
+          .on("interrupt.rubber", () => {
+            rubberSnapping = false;
+          });
+      }
+
+      // A drag's rubber: the wall itself, plus a short resisted stretch
+      // past it while held. Same boundary the glide bounces off, so the
+      // two gestures agree on where home ends.
+      function rubberResistTransform(tx, ty, k) {
+        const [wx, wy] = clampRubberTransform(tx, ty, k);
+        const ox = tx - wx,
+          oy = ty - wy;
+        return [
+          wx +
+            Math.sign(ox) *
+              Math.min(RUBBER_DRAG_MAX, Math.abs(ox) * RUBBER_DRAG_SOFT),
+          wy +
+            Math.sign(oy) *
+              Math.min(RUBBER_DRAG_MAX, Math.abs(oy) * RUBBER_DRAG_SOFT),
+        ];
+      }
+
+      // A fling striking the wall: one smooth motion that overshoots past
+      // it a little in the travelling direction, then settles back onto
+      // it — the overshoot is what tells the hand a boundary was reached.
+      // A single transition carries the whole out-and-back, so there is
+      // no seam in the middle to stutter on. baseX/baseY is the wall on
+      // the struck axis and the stride's end on the free axis; hvx/hvy
+      // carry the struck velocity (0 on the free axis).
+      function flingRubberBounce(baseX, baseY, k, hvx, hvy) {
+        if (panInertiaRAF) cancelAnimationFrame(panInertiaRAF);
+        panInertiaRAF = 0;
+        panVelocity = null;
+        if (!svg || !zoomBehavior) return;
+        const t0 = d3.zoomTransform(svg.node());
+        const kk = k || t0.k || 1;
+        if (panLocked(kk)) {
+          // Locked mid-flight (zoomed out under the glide): pin home
+          // with no overshoot — a resting chart never moves.
+          rubberSnapping = true;
+          svg
+            .transition("rubber")
+            .duration(200)
+            .ease(d3.easeCubicOut)
+            .call(
+              zoomBehavior.transform,
+              d3.zoomIdentity.translate(baseX, baseY).scale(kk),
+            )
+            .on("end.rubber", () => {
+              rubberSnapping = false;
+            })
+            .on("interrupt.rubber", () => {
+              rubberSnapping = false;
+            });
+          return;
+        }
+        const overX =
+          hvx !== 0
+            ? Math.sign(hvx) *
+              Math.min(RUBBER_FLING_MAX, 20 + Math.abs(hvx) * 22)
+            : 0;
+        const overY =
+          hvy !== 0
+            ? Math.sign(hvy) *
+              Math.min(RUBBER_FLING_MAX, 20 + Math.abs(hvy) * 22)
+            : 0;
+        const ox = baseX + overX,
+          oy = baseY + overY;
+        const OUT_MS = 170,
+          BACK_MS = 430;
+        rubberSnapping = true;
+        svg
+          .transition("rubber")
+          .duration(OUT_MS + BACK_MS)
+          .ease(d3.easeLinear)
+          .tween("rubber-bounce", () => {
+            const split = OUT_MS / (OUT_MS + BACK_MS);
+            const ixOut = d3.interpolateNumber(t0.x, ox);
+            const iyOut = d3.interpolateNumber(t0.y, oy);
+            const ixBack = d3.interpolateNumber(ox, baseX);
+            const iyBack = d3.interpolateNumber(oy, baseY);
+            return (u) => {
+              let x, y;
+              if (u < split) {
+                const e = d3.easeCubicOut(u / split);
+                x = ixOut(e);
+                y = iyOut(e);
+              } else {
+                const e = d3.easeCubicInOut((u - split) / (1 - split));
+                x = ixBack(e);
+                y = iyBack(e);
+              }
+              svg.call(
+                zoomBehavior.transform,
+                d3.zoomIdentity.translate(x, y).scale(kk),
+              );
+            };
+          })
           .on("end.rubber", () => {
             rubberSnapping = false;
           })
@@ -3762,6 +3887,41 @@
                   svg.call(
                     zoomBehavior.transform,
                     d3.zoomIdentity.translate(hx, hy).scale(event.transform.k),
+                  );
+                } finally {
+                  zoomCorrecting = false;
+                }
+                return;
+              }
+            }
+            // A drag shares the glide's walls: hold it at the boundary
+            // with a short rubber stretch instead of letting it sail
+            // past. Programmed glides, wheel steps and settling snaps
+            // drive their own clamps and are left alone.
+            if (
+              !zoomCorrecting &&
+              !rubberSnapping &&
+              !panGliding &&
+              !wheelProgrammatic &&
+              event.sourceEvent &&
+              event.sourceEvent.type !== "wheel" &&
+              event.sourceEvent.type !== "dblclick" &&
+              !panLocked(event.transform.k)
+            ) {
+              const [rx, ry] = rubberResistTransform(
+                event.transform.x,
+                event.transform.y,
+                event.transform.k,
+              );
+              if (
+                Math.abs(rx - event.transform.x) > 0.5 ||
+                Math.abs(ry - event.transform.y) > 0.5
+              ) {
+                zoomCorrecting = true;
+                try {
+                  svg.call(
+                    zoomBehavior.transform,
+                    d3.zoomIdentity.translate(rx, ry).scale(event.transform.k),
                   );
                 } finally {
                   zoomCorrecting = false;
