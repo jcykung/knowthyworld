@@ -35,8 +35,6 @@
     <!-- D3.js v7 and TopoJSON libraries -->
     <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
     <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
-    <!-- Modal screenshots for the results card (with a hand-drawn fallback) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <!-- FontAwesome Icons -->
     <link
       rel="stylesheet"
@@ -686,6 +684,204 @@
         );
       }
 
+      /* HUD WILDFIRE — realistic fire that builds without end as the streak
+           climbs: layered blurred flame tongues, smoke, charring, glow,
+           embers, ash and debris. One continuous --heat value (JS sets it
+           on #stats-hud, roughly streak/36) drives everything, and each
+           card ignites in turn via its own --ignite offset, so the blaze
+           spreads from Streak to Completed to Mastery. */
+      #stats-hud {
+        --heat: 0;
+      }
+      .hud-burn {
+        position: relative;
+        --ignite: 0;
+        --fi: max(calc(var(--heat, 0) - var(--ignite)), 0);
+        box-shadow: 0 6px 16px rgba(74, 56, 30, 0.12);
+      }
+      /* The glow only exists while burning: cold boxes keep exactly the
+         plain glass shadow, no gradient math involved */
+      .hud-burn.burning {
+        box-shadow:
+          0 0 calc(6px + var(--fi) * 44px)
+            rgba(255, 102, 10, calc(0.08 + min(var(--fi), 1) * 0.5)),
+          0 6px 16px rgba(74, 56, 30, 0.12);
+      }
+      #completed-card {
+        --ignite: 0.42;
+      }
+      #mastery-card {
+        --ignite: 0.68;
+      }
+      .hud-burn > * {
+        position: relative;
+        z-index: 1;
+      }
+      .hud-burn > .hud-ash {
+        z-index: 2;
+      }
+      /* One continuous canvas blaze over the whole HUD column (and, at
+           extreme heat, the menu bar): geometry comes from JS, z-index
+           sits above the header but below every modal */
+      #hud-fire-canvas {
+        position: fixed;
+        left: 0;
+        top: 0;
+        pointer-events: none;
+        z-index: 30;
+      }
+      /* The menu bar scorches where the wildfire finally reaches it */
+      #site-header {
+        position: relative;
+      }
+      #site-header::after {
+        content: "";
+        display: none;
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: -2px;
+        height: 30px;
+        background: linear-gradient(
+          to top,
+          rgba(12, 8, 5, 0.88),
+          rgba(12, 8, 5, 0)
+        );
+        opacity: min(calc(var(--hheat, 0) * 2.4), 0.92);
+        pointer-events: none;
+      }
+      #site-header.scorched::after {
+        display: block;
+      }
+      #streak-card #streak-flame {
+        transition:
+          background-color 0.6s ease,
+          transform 0.6s ease;
+      }
+      #streak-card.burning #streak-flame {
+        transform: scale(calc(1 + min(var(--fi), 1.2) * 0.45));
+        background-color: rgba(
+          224,
+          122,
+          26,
+          calc(0.2 + min(var(--fi), 1) * 0.25)
+        );
+      }
+      #streak-card #streak-flame i {
+        display: inline-block;
+      }
+      #streak-card.burning #streak-flame i {
+        color: #c2703a;
+        color: color-mix(
+          in srgb,
+          #c2703a calc((1 - min(var(--fi), 1)) * 100%),
+          #ffd23d
+        );
+        filter: drop-shadow(
+          0 0 calc(1px + var(--fi) * 9px) rgba(255, 130, 20, 0.9)
+        );
+        animation: hud-chip-flick ease-in-out infinite alternate;
+        animation-duration: calc(1.2s - min(var(--fi), 1) * 0.75s);
+      }
+      @keyframes hud-chip-flick {
+        0% {
+          transform: rotate(-6deg) scaleY(0.94);
+        }
+        100% {
+          transform: rotate(6deg) scaleY(1.08);
+        }
+      }
+      /* Burnt ground behind a rising glowing fire front, like a spread
+           perimeter: char fills from the bottom up to F (= 72% of the
+           heat), with a bright burning edge exactly on the front line */
+      .hud-burn::after {
+        content: "";
+        display: none;
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        pointer-events: none;
+        background:
+          linear-gradient(
+            to top,
+            rgba(255, 110, 15, 0) calc(var(--fi) * 72% - 14%),
+            rgba(255, 130, 25, 0.45) calc(var(--fi) * 72% - 5%),
+            rgba(255, 200, 90, 0.65) calc(var(--fi) * 72% - 1.5%),
+            rgba(20, 12, 6, 0) calc(var(--fi) * 72%)
+          ),
+          linear-gradient(
+            to top,
+            rgba(12, 8, 5, 0.93) 0%,
+            rgba(12, 8, 5, 0.85) calc(max(var(--fi) * 72% - 10%, 0%)),
+            rgba(12, 8, 5, 0) calc(var(--fi) * 72%)
+          ),
+          radial-gradient(
+            ellipse calc(var(--fi) * 75%) calc(var(--fi) * 75%) at 0% 0%,
+            rgba(15, 10, 6, 0.85),
+            transparent 70%
+          ),
+          radial-gradient(
+            ellipse calc(var(--fi) * 75%) calc(var(--fi) * 75%) at 100% 0%,
+            rgba(15, 10, 6, 0.85),
+            transparent 70%
+          ),
+          radial-gradient(
+            ellipse at 50% 115%,
+            rgba(25, 12, 5, 0.75),
+            transparent 60%
+          );
+      }
+      .hud-burn.burning::after {
+        display: block;
+      }
+      /* Embers rise, ash and burning debris fall (DOM particles for
+           the bits that tumble off the boxes; flames and smoke live
+           on the canvas) */
+      .hud-ash {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+      .hud-ash span {
+        position: absolute;
+        animation-timing-function: linear;
+        animation-fill-mode: forwards;
+      }
+      .p-ash {
+        border-radius: 9999px;
+        animation-name: hud-fall;
+      }
+      .p-debris {
+        border-radius: 1px;
+        background: #1c1410;
+        animation-name: hud-fall;
+      }
+      @keyframes hud-fall {
+        0% {
+          transform: translate(0, 0) rotate(0deg);
+          opacity: 0.95;
+        }
+        100% {
+          transform: translate(var(--dx, 6px), var(--dy, 100px))
+            rotate(300deg);
+          opacity: 0;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #hud-fire-canvas {
+          display: none;
+        }
+        .hud-burn::after {
+          opacity: 0;
+        }
+        .hud-ash span {
+          display: none;
+        }
+        #streak-card #streak-flame {
+          transform: none;
+        }
+      }
+
       /* Study mode is reading, not playing: the question, the score, the
            clock and everything else that belongs to a test come off the chart.
            Anything carrying .game-only is a game element by definition. */
@@ -992,6 +1188,7 @@
   >
     <!-- TOP NAVIGATION BAR -->
     <header
+      id="site-header"
       class="h-14 sm:h-16 px-2.5 sm:px-4 md:px-6 glass-panel z-20 flex items-center justify-between shadow-xl shrink-0"
     >
       <div class="flex items-center space-x-2 sm:space-x-3 shrink-0">
@@ -1015,7 +1212,7 @@
               class="header-version text-[9px] sm:text-[11px] py-0.5 px-1.5"
               title="What's new in this version"
             >
-              v1.8.0
+              v1.9.0
             </button>
           </h1>
           <a
@@ -1257,7 +1454,8 @@
         class="game-only absolute top-4 left-4 z-10 hidden lg:flex flex-col gap-2 pointer-events-auto"
       >
         <div
-          class="glass-card rounded-xl p-3 flex items-center gap-3 border border-parchment-700/50 min-w-[170px]"
+          id="mastery-card"
+          class="hud-burn glass-card rounded-xl p-3 flex items-center gap-3 border border-parchment-700/50 min-w-[170px]"
         >
           <div class="p-2 bg-moss-500/20 text-moss-600 rounded-lg">
             <i class="fa-solid fa-trophy text-lg"></i>
@@ -1272,10 +1470,12 @@
               <span id="stat-mastery-score">100</span>%
             </div>
           </div>
+          <div class="hud-ash" aria-hidden="true"></div>
         </div>
 
         <div
-          class="glass-card rounded-xl p-3 flex items-center gap-3 border border-parchment-700/50 min-w-[170px]"
+          id="completed-card"
+          class="hud-burn glass-card rounded-xl p-3 flex items-center gap-3 border border-parchment-700/50 min-w-[170px]"
         >
           <div class="p-2 bg-brass-500/20 text-brass-600 rounded-lg">
             <i class="fa-solid fa-bullseye text-lg"></i>
@@ -1290,12 +1490,17 @@
               <span id="stat-score">0</span> / <span id="stat-total">0</span>
             </div>
           </div>
+          <div class="hud-ash" aria-hidden="true"></div>
         </div>
 
         <div
-          class="glass-card rounded-xl p-3 flex items-center gap-3 border border-parchment-700/50 min-w-[170px]"
+          id="streak-card"
+          class="hud-burn glass-card rounded-xl p-3 flex items-center gap-3 border border-parchment-700/50 min-w-[170px]"
         >
-          <div class="p-2 bg-ochre-500/20 text-ochre-600 rounded-lg">
+          <div
+            id="streak-flame"
+            class="p-2 bg-ochre-500/20 text-ochre-600 rounded-lg"
+          >
             <i class="fa-solid fa-fire text-lg"></i>
           </div>
           <div>
@@ -1308,8 +1513,13 @@
               0 🔥
             </div>
           </div>
+          <div class="hud-ash" aria-hidden="true"></div>
         </div>
       </div>
+
+      <!-- Wildfire canvas: one continuous blaze over the HUD column and,
+           at extreme heat, the menu bar above it. Geometry is set from JS. -->
+      <canvas id="hud-fire-canvas" aria-hidden="true"></canvas>
 
       <!-- RIGHT OVERLAY COLUMN: advanced badge + mini-map inset -->
       <div
@@ -1840,7 +2050,7 @@
                 class="text-[10px] uppercase tracking-[0.18em] text-brass-600 font-bold"
               >
                 Know Thy World &nbsp;·&nbsp;
-                <span id="changelog-version">v1.8.0</span>
+                <span id="changelog-version">v1.9.0</span>
               </p>
             </div>
           </div>
@@ -3860,6 +4070,11 @@
         // A round with no questions was never played — showing a scorecard
         // for it would hand out a 100% for doing nothing
         if (state.totalQuestions === 0) return;
+
+        // The round is over, so its streak ends with it: the HUD returns
+        // to zero and any streak fire goes out with it. The best lives on
+        // in bestStreak for the scorecard below.
+        state.streak = 0;
 
         // Refresh the HUD now that the final target is gone
         updateStatsUI();
@@ -6262,6 +6477,10 @@
           state.targets = [];
           state.totalQuestions = 0;
           state.maxPossiblePoints = 0;
+          state.score = 0;
+          state.mistakes = 0;
+          state.streak = 0;
+          state.bestStreak = 0;
           state.currentTarget = null;
           state.completedTargetIds.clear();
           state.guessedMap.clear();
@@ -6352,7 +6571,18 @@
           return;
         }
 
-        const clickedId = featureFid(d);
+        const clickedId0 = featureFid(d);
+        // Island gather rings carry no feature datum of their own — read
+        // the id off the path they were drawn with, so a click anywhere
+        // inside a highlighted cluster answers for it
+        let clickedId = clickedId0;
+        if (!clickedId || clickedId === "undefined") {
+          const t =
+            event && event.target && event.target.closest
+              ? event.target.closest("path.map-country")
+              : null;
+          if (t) clickedId = t.getAttribute("data-id") || clickedId;
+        }
 
         // A region that is drawn but never asked for (Western Sahara and
         // friends) is scenery: touching one is not a wrong answer, and
@@ -8448,9 +8678,21 @@
       }
 
       // --- what's new -----------------------------------------------------
-      const APP_VERSION = "v1.8.0";
+      const APP_VERSION = "v1.9.0";
 
       const CHANGELOG = [
+        {
+          version: "v1.9.0",
+          notes: [
+            "Streaks catch fire: from 6 in a row the streak box starts burning, and the blaze climbs through Completed and Mastery to the menu bar itself — with smoke, embers, ash and falling debris — then goes out the moment the streak ends.",
+            "Zooming in no longer balloons small names past big ones: every on-map label holds a constant readable size at every zoom.",
+            "Study buttons are flat red to match their round, and the area picker tints its logo and highlights to whichever round is picked.",
+            "The fully zoomed-out chart sits centred between the top and bottom bars.",
+            "A wrong answer goes straight to red, with no blue flash first — and clicking anywhere inside a highlighted island cluster answers for it.",
+            "Shared score pictures are drawn by hand now, so every score sits exactly centred in its box on any browser.",
+            "Header buttons share one height, Hint matches the slide-to-skip slider, and the print dialog has a red PNG button, a teal PDF button and a silvertone black & white mode.",
+          ],
+        },
         {
           version: "v1.8.0",
           notes: [
@@ -8837,6 +9079,7 @@
         document.getElementById("stat-mastery-score").innerText =
           `${percentage}`;
         document.getElementById("stat-streak").innerText = `${state.streak} 🔥`;
+        updateStreakFire();
 
         // Advanced Mode status badge
         const badge = document.getElementById("badge-advanced-mode");
@@ -8864,6 +9107,386 @@
           state.studyMode
             ? `${state.totalQuestions} areas in this set`
             : `${state.totalQuestions} Total | Remaining: ${state.targets.length + (state.currentTarget ? 1 : 0)}`;
+      }
+
+      // HUD WILDFIRE — see the CSS. One continuous heat value (nothing
+      // until streak 6, full wildfire around streak 36+) drives every
+      // card; each card ignites via its own --ignite offset so the blaze
+      // spreads upward. A single tick spawns rising embers, falling ash
+      // and tumbling burnt debris on whatever cards are burning.
+      const HUD_BURN_CARDS = [
+        { id: "streak-card", ignite: 0 },
+        { id: "completed-card", ignite: 0.42 },
+        { id: "mastery-card", ignite: 0.68 },
+      ];
+      const HUD_HEADER_IGNITE = 1.02; // the menu bar catches last of all
+      function hudHeatNow() {
+        // No flame at all until a real streak is going: 5 or fewer in a
+        // row keeps the plain boxes, then the fire builds from a pilot
+        // light to full wildfire around streak 36+
+        const s = state.streak || 0;
+        return s > 5 ? Math.min((s - 5) / 31, 1.5) : 0;
+      }
+      // Canvas geometry in viewport pixels: the canvas is fixed at
+      // body level so its flames can rise past the HUD and lick the
+      // menu bar above it
+      let hudFireOX = 0;
+      let hudFireOY = 0;
+      function hudFireLayout() {
+        const cv = document.getElementById("hud-fire-canvas");
+        const hud = document.getElementById("stats-hud");
+        if (!cv || !hud || hud.offsetParent === null) return false;
+        const r = hud.getBoundingClientRect();
+        const L = 60;
+        const W = r.width + L * 2;
+        cv.style.left = r.left - L + "px";
+        cv.style.top = "0px";
+        cv.style.width = W + "px";
+        cv.style.height = r.bottom + 80 + "px";
+        hudFireOX = r.left - L;
+        hudFireOY = 0;
+        return true;
+      }
+      // Canvas wildfire: one continuous particle blaze over the whole HUD
+      // column so spreading reads as a single fire, not copies. Heat rises
+      // with per-particle turbulence plus a slow global gust that sways the
+      // entire column; flames are additive glow sprites cooling
+      // yellow-white → orange → deep red with age, with gray smoke and
+      // bright rising embers. Emitters sit along the bottom edge of each
+      // burning card, so upper boxes catch from the flames below them.
+      let hudFireCtx = null;
+      let hudFireSprites = null;
+      let hudFireSmoke = null;
+      let hudFireParts = [];
+      let hudFireRAF = 0;
+      let hudFireAcc = 0;
+      function hudFireSprite(stops) {
+        const c = document.createElement("canvas");
+        c.width = c.height = 64;
+        const g = c.getContext("2d");
+        const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+        stops.forEach(([o, col]) => grad.addColorStop(o, col));
+        g.fillStyle = grad;
+        g.fillRect(0, 0, 64, 64);
+        return c;
+      }
+      function hudFireInit() {
+        if (hudFireSprites) return true;
+        const cv = document.getElementById("hud-fire-canvas");
+        if (!cv) return false;
+        hudFireCtx = cv.getContext("2d");
+        if (!hudFireCtx) return false;
+        hudFireSprites = [
+          hudFireSprite([[0, "rgba(255,252,235,1)"], [0.3, "rgba(255,236,150,0.85)"], [0.65, "rgba(255,150,40,0.3)"], [1, "rgba(255,120,20,0)"]]),
+          hudFireSprite([[0, "rgba(255,244,200,1)"], [0.3, "rgba(255,210,90,0.85)"], [0.65, "rgba(255,130,25,0.3)"], [1, "rgba(255,100,10,0)"]]),
+          hudFireSprite([[0, "rgba(255,230,160,1)"], [0.3, "rgba(255,170,50,0.85)"], [0.65, "rgba(255,100,15,0.3)"], [1, "rgba(230,70,5,0)"]]),
+          hudFireSprite([[0, "rgba(255,200,120,1)"], [0.3, "rgba(255,140,35,0.8)"], [0.65, "rgba(230,80,10,0.3)"], [1, "rgba(200,50,5,0)"]]),
+          hudFireSprite([[0, "rgba(255,170,90,1)"], [0.3, "rgba(240,110,25,0.8)"], [0.65, "rgba(200,60,8,0.3)"], [1, "rgba(160,35,5,0)"]]),
+          hudFireSprite([[0, "rgba(240,130,60,1)"], [0.35, "rgba(210,80,18,0.8)"], [0.7, "rgba(150,40,8,0.3)"], [1, "rgba(120,25,5,0)"]]),
+        ];
+        hudFireSmoke = hudFireSprite([[0, "rgba(70,64,58,0.55)"], [0.6, "rgba(60,55,50,0.22)"], [1, "rgba(60,55,50,0)"]]);
+        return true;
+      }
+      // Emitter geometry is measured fresh every frame from live rects
+      // (cards never move except on resize, but rects are cheap and
+      // always right). Flames spawn strictly inside the card's width and
+      // feel a gentle pull back toward its centre, so no flame burns off
+      // to the side of a box.
+      function hudFireSpawn(em, fi) {
+        const pad = 7;
+        const x0 = em.x0 + pad;
+        const x1 = em.x1 - pad;
+        const x = x0 + Math.random() * Math.max(x1 - x0, 2);
+        const y = em.y + (Math.random() - 0.5) * 8;
+        const smoky = Math.random() >= 0.82;
+        if (smoky && fi < 0.18) return;
+        const maxLife = smoky
+          ? 90 + Math.random() * 70
+          : 42 + Math.random() * 38 + fi * 55;
+        hudFireParts.push({
+          kind: smoky ? 1 : 0, // 0 flame, 1 smoke
+          x,
+          y,
+          cx: (x0 + x1) / 2,
+          half: (x1 - x0) / 2 + 26, // stray flames die past this
+          vx: (Math.random() - 0.5) * 0.25,
+          vy: smoky
+            ? -(0.3 + Math.random() * 0.45)
+            : -(0.9 + Math.random() * 1.1 + fi * 1.4),
+          age: 0,
+          maxLife,
+          size: smoky
+            ? 12 + Math.random() * 12
+            : 9 + Math.random() * 13 + fi * 11,
+          sa: 0.1 + Math.min(fi, 1.2) * 0.1, // smoke thickens with heat
+          seed: Math.random() * 1000,
+          ember: false,
+        });
+        // bright embers tear off the flame tips at higher heat
+        if (!smoky && fi > 0.3 && Math.random() < (fi - 0.3) * 0.5) {
+          hudFireParts.push({
+            kind: 0,
+            ember: true,
+            x: x + (Math.random() - 0.5) * 10,
+            y: y - 10 - Math.random() * 30,
+            cx: (x0 + x1) / 2,
+            half: (x1 - x0) / 2 + 40,
+            vx: (Math.random() - 0.5) * 0.9,
+            vy: -(1.4 + Math.random() * 1.4),
+            age: 0,
+            maxLife: 60 + Math.random() * 60,
+            size: 2.5 + Math.random() * 2.5,
+            seed: Math.random() * 1000,
+          });
+        }
+      }
+      function hudFireFrame(now) {
+        hudFireRAF = 0;
+        const cv = document.getElementById("hud-fire-canvas");
+        const heat = hudHeatNow();
+        if (!cv || !hudFireCtx) return;
+        const hud = document.getElementById("stats-hud");
+        if (!hud || hud.offsetParent === null) return; // HUD hidden: restarts on demand
+        if (cv.width !== cv.clientWidth || cv.height !== cv.clientHeight) {
+          cv.width = cv.clientWidth;
+          cv.height = cv.clientHeight;
+        }
+        const g = hudFireCtx;
+        // motion-trail fade so flames smear organically instead of strobing
+        g.globalCompositeOperation = "destination-out";
+        g.fillStyle = "rgba(0,0,0,0.16)";
+        g.fillRect(0, 0, cv.width, cv.height);
+        // emitter segments, measured live: the bottom edge of every
+        // burning card, plus the menu bar's lower edge once the fire
+        // climbs that high — all sharing one sky, one fire
+        const emitters = [];
+        if (heat > 0.01) {
+          HUD_BURN_CARDS.forEach(({ id, ignite }) => {
+            const fi = Math.max(heat - ignite, 0);
+            if (fi <= 0.02) return;
+            const card = document.getElementById(id);
+            if (!card) return;
+            const r = card.getBoundingClientRect();
+            emitters.push({
+              x0: r.left - hudFireOX,
+              x1: r.right - hudFireOX,
+              y: r.bottom - hudFireOY - 4,
+              fi,
+            });
+          });
+          const hfi = Math.max(heat - HUD_HEADER_IGNITE, 0) * 1.4;
+          if (hfi > 0.02) {
+            const header = document.getElementById("site-header");
+            if (header) {
+              const hr = hud.getBoundingClientRect();
+              const br = header.getBoundingClientRect();
+              emitters.push({
+                x0: hr.left - hudFireOX,
+                x1: hr.right - hudFireOX,
+                y: br.bottom - hudFireOY - 2,
+                fi: hfi,
+                header: true,
+              });
+            }
+          }
+          emitters.forEach((em) => {
+            hudFireAcc += em.fi * 3.2;
+            while (hudFireAcc >= 1) {
+              hudFireAcc -= 1;
+              if (hudFireParts.length < 450)
+                hudFireSpawn(em, Math.min(em.fi, 1.2));
+            }
+          });
+        }
+        // glowing fire-front along every emitter base
+        g.globalCompositeOperation = "lighter";
+        emitters.forEach((em) => {
+          const w = Math.max(em.x1 - em.x0, 4);
+          const h = 10 + Math.min(em.fi, 1.2) * 16;
+          g.globalAlpha = 0.2 + Math.min(em.fi, 1.2) * 0.35;
+          g.drawImage(hudFireSprites[1], em.x0, em.y - h / 2, w, h);
+        });
+        g.globalAlpha = 1;
+        // one gentle gust sways the whole column as a single fire
+        const gust =
+          Math.sin(now * 0.0006) * 0.16 + Math.sin(now * 0.0017 + 1.3) * 0.07;
+        // smoke first (flat), then flames additive over everything
+        g.globalCompositeOperation = "source-over";
+        for (const p of hudFireParts) {
+          if (p.kind !== 1) continue;
+          const t = p.age / p.maxLife;
+          const s = p.size * (1 + t * 2.2);
+          g.globalAlpha =
+            (p.sa || 0.16) * (t < 0.2 ? t / 0.2 : 1 - (t - 0.2) / 0.8);
+          g.drawImage(hudFireSmoke, p.x - s / 2, p.y - s / 2, s, s);
+        }
+        g.globalCompositeOperation = "lighter";
+        for (const p of hudFireParts) {
+          if (p.kind !== 0) continue;
+          const t = p.age / p.maxLife;
+          const flick = p.ember
+            ? 0.75 + 0.25 * Math.sin(now * 0.03 + p.seed)
+            : 1;
+          // tall licks, not round blobs: flames read as flames
+          const s = Math.max(
+            p.size * (p.ember ? 1 - t * 0.6 : 0.7 + t * 0.9),
+            1,
+          );
+          const dw = p.ember ? s : s * 0.62;
+          const dh = p.ember ? s : s * 1.4;
+          const a = t < 0.12 ? t / 0.12 : 1 - (t - 0.12) / 0.88;
+          g.globalAlpha = (p.ember ? 0.9 : 0.55) * a * flick;
+          const spr =
+            hudFireSprites[
+              Math.min((t * hudFireSprites.length) | 0, hudFireSprites.length - 1)
+            ];
+          g.drawImage(spr, p.x - dw / 2, p.y - dh / 2, dw, dh);
+        }
+        g.globalAlpha = 1;
+        // age everything; turbulence bends each particle on its own wobble
+        // while a weak pull keeps flames over their own box
+        for (let i = hudFireParts.length - 1; i >= 0; i--) {
+          const p = hudFireParts[i];
+          p.age++;
+          if (p.age >= p.maxLife) {
+            hudFireParts.splice(i, 1);
+            continue;
+          }
+          const wob = Math.sin(p.y * 0.045 + p.seed + now * 0.004);
+          p.vx +=
+            wob * (p.kind === 1 ? 0.02 : 0.03) +
+            gust * 0.02 +
+            (p.cx - p.x) * 0.0015;
+          p.vx *= 0.972;
+          if (p.kind === 0 && !p.ember) p.vy -= 0.004; // buoyancy
+          p.x += p.vx;
+          p.y += p.vy;
+          // strayed past its own box: burn out instead of wandering
+          if (Math.abs(p.x - p.cx) > p.half && p.age < p.maxLife)
+            p.age = p.maxLife;
+        }
+        if (heat > 0.005 || hudFireParts.length) {
+          hudFireRAF = requestAnimationFrame(hudFireFrame);
+        } else {
+          // fully out: wipe the last faded ghost frame so no trace lingers
+          g.globalCompositeOperation = "source-over";
+          g.globalAlpha = 1;
+          g.clearRect(0, 0, cv.width, cv.height);
+        }
+      }
+      function hudFireKick() {
+        const reduceMotion =
+          window.matchMedia &&
+          window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        if (reduceMotion || !hudFireInit()) return;
+        hudFireLayout();
+        if (!hudFireRAF) hudFireRAF = requestAnimationFrame(hudFireFrame);
+      }
+      window.addEventListener("resize", () => {
+        if (hudHeatNow() > 0) hudFireKick();
+      });
+      let hudFxTimer = 0;
+      function hudSpawn(layer, cls, o) {
+        if (!layer || layer.childElementCount > 60) return;
+        if (layer.offsetParent === null) return; // HUD hidden, skip
+        const el = document.createElement("span");
+        el.className = cls;
+        el.style.left = o.left;
+        el.style.top = o.top;
+        if (o.size) {
+          el.style.width = o.size;
+          el.style.height = o.size;
+        }
+        if (o.w) {
+          el.style.width = o.w;
+          el.style.height = o.h;
+        }
+        if (o.bg) el.style.background = o.bg;
+        el.style.setProperty("--dx", o.dx);
+        if (o.dy) el.style.setProperty("--dy", o.dy);
+        el.style.animationDuration = o.dur;
+        el.addEventListener("animationend", () => el.remove());
+        layer.appendChild(el);
+      }
+      function updateStreakFire() {
+        const hud = document.getElementById("stats-hud");
+        if (!hud) return;
+        const heatNow0 = hudHeatNow();
+        hud.style.setProperty("--heat", heatNow0.toFixed(3));
+        // the menu bar scorches once the fire climbs that high
+        const header = document.getElementById("site-header");
+        if (header)
+          header.style.setProperty(
+            "--hheat",
+            Math.max(heatNow0 - HUD_HEADER_IGNITE, 0).toFixed(3),
+          );
+        // Burn styling only exists while actually burning: without these
+        // classes every box is pixel-plain, whatever any gradient math
+        // would do at zero heat
+        HUD_BURN_CARDS.forEach(({ id, ignite }) => {
+          const card = document.getElementById(id);
+          if (card)
+            card.classList.toggle("burning", heatNow0 - ignite > 0.02);
+        });
+        if (header)
+          header.classList.toggle(
+            "scorched",
+            heatNow0 - HUD_HEADER_IGNITE > 0.02,
+          );
+        if (hudFxTimer) {
+          clearInterval(hudFxTimer);
+          hudFxTimer = 0;
+        }
+        // Streak over: sweep every ash/debris bit at once and restart the
+        // spawn budget fresh — no stray animation may linger at zero heat
+        if (heatNow0 <= 0) {
+          hudFireAcc = 0;
+          document.querySelectorAll(".hud-ash").forEach((l) => {
+            l.innerHTML = "";
+          });
+        }
+        const reduceMotion =
+          window.matchMedia &&
+          window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        if (hudHeatNow() <= 0 || reduceMotion) return;
+        const grays = ["#2a2013", "#4a3a24", "#5f4c31", "#77705f", "#8a8378"];
+        hudFxTimer = setInterval(() => {
+          const heatNow = hudHeatNow();
+          HUD_BURN_CARDS.forEach(({ id, ignite }) => {
+            const fi = Math.max(heatNow - ignite, 0);
+            if (fi <= 0.02) return;
+            const card = document.getElementById(id);
+            const layer = card ? card.querySelector(".hud-ash") : null;
+            if (!layer) return;
+            // ash sifts down off the charring box
+            if (fi > 0.12 && Math.random() < fi * 0.5) {
+              const sz = (2 + Math.random() * 3).toFixed(1) + "px";
+              hudSpawn(layer, "p-ash", {
+                left: (Math.random() * 100).toFixed(1) + "%",
+                top: (45 + Math.random() * 55).toFixed(1) + "%",
+                size: sz,
+                bg: grays[(Math.random() * grays.length) | 0],
+                dx: ((Math.random() - 0.5) * 44).toFixed(0) + "px",
+                dy: (70 + Math.random() * 70).toFixed(0) + "px",
+                dur: (1.2 + Math.random() * 1.2).toFixed(2) + "s",
+              });
+            }
+            // burnt debris breaks off at high heat
+            if (fi > 0.5 && Math.random() < (fi - 0.5) * 0.7) {
+              const w = (3 + Math.random() * 4).toFixed(0) + "px";
+              hudSpawn(layer, "p-debris", {
+                left: (Math.random() * 100).toFixed(1) + "%",
+                top: "-4px",
+                w,
+                h: w,
+                dx: ((Math.random() - 0.5) * 60).toFixed(0) + "px",
+                dy: (100 + Math.random() * 60).toFixed(0) + "px",
+                dur: (0.9 + Math.random() * 0.8).toFixed(2) + "s",
+              });
+            }
+          });
+        }, 140);
+        hudFireKick();
       }
 
       // CUSTOM COUNTRY SELECTION SYSTEM logic
@@ -9739,15 +10362,31 @@
         return `Know-Thy-World-${s.percentage}pct-${s.time.replace(":", "m")}s.png`;
       }
 
-      // Fallback card, drawn by hand: used when html2canvas is unavailable
+      // Results card, drawn by hand on canvas: every line is placed with
+      // textBaseline "middle", so scores sit exactly centred in their
+      // boxes on every browser — no layout engine in the loop. Mirrors
+      // the game-over modal's own design.
       function drawSummaryCard() {
         const W = 760,
-          H = 470;
+          H = 700,
+          S = 2; // retina-sharp paste
         const c = document.createElement("canvas");
-        c.width = W;
-        c.height = H;
+        c.width = W * S;
+        c.height = H * S;
         const g = c.getContext("2d");
+        g.scale(S, S);
         const s = summaryNumbers();
+        const SERIF = '"EB Garamond", Georgia, serif';
+
+        const rr = (x, y, w, h, r) => {
+          g.beginPath();
+          g.moveTo(x + r, y);
+          g.arcTo(x + w, y, x + w, y + h, r);
+          g.arcTo(x + w, y + h, x, y + h, r);
+          g.arcTo(x, y + h, x, y, r);
+          g.arcTo(x, y, x + w, y, r);
+          g.closePath();
+        };
 
         g.fillStyle = "#f6ecd6";
         g.fillRect(0, 0, W, H);
@@ -9758,42 +10397,146 @@
         g.lineWidth = 2;
         g.strokeRect(24, 24, W - 48, H - 48);
 
+        // trophy medallion
+        const tgrad = g.createLinearGradient(348, 46, 412, 110);
+        tgrad.addColorStop(0, "#d8b04a");
+        tgrad.addColorStop(1, "#6b8449");
+        rr(348, 46, 64, 64, 14);
+        g.fillStyle = tgrad;
+        g.fill();
         g.textAlign = "center";
+        g.textBaseline = "middle";
+        g.font = "34px serif";
+        g.fillText("🏆", W / 2, 80);
+
+        g.textAlign = "center";
+        g.textBaseline = "middle";
         g.fillStyle = "#9a6f30";
-        g.font = "700 22px Georgia, serif";
-        g.fillText("KNOW THY WORLD", W / 2, 78);
+        g.font = "700 20px " + SERIF;
+        try {
+          g.letterSpacing = "5px";
+        } catch (e) {}
+        g.fillText("KNOW THY WORLD", W / 2 + 2, 134);
+        try {
+          g.letterSpacing = "0px";
+        } catch (e) {}
 
         g.fillStyle = "#2a2013";
-        g.font = "700 44px Georgia, serif";
-        g.fillText("Quiz Completed!", W / 2, 136);
-
-        g.fillStyle = "#546a38";
-        g.font = "700 96px Georgia, serif";
-        g.fillText(`${s.percentage}%`, W / 2, 250);
-
-        g.fillStyle = "#3a2c19";
-        g.font = "700 34px Georgia, serif";
-        g.fillText(
-          `${state.score} / ${state.totalQuestions} locations identified`,
-          W / 2,
-          312,
-        );
-
-        g.fillStyle = "#5f4c31";
-        g.font = "600 28px Georgia, serif";
-        g.fillText(
-          `Time ${s.time}   •   Best streak ${state.bestStreak}`,
-          W / 2,
-          366,
-        );
+        g.font = "700 42px " + SERIF;
+        g.fillText("Quiz Completed!", W / 2, 172);
 
         g.fillStyle = "#7d6844";
-        g.font = "italic 22px Georgia, serif";
+        g.font = "italic 20px " + SERIF;
         g.fillText(
-          `${state.count1stTry} first try · ${state.count2ndTry} second · ${state.count3rdTry} third · ${state.countRevealed} revealed`,
+          "Excellent effort exploring the geography of our planet!",
           W / 2,
-          412,
+          208,
         );
+
+        // wide score row: two-line label left, big score right, both
+        // centred on the box middle
+        const wideRow = (y, h, fill, edge, title, sub, score, scoreColor) => {
+          const x = 60,
+            w = W - 120;
+          if (fill) {
+            rr(x, y, w, h, 14);
+            g.fillStyle = fill;
+            g.fill();
+          }
+          rr(x, y, w, h, 14);
+          g.strokeStyle = edge;
+          g.lineWidth = 1.5;
+          g.stroke();
+          const cy = y + h / 2;
+          g.textAlign = "left";
+          g.fillStyle = "#5f4c31";
+          g.font = "700 19px " + SERIF;
+          g.fillText(title, x + 26, cy - 13);
+          g.fillStyle = "#9b8663";
+          g.font = "400 17px " + SERIF;
+          g.fillText(sub, x + 26, cy + 13);
+          g.textAlign = "right";
+          g.fillStyle = scoreColor;
+          g.font = "800 54px " + SERIF;
+          g.fillText(score, x + w - 26, cy + 2);
+        };
+
+        wideRow(
+          236,
+          80,
+          null,
+          "#a37e4b",
+          "OVERALL MASTERY SCORE",
+          "3 pts for 1st try • 2 pts for 2nd • 1 pt for 3rd",
+          `${s.percentage}%`,
+          "#546a38",
+        );
+        wideRow(
+          328,
+          80,
+          "rgba(185, 139, 63, 0.12)",
+          "rgba(154, 111, 48, 0.55)",
+          "LOCATIONS IDENTIFIED",
+          "Correct out of everything you selected",
+          `${state.score} / ${state.totalQuestions}`,
+          "#2a2013",
+        );
+
+        // small stat box: dot + label up top, big count below
+        const smallBox = (x, y, w, h, edge, fill, dot, label, value) => {
+          rr(x, y, w, h, 14);
+          if (fill) {
+            g.fillStyle = fill;
+            g.fill();
+          }
+          g.strokeStyle = edge;
+          g.lineWidth = 1.5;
+          g.stroke();
+          g.fillStyle = dot;
+          g.beginPath();
+          g.arc(x + 22, y + 27, 6, 0, Math.PI * 2);
+          g.fill();
+          g.textAlign = "left";
+          g.fillStyle = dot;
+          g.font = "700 15px " + SERIF;
+          g.fillText(label, x + 36, y + 28);
+          g.fillStyle = "#2a2013";
+          g.font = "800 32px " + SERIF;
+          g.fillText(String(value), x + 16, y + 62);
+        };
+
+        const bw = (W - 120 - 24) / 2;
+        smallBox(60, 420, bw, 86, "rgba(107, 132, 73, 0.5)", "rgba(107, 132, 73, 0.07)", "#6b8449", "1ST GUESS (3 PTS)", state.count1stTry);
+        smallBox(60 + bw + 24, 420, bw, 86, "rgba(156, 117, 36, 0.5)", "rgba(189, 145, 48, 0.07)", "#9c7524", "2ND GUESS (2 PTS)", state.count2ndTry);
+        smallBox(60, 518, bw, 86, "rgba(138, 72, 34, 0.5)", "rgba(194, 112, 58, 0.07)", "#8a4822", "3RD GUESS (1 PT)", state.count3rdTry);
+        smallBox(60 + bw + 24, 518, bw, 86, "rgba(143, 49, 34, 0.5)", "rgba(196, 85, 61, 0.07)", "#8f3122", "REVEALED (0 PTS)", state.countRevealed);
+
+        // time + best streak, single centred lines
+        const lineBox = (x, label, value) => {
+          const w = bw,
+            y = 616,
+            h = 52;
+          rr(x, y, w, h, 12);
+          g.strokeStyle = "rgba(122, 95, 58, 0.5)";
+          g.lineWidth = 1.5;
+          g.stroke();
+          g.font = "400 21px " + SERIF;
+          const lw = g.measureText(label).width;
+          g.font = "800 21px " + SERIF;
+          const vw = g.measureText(value).width;
+          let tx = x + w / 2 - (lw + vw) / 2;
+          const cy = y + h / 2 + 1;
+          g.textAlign = "left";
+          g.fillStyle = "#7d6844";
+          g.font = "400 21px " + SERIF;
+          g.fillText(label, tx, cy);
+          tx += lw;
+          g.fillStyle = "#2a2013";
+          g.font = "800 21px " + SERIF;
+          g.fillText(value, tx, cy);
+        };
+        lineBox(60, "Time: ", s.time);
+        lineBox(60 + bw + 24, "Best Streak: ", `${state.bestStreak} 🔥`);
 
         return new Promise((res) => {
           try {
@@ -9803,63 +10546,9 @@
           }
         });
       }
-
-      // A shared picture should carry the result, not the machinery: the
-      // buttons are lifted out of the copy so what lands in the clipboard
-      // is the score alone, laid out on the card's own paper.
-      function buildShareCard() {
-        const panel = document.getElementById("summary-panel");
-        if (!panel) return null;
-        const clone = panel.cloneNode(true);
-        clone.removeAttribute("id");
-        clone.style.animation = "none";
-        clone.removeAttribute("onclick");
-        clone
-          .querySelectorAll("[data-share-exclude]")
-          .forEach((n) => n.remove());
-        clone.querySelectorAll("button, a").forEach((n) => n.remove());
-
-        const wrap = document.createElement("div");
-        wrap.id = "summary-share-card";
-        wrap.setAttribute("aria-hidden", "true");
-        const w = Math.round(panel.getBoundingClientRect().width) || 448;
-        wrap.style.cssText =
-          "position:absolute;left:-10000px;top:0;width:" +
-          w +
-          "px;pointer-events:none;background:#f2e6ca;";
-        wrap.appendChild(clone);
-        document.body.appendChild(wrap);
-        return wrap;
-      }
-
+      // The shared picture is always the hand-drawn card above — pixel
+      // for pixel the same on every browser, scores centred by design.
       async function summaryImageBlob() {
-        const wrap = buildShareCard();
-        const panel = wrap
-          ? wrap.firstElementChild
-          : document.getElementById("summary-panel");
-        if (!panel) return null;
-        let blob = null;
-        if (typeof window.html2canvas === "function") {
-          try {
-            const canvas = await window.html2canvas(panel, {
-              backgroundColor: "#f2e6ca",
-              scale: Math.min(3, Math.max(2, window.devicePixelRatio || 1)),
-              useCORS: true,
-              logging: false,
-            });
-            blob = await new Promise((res) => {
-              try {
-                canvas.toBlob(res, "image/png");
-              } catch (e) {
-                res(null);
-              }
-            });
-          } catch (e) {
-            console.warn("Modal screenshot failed, drawing it by hand", e);
-          }
-        }
-        if (wrap) wrap.remove();
-        if (blob) return blob;
         return drawSummaryCard();
       }
 
