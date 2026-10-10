@@ -284,8 +284,8 @@
       @media (hover: hover) and (pointer: fine) {
         .map-city-marker:hover .city-outer,
         .map-city-marker.is-hovered .city-outer {
-          fill: #d8584e !important;
-          stroke: #8f3122 !important;
+          fill: #80b9b9 !important;
+          stroke: #466666 !important;
         }
         .map-city-marker:hover .city-inner,
         .map-city-marker.is-hovered .city-inner {
@@ -516,13 +516,13 @@
            always reads over an answered colour, and never over a name. */
       @media (hover: hover) and (pointer: fine) {
         .map-country:hover {
-          fill: #d8584e !important;
-          stroke: #8f3122 !important;
+          fill: #80b9b9 !important;
+          stroke: #466666 !important;
         }
         .map-country.is-hovered,
         .advanced-mode .map-country.is-hovered {
-          fill: #d8584e !important;
-          stroke: #8f3122 !important;
+          fill: #80b9b9 !important;
+          stroke: #466666 !important;
           stroke-width: calc(var(--map-stroke, 0.6px) * 2);
           transition: none;
         }
@@ -567,8 +567,7 @@
         color: #4a3a24;
         transition:
           background 0.18s ease,
-          color 0.18s ease,
-          box-shadow 0.18s ease;
+          color 0.18s ease;
       }
       .mode-btn:hover {
         background: #e6d3a8;
@@ -577,24 +576,52 @@
       .mode-btn.is-active {
         color: #fbf6e9;
         border-color: rgba(58, 44, 25, 0.55);
-        box-shadow: 0 6px 14px rgba(74, 56, 30, 0.3);
+        box-shadow: none;
       }
       /* The same two buttons appear twice — in the header and at the top of
            the list of areas — so the colour lives on the mode itself, not on
            where the button happens to sit. */
       .mode-btn.is-study.is-active {
-        background: #bd9130;
-      } /* ochre-500 */
+        background: #d8584e;
+      } /* study red */
       .mode-btn.is-test.is-active {
         background: #546a38;
       } /* moss-600  */
       .mode-btn.is-study.is-active:hover {
-        background: #9c7524;
+        background: #ad3f2a;
         color: #fbf6e9;
       }
       .mode-btn.is-test.is-active:hover {
         background: #3f5029;
         color: #fbf6e9;
+      }
+
+      /* Header bar: every button shares one height so Study/Test align
+           with the icon buttons beside them. */
+      .header-actions button {
+        height: 32px;
+        min-height: 0 !important;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+      @media (min-width: 640px) {
+        .header-actions button {
+          height: 36px;
+        }
+      }
+      @media (pointer: coarse) {
+        .header-actions button {
+          height: 38px;
+        }
+      }
+
+      /* Find-location dialog: Hint matches the slide-to-skip track. */
+      #btn-hint {
+        height: 44px;
+        min-height: 0 !important;
+        display: inline-flex;
+        align-items: center;
       }
 
       /* The one button that starts the round, tinted to match the mode the
@@ -604,13 +631,13 @@
         background: #546a38;
       }
       .mode-start.is-study {
-        background: #bd9130;
+        background: #d8584e;
       }
       .mode-start.is-test {
         background: #546a38;
       }
       .mode-start.is-study:hover {
-        background: #9c7524;
+        background: #ad3f2a;
         transform: translateY(-1px);
       }
       .mode-start.is-test:hover {
@@ -622,6 +649,65 @@
         cursor: not-allowed;
         transform: none;
         box-shadow: none;
+      }
+
+      /* Area picker: Study tints every moss highlight study-red, the way
+           Test tints them moss-green. Scoped to the modal so other
+           panels keep their own colours. */
+      #modal-custom-selection.is-study .bg-moss-500\/20 {
+        background-color: rgba(216, 88, 78, 0.16) !important;
+      }
+      #modal-custom-selection.is-study .bg-moss-500\/10 {
+        background-color: rgba(216, 88, 78, 0.1) !important;
+      }
+      #modal-custom-selection.is-study .bg-moss-500\/25 {
+        background-color: rgba(216, 88, 78, 0.18) !important;
+      }
+      #modal-custom-selection.is-study .border-moss-500\/30 {
+        border-color: rgba(216, 88, 78, 0.32) !important;
+      }
+      #modal-custom-selection.is-study .border-moss-500\/60 {
+        border-color: rgba(216, 88, 78, 0.55) !important;
+      }
+      #modal-custom-selection.is-study .text-moss-600 {
+        color: #d8584e !important;
+      }
+      #modal-custom-selection.is-study .text-moss-700 {
+        color: #ad3f2a !important;
+      }
+      #modal-custom-selection.is-study .hover\:text-moss-900:hover {
+        color: #71261a !important;
+      }
+      #modal-custom-selection.is-study .hover\:text-moss-700:hover {
+        color: #ad3f2a !important;
+      }
+      #modal-custom-selection.is-study .focus\:border-moss-500:focus {
+        border-color: #d8584e !important;
+      }
+      #modal-custom-selection.is-study .focus\:ring-moss-500:focus {
+        --tw-ring-color: #d8584e !important;
+      }
+
+      /* Print chart: Black & white turns the modal into an old-timey
+           silvertone — full grayscale plus a vignette, like a silent film. */
+      #modal-print .glass-panel {
+        position: relative;
+        transition: filter 0.35s ease;
+      }
+      #modal-print.is-mono .glass-panel {
+        filter: grayscale(1) contrast(1.1) brightness(1.04);
+      }
+      #modal-print.is-mono .glass-panel::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        pointer-events: none;
+        background: radial-gradient(
+          ellipse at center,
+          transparent 52%,
+          rgba(20, 16, 10, 0.38) 100%
+        );
       }
 
       /* Study mode is reading, not playing: the question, the score, the
@@ -863,6 +949,9 @@
           height: 30px !important;
           width: 110px !important;
         }
+        #btn-hint {
+          height: 30px !important;
+        }
         #skip-knob {
           width: 24px !important;
           height: 24px !important;
@@ -1052,16 +1141,16 @@
         >
           <button
             onclick="openCustomSelectionModal()"
-            class="relative px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-moss-600/20 hover:bg-moss-600/30 text-moss-700 hover:text-moss-900 border border-moss-500/40 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm"
+            class="relative px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-[#e7d4a8] hover:bg-[#f6e3ae] text-ink-700 hover:text-ink-900 border border-[#7a5f3a]/60 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm"
             title="Choose specific countries to practice"
           >
             <i
-              class="fa-solid fa-list-check text-moss-600 text-xs sm:text-sm"
+              class="fa-solid fa-list-check text-brass-600 text-xs sm:text-sm"
             ></i>
             <span class="hidden lg:inline">Select Countries</span>
             <span
               id="badge-custom-count"
-              class="hidden text-[10px] bg-moss-500 text-parchment-50 font-extrabold px-1.5 py-0.5 rounded-full"
+              class="hidden text-[10px] bg-brass-600 text-parchment-50 font-extrabold px-1.5 py-0.5 rounded-full"
             ></span>
           </button>
 
@@ -1730,14 +1819,14 @@
         <div class="flex flex-col gap-2">
           <button
             onclick="downloadChartPNG()"
-            class="px-4 py-2.5 rounded-xl bg-brass-600 hover:bg-brass-500 text-parchment-50 text-xs font-bold shadow-lg shadow-ink-900/20 transition-all flex items-center justify-center gap-2"
+            class="px-4 py-2.5 rounded-xl bg-[#d8584e] hover:bg-[#ad3f2a] text-parchment-50 text-xs font-bold shadow-lg shadow-ink-900/20 transition-all flex items-center justify-center gap-2"
           >
             <i class="fa-solid fa-image"></i>
             <span>Download PNG</span>
           </button>
           <button
             onclick="downloadChartPDF()"
-            class="px-4 py-2.5 rounded-xl bg-moss-600 hover:bg-moss-500 text-parchment-50 text-xs font-bold shadow-lg shadow-ink-900/20 transition-all flex items-center justify-center gap-2"
+            class="px-4 py-2.5 rounded-xl bg-[#80b9b9] hover:bg-[#699898] text-ink-900 text-xs font-bold shadow-lg shadow-ink-900/20 transition-all flex items-center justify-center gap-2"
           >
             <i class="fa-solid fa-file-pdf"></i>
             <span>Download PDF</span>
@@ -3840,7 +3929,7 @@
         projection = d3
           .geoNaturalEarth1()
           .scale(width / 5.8)
-          .translate([width / 2, height / 1.8]);
+          .translate([width / 2, height / 2]);
 
         pathGenerator = d3.geoPath().projection(projection);
 
@@ -4737,12 +4826,10 @@
       }
 
       function cityLabelScreen(k) {
-        const currentK = Math.max(0.1, k || 1);
-        const effK = Math.min(25, currentK);
-        // Capital names start at 16px on screen and grow with the zoom
-        // so they stay readable when zoomed in, capping at 28px.
-        const grow = effK > 1 ? Math.pow(effK, 0.25) : 1;
-        return Math.min(28, Math.max(16, 16 * grow));
+        // Capital names hold a constant 16px on screen at every zoom,
+        // exactly like country names: zooming in magnifies the land
+        // under a name, never the name itself.
+        return 16;
       }
 
       function scaleCityMarkers(k) {
@@ -7374,10 +7461,10 @@
       }
 
       // A name holds its size on the paper however far the chart is
-      // magnified: it follows the zoom only up to LABEL_SCREEN_CAP screen
-      // pixels, then stops — zooming into the Vatican must never leave a
-      // banner where a name used to be. The place is measured at rest and
-      // scaled here, so every box reserved for a neighbour stays true.
+      // magnified: a constant 16px on screen at every zoom, so zooming
+      // into the Vatican never leaves a banner where a name used to be.
+      // The place is measured at rest and scaled here, so every box
+      // reserved for a neighbour stays true.
       function currentZoomK() {
         return svg && typeof d3 !== "undefined"
           ? d3.zoomTransform(svg.node()).k
@@ -7408,8 +7495,8 @@
 
         // City labels: recompute position directly from dot coordinates
         // so the label always sits centred above the marker at every zoom.
-        // Screen size starts at 16px and grows with the zoom (capped at
-        // 28px), so a zoomed-in capital stays readable.
+        // The name itself holds a constant 16px on screen; only the
+        // offset follows the (growing) marker below it.
         if (node._dotPt) {
           const pt = node._dotPt;
           const isNat = !!node._isNat;
@@ -7433,19 +7520,20 @@
           return;
         }
 
-        // Country names hold their size on the paper only up to
-        // LABEL_SCREEN_CAP, but never read smaller than
-        // LABEL_SCREEN_MIN on screen.
-        const fsScreen = Math.max(
-          LABEL_SCREEN_MIN,
-          Math.min(base * kk, LABEL_SCREEN_CAP),
-        );
+        // Country names hold a constant size on the paper at every zoom:
+        // 16px on screen, however far the chart is magnified. A small
+        // place (Maldives, São Tomé and Príncipe) must never outgrow a
+        // big neighbour (Sri Lanka) beside it, so names never follow
+        // the zoom up — the land grows under them instead.
+        const fsScreen = LABEL_SCREEN_MIN;
         const fs = fsScreen / kk;
         const baseStroke =
           +node.dataset.baseStroke || Math.max(0.4, base * 0.3);
+        // The halo holds its size on the paper too: the size it reads
+        // at rest, at every zoom.
         const strokeScreen = Math.max(
           LABEL_SCREEN_MIN * 0.3,
-          Math.min(baseStroke * kk, LABEL_SCREEN_CAP * 0.3),
+          Math.min(baseStroke, LABEL_SCREEN_CAP * 0.3),
         );
         const stroke = strokeScreen / kk;
         const count = node.querySelectorAll("tspan").length;
@@ -7576,8 +7664,8 @@
             .attr("class", "map-label")
             .attr("x", ax)
             .attr("y", ay)
-            // The size it was set at, kept for the zoom: names follow
-            // the chart only so far, then hold their size on the paper
+            // The size it was set at, kept for collision boxes: on screen
+            // every name holds a constant 16px at every zoom
             .attr("data-base-size", v.fs)
             .attr("data-base-stroke", stroke)
             .style("font-size", v.fs + "px")
@@ -8637,6 +8725,14 @@
             m === "study"
               ? "Lay every name in your selection on the chart"
               : "Begin the test on the areas you have picked";
+        }
+
+        // The area picker tints its logo and highlights to the mode,
+        // the way Test tints them moss-green
+        const picker = document.getElementById("modal-custom-selection");
+        if (picker) {
+          picker.classList.toggle("is-study", m === "study");
+          picker.classList.toggle("is-test", m === "test");
         }
       }
 
@@ -9899,6 +9995,9 @@
           m.classList.remove(...(printMono ? off : on));
           m.classList.add(...(printMono ? on : off));
         }
+        // Silvertone fun: the modal itself goes black & white too
+        const pm = document.getElementById("modal-print");
+        if (pm) pm.classList.toggle("is-mono", printMono);
       }
 
       function openPrintModal() {
@@ -10070,8 +10169,8 @@
               repaint(".city-inner", "fill:#000000;");
             }
 
-            // Fully zoomed out, the site holds the chart high to leave the
-            // question room above it — print centres it top to bottom too,
+            // Fully zoomed out, the site holds the chart centred between
+            // the bars — print keeps it centred top to bottom too,
             // by the projection's own centre rather than a magic number
             try {
               const tk = d3.zoomTransform(src).k || 1;
@@ -10332,7 +10431,7 @@
         globeWidthCache = null;
 
         svg.attr("width", width).attr("height", height);
-        projection.scale(width / 5.8).translate([width / 2, height / 1.8]);
+        projection.scale(width / 5.8).translate([width / 2, height / 2]);
         gMap
           .selectAll("path.map-country:not(.map-island-ring)")
           .attr("d", pathGenerator);
