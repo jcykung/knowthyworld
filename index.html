@@ -662,7 +662,7 @@
         --tw-ring-color: #d8584e !important;
       }
 
-      /* Print chart: Black & white turns the modal into an old-timey
+      /* Print map: Black & white turns the modal into an old-timey
            silvertone — full grayscale plus a vignette, like a silent film. */
       #modal-print .glass-panel {
         position: relative;
@@ -1297,7 +1297,7 @@
             id="btn-print"
             onclick="openPrintModal()"
             class="hidden md:flex px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-parchment-400/80 hover:bg-parchment-500 text-ink-700 hover:text-ink-900 border border-parchment-700/60 text-xs font-semibold items-center gap-1.5 transition-all"
-            title="Print or save the current chart as PNG or PDF"
+            title="Print or save the current map as PNG or PDF"
           >
             <i class="fa-solid fa-print text-brass-600 text-xs sm:text-sm"></i>
             <span class="hidden lg:inline">Print</span>
@@ -1935,7 +1935,7 @@
       </div>
     </div>
 
-    <!-- MODAL: PRINT CHART (desktop only — the button is hidden on mobile) -->
+    <!-- MODAL: PRINT MAP (desktop only — the button is hidden on mobile) -->
     <div
       id="modal-print"
       class="fixed inset-0 z-50 bg-ink-900/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 hidden animate-fade-in overflow-y-auto"
@@ -1950,10 +1950,10 @@
             </div>
             <div>
               <h3 class="text-lg font-bold text-ink-900 font-display">
-                Print chart
+                Print map
               </h3>
               <p class="text-[11px] sm:text-xs text-ink-500">
-                The chart as shown — no game UI, no answer colours
+                The map as shown — no game UI, no answer colours
               </p>
             </div>
           </div>
@@ -1967,7 +1967,7 @@
         </div>
 
         <p class="text-xs text-ink-600 leading-relaxed">
-          Exports exactly what the chart shows right now — land, sea, on-map
+          Exports exactly what the map shows right now — land, sea, on-map
           names and the compass rose — with none of the game interface and none
           of the highlighting from answered or hovered places.
         </p>
@@ -2138,7 +2138,7 @@
                 id="btn-picker-print"
                 onclick="printFromPicker()"
                 class="hidden md:flex px-4 py-2 rounded-xl text-xs font-bold items-center gap-2 bg-parchment-400/80 hover:bg-parchment-500 text-ink-700 hover:text-ink-900 border border-parchment-700/60 transition-all"
-                title="Start this round and print the chart"
+                title="Start this round and print the map"
               >
                 <i class="fa-solid fa-print text-brass-600"></i
                 ><span>Print</span>
@@ -3475,10 +3475,8 @@
       ];
 
       // MAP ZOOM CONTROLS
-      // The +/- buttons magnify about the cursor's spot on the chart
-      // rather than the middle of the view, so hovering a place and
-      // pressing + dives toward that place. Falls back to the middle
-      // when the cursor has never been over the chart.
+      // The +/- buttons magnify about the dead centre of the view,
+      // so repeated presses dive toward whatever sits in the middle.
       function cursorZoomPoint() {
         if (!svg || !lastCursorPt) return undefined;
         const W = +svg.attr("width"),
@@ -3488,29 +3486,32 @@
         return x >= 0 && y >= 0 && x <= W && y <= H ? [x, y] : undefined;
       }
 
-      function zoomAboutCursor(factor) {
+      function zoomAboutCentre(factor) {
         if (!svg || !zoomBehavior) return;
         cancelPanInertia();
         svg.interrupt("rubber"); // a zoom takes over from a settling bounce
         rubberSnapping = false;
-        const p = cursorZoomPoint();
+        const W = +svg.attr("width"),
+          H = +svg.attr("height");
+        const p = [W / 2, H / 2];
         // A zoom-out can strand the globe outside the view, so settle
         // back home when the magnification transition comes to rest. An
         // interrupting gesture cancels this; its own release snaps instead.
-        const t = p
-          ? svg.transition().duration(300).call(zoomBehavior.scaleBy, factor, p)
-          : svg.transition().duration(300).call(zoomBehavior.scaleBy, factor);
+        const t = svg
+          .transition()
+          .duration(300)
+          .call(zoomBehavior.scaleBy, factor, p);
         t.on("end.snap", () => {
           snapRubberBand();
         });
       }
 
       function zoomInMap() {
-        zoomAboutCursor(1.4);
+        zoomAboutCentre(1.4);
       }
 
       function zoomOutMap() {
-        zoomAboutCursor(0.7);
+        zoomAboutCentre(0.7);
       }
 
       function resetMapZoom() {
@@ -4409,7 +4410,7 @@
           );
         }
 
-        // Remember where the mouse is, so the +/- buttons and the zoom
+        // Remember where the mouse is, so the zoom
         // bar can magnify about the hovered spot instead of the middle.
         svg.on("pointermove.cursor", (e) => {
           if (e.pointerType === "touch") return;
@@ -10693,7 +10694,7 @@
       function chartExportFilename(ext) {
         const d = new Date();
         const pad = (n) => String(n).padStart(2, "0");
-        return `Know-Thy-World-chart-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${printMono ? "-bw" : ""}.${ext}`;
+        return `Know-Thy-World-map-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${printMono ? "-bw" : ""}.${ext}`;
       }
 
       // The export rasterizes in an isolated image where the page's
@@ -10746,7 +10747,7 @@
         }
       }
 
-      // Renders the current chart view (at its current zoom and pan) to a
+      // Renders the current map view (at its current zoom and pan) to a
       // canvas: a clean clone, stripped of answer colours, with its paint
       // inlined and a paper backing. Black & white drops every background
       // wash and label halo and inks the borders black, for photocopying.
@@ -10980,19 +10981,19 @@
           await whenLabelsSettled(5000);
           setPrintStatus("Loading print fonts…");
           const fontCSS = await printFontCSS();
-          setPrintStatus("Rendering chart…");
+          setPrintStatus("Rendering map…");
           const canvas = await renderChartExportCanvas(printMono, fontCSS);
           if (!canvas) {
-            showToast("Couldn't render the chart");
+            showToast("Couldn't render the map");
             return;
           }
           const blob = await canvasToBlob(canvas);
           if (!blob) {
-            showToast("Couldn't render the chart");
+            showToast("Couldn't render the map");
             return;
           }
           downloadBlob(blob, chartExportFilename("png"));
-          showToast("Chart saved");
+          showToast("Map saved");
         } finally {
           setPrintStatus("");
           printBusy = false;
@@ -11023,10 +11024,10 @@
           await whenLabelsSettled(5000);
           setPrintStatus("Loading print fonts…");
           const fontCSS = await printFontCSS();
-          setPrintStatus("Rendering chart…");
+          setPrintStatus("Rendering map…");
           const canvas = await renderChartExportCanvas(printMono, fontCSS);
           if (!canvas) {
-            showToast("Couldn't render the chart");
+            showToast("Couldn't render the map");
             return;
           }
           setPrintStatus("Building PDF…");
@@ -11053,7 +11054,7 @@
           });
           pdf.addImage(imgData, "PNG", 0, 0, W, H);
           pdf.save(chartExportFilename("pdf"));
-          showToast("Chart saved");
+          showToast("Map saved");
         } finally {
           setPrintStatus("");
           printBusy = false;
