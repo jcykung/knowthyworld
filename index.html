@@ -1062,16 +1062,54 @@
         -webkit-tap-highlight-color: transparent;
       }
 
+      /* Mobile skip is a plain tap; desktop keeps the deliberate slider */
+      #btn-skip-mobile {
+        display: none;
+      }
+
       @media (max-width: 768px) {
-        header {
-          height: 52px;
-          padding-left: 10px;
-          padding-right: 10px;
+        #site-header {
+          height: auto;
+          min-height: 52px;
+          padding: 6px 8px;
+          justify-content: center;
         }
+        /* Mobile top menu is buttons only: no title, icon or version */
+        #site-branding,
+        #btn-version {
+          display: none !important;
+        }
+        /* No print and no Quiz Settings in mobile mode */
+        #btn-print,
+        #btn-settings {
+          display: none !important;
+        }
+        .header-divider {
+          display: none !important;
+        }
+        /* Buttons span the full width in portrait or landscape */
         .header-actions {
+          flex: 1 1 auto;
+          width: 100%;
+          max-width: 100%;
+          justify-content: space-between;
+          align-items: center;
+          flex-wrap: nowrap;
           overflow-x: visible;
-          max-width: none;
-          gap: 4px;
+          gap: 6px;
+        }
+        .header-actions > div {
+          gap: 6px;
+        }
+        .header-actions button {
+          padding-left: 8px;
+          padding-right: 8px;
+          font-size: 11px;
+          white-space: nowrap;
+        }
+        #btn-mode-study,
+        #btn-mode-test {
+          flex: 1 1 auto;
         }
         #minimap-wrap {
           display: none !important;
@@ -1082,11 +1120,76 @@
         #stats-hud {
           display: none !important;
         }
-        /* Maximize map area on mobile */
-        footer {
-          height: 38px;
-          padding-left: 10px;
-          padding-right: 10px;
+        /* Hide the status bar; the clock floats over the map instead */
+        #site-footer {
+          position: fixed;
+          right: 8px;
+          bottom: 8px;
+          left: auto;
+          width: auto;
+          height: auto !important;
+          padding: 0 !important;
+          background: transparent !important;
+          background-image: none !important;
+          border: none !important;
+          box-shadow: none !important;
+          backdrop-filter: none !important;
+          -webkit-backdrop-filter: none !important;
+          z-index: 15;
+          pointer-events: none;
+        }
+        #footer-status {
+          display: none !important;
+        }
+        #footer-timer {
+          pointer-events: auto;
+          background: rgba(251, 246, 233, 0.55) !important;
+          border: 1px solid rgba(122, 95, 58, 0.25) !important;
+          backdrop-filter: blur(4px);
+          -webkit-backdrop-filter: blur(4px);
+          box-shadow: 0 2px 8px rgba(74, 56, 30, 0.15);
+        }
+        /* Find-location box: name + skip only, translucent to show the map */
+        .target-hud-wrap {
+          top: 8px !important;
+          width: calc(100% - 16px);
+        }
+        .target-hud-panel {
+          flex-direction: row !important;
+          align-items: center !important;
+          justify-content: space-between !important;
+          padding: 8px 10px !important;
+          gap: 8px !important;
+          background: rgba(247, 237, 214, 0.65) !important;
+          backdrop-filter: blur(6px);
+          -webkit-backdrop-filter: blur(6px);
+        }
+        .target-hud-panel > div:first-child {
+          flex: 1 1 auto;
+          min-width: 0;
+        }
+        #target-label-row,
+        #target-subtext,
+        #btn-hint,
+        #skip-track {
+          display: none !important;
+        }
+        #target-country-name {
+          font-size: 17px !important;
+          line-height: 1.2 !important;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        #btn-skip-mobile {
+          display: inline-flex !important;
+          height: 36px;
+          min-height: 36px !important;
+        }
+        /* Keep the zoom controls clear of the floating clock */
+        .zoom-controls {
+          bottom: 56px !important;
+          right: 8px !important;
         }
       }
 
@@ -1098,47 +1201,113 @@
 
       /* Landscape orientation mobile optimization */
       @media (max-height: 520px) and (orientation: landscape) {
-        header {
-          height: 42px !important;
-          padding-left: 8px !important;
-          padding-right: 8px !important;
+        #site-header {
+          height: auto !important;
+          min-height: 42px !important;
+          padding: 4px 8px !important;
+          justify-content: center !important;
+        }
+        #site-branding,
+        #btn-version,
+        #btn-print,
+        #btn-settings {
+          display: none !important;
+        }
+        .header-divider {
+          display: none !important;
+        }
+        .header-actions {
+          flex: 1 1 auto;
+          width: 100%;
+          max-width: 100%;
+          justify-content: space-between;
+          align-items: center;
+          flex-wrap: nowrap;
+          gap: 6px;
+        }
+        .header-actions button {
+          padding-left: 8px;
+          padding-right: 8px;
+          font-size: 11px;
+          white-space: nowrap;
+        }
+        #btn-mode-study,
+        #btn-mode-test {
+          flex: 1 1 auto;
         }
         .target-hud-wrap {
           top: 4px !important;
+          width: calc(100% - 16px);
         }
         .target-hud-panel {
-          padding: 6px 12px !important;
+          flex-direction: row !important;
+          align-items: center !important;
+          justify-content: space-between !important;
+          padding: 6px 10px !important;
           gap: 8px !important;
+          background: rgba(247, 237, 214, 0.65) !important;
+          backdrop-filter: blur(6px);
+          -webkit-backdrop-filter: blur(6px);
+        }
+        .target-hud-panel > div:first-child {
+          flex: 1 1 auto;
+          min-width: 0;
+        }
+        #target-label-row,
+        #target-subtext,
+        #btn-hint,
+        #skip-track {
+          display: none !important;
         }
         #target-country-name {
           font-size: 15px !important;
           line-height: 1.15 !important;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
-        #target-subtext {
-          display: none !important;
-        }
-        #skip-track {
-          height: 30px !important;
-          width: 110px !important;
-        }
-        #btn-hint {
-          height: 30px !important;
-        }
-        #skip-knob {
-          width: 24px !important;
-          height: 24px !important;
+        #btn-skip-mobile {
+          display: inline-flex !important;
+          height: 30px;
+          min-height: 30px !important;
         }
         .zoom-controls {
-          bottom: 8px !important;
+          bottom: 52px !important;
           right: 8px !important;
         }
         .zoom-controls button {
           width: 34px !important;
           height: 34px !important;
+          min-height: 34px !important;
           font-size: 13px !important;
         }
-        footer {
-          height: 32px !important;
+        #site-footer {
+          position: fixed;
+          right: 8px;
+          bottom: 6px;
+          left: auto;
+          width: auto;
+          height: auto !important;
+          padding: 0 !important;
+          background: transparent !important;
+          background-image: none !important;
+          border: none !important;
+          box-shadow: none !important;
+          backdrop-filter: none !important;
+          -webkit-backdrop-filter: none !important;
+          z-index: 15;
+          pointer-events: none;
+        }
+        #footer-status {
+          display: none !important;
+        }
+        #footer-timer {
+          pointer-events: auto;
+          background: rgba(251, 246, 233, 0.55) !important;
+          border: 1px solid rgba(122, 95, 58, 0.25) !important;
+          backdrop-filter: blur(4px);
+          -webkit-backdrop-filter: blur(4px);
+          box-shadow: 0 2px 8px rgba(74, 56, 30, 0.15);
         }
       }
 
@@ -1191,7 +1360,7 @@
       id="site-header"
       class="h-14 sm:h-16 px-2.5 sm:px-4 md:px-6 glass-panel z-20 flex items-center justify-between shadow-xl shrink-0"
     >
-      <div class="flex items-center space-x-2 sm:space-x-3 shrink-0">
+      <div id="site-branding" class="flex items-center space-x-2 sm:space-x-3 shrink-0">
         <div
           class="p-1.5 sm:p-2 bg-gradient-to-tr from-brass-600 to-ink-700 rounded-lg sm:rounded-xl text-parchment-50 shadow-md sm:shadow-lg shrink-0"
         >
@@ -1313,6 +1482,7 @@
           aria-label="Quiz setup"
         >
           <button
+            id="btn-select-countries"
             onclick="openCustomSelectionModal()"
             class="relative px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-[#e7d4a8] hover:bg-[#f6e3ae] text-ink-700 hover:text-ink-900 border border-[#7a5f3a]/60 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm"
             title="Choose specific countries to practice"
@@ -1328,6 +1498,7 @@
           </button>
 
           <button
+            id="btn-settings"
             onclick="openSettingsModal()"
             class="w-8 h-8 sm:w-auto sm:h-auto sm:px-3 sm:py-2 rounded-lg sm:rounded-xl bg-parchment-400/80 hover:bg-parchment-500 text-ink-700 hover:text-ink-900 text-xs font-semibold flex items-center justify-center gap-1.5 border border-parchment-700/60 transition-all"
             title="Quiz settings, chart display and scope"
@@ -1356,7 +1527,7 @@
             class="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-start"
           >
             <div class="flex flex-col">
-              <div class="flex items-center gap-2 mb-0.5">
+              <div id="target-label-row" class="flex items-center gap-2 mb-0.5">
                 <span
                   class="text-[10px] uppercase tracking-widest font-bold text-brass-600 flex items-center gap-1.5"
                 >
@@ -1424,6 +1595,16 @@
                 <i class="fa-solid fa-forward text-sm"></i>
               </div>
             </div>
+            <button
+              id="btn-skip-mobile"
+              onclick="skipTarget()"
+              class="shrink-0 px-3 rounded-lg bg-brass-600 hover:bg-brass-500 text-parchment-50 text-xs font-bold flex items-center gap-1.5 transition-all border border-brass-700/60 shadow-md"
+              title="Skip this location and reveal the answer"
+              aria-label="Skip this question"
+            >
+              <i class="fa-solid fa-forward text-xs"></i>
+              <span>Skip</span>
+            </button>
           </div>
         </div>
 
@@ -1698,10 +1879,11 @@
 
     <!-- BOTTOM STATUS BAR -->
     <footer
+      id="site-footer"
       class="h-12 px-4 md:px-6 glass-panel z-20 flex items-center justify-between text-xs text-ink-500 shrink-0 border-t border-parchment-600"
     >
       <!-- Filter & Canadian Provinces Status -->
-      <div class="flex items-center space-x-4">
+      <div id="footer-status" class="flex items-center space-x-4">
         <span class="hidden sm:flex items-center gap-1.5">
           <i class="fa-solid fa-map-location-dot text-moss-600"></i>
           <span id="label-total-targets">206 Total Entities</span>
@@ -1710,6 +1892,7 @@
 
       <!-- Timer / Stopwatch: a clock belongs to a test, not to reading -->
       <div
+        id="footer-timer"
         class="game-only flex items-center space-x-2 font-mono text-ink-700 bg-parchment-200/80 px-3 py-1 rounded-lg border border-parchment-600"
       >
         <i class="fa-regular fa-clock text-brass-600"></i>
