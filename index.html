@@ -9314,11 +9314,12 @@
 
       // What the picker holds, committed to the round: the mode in force
       // and whether the chart starts blank. Null when a test has nothing
-      // to ask about.
-      function commitPickerSelection() {
+      // to ask about — unless printing, which is always allowed even
+      // with nothing ticked.
+      function commitPickerSelection(allowEmpty) {
         const m =
           pickerMode === "study" || pickerMode === "test" ? pickerMode : "test";
-        if (tempSelectedIds.size === 0 && m !== "study") {
+        if (tempSelectedIds.size === 0 && m !== "study" && !allowEmpty) {
           showToast("Tick at least one area first");
           return null;
         }
@@ -9344,9 +9345,10 @@
 
       // Print the picked areas: starts the round exactly as Start would,
       // then opens the print dialog onto the fresh chart — a labelled
-      // sheet in study, a clean quiz map in test
+      // sheet in study, a clean quiz map in test. Unlike Start, printing
+      // needs no areas ticked, so an empty set never blocks it.
       function printFromPicker() {
-        const c = commitPickerSelection();
+        const c = commitPickerSelection(true);
         if (!c) return;
         closeCustomSelectionModal();
         restartQuiz({ mode: c.mode, blank: c.blank });
