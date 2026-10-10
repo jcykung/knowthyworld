@@ -1212,7 +1212,7 @@
               class="header-version text-[9px] sm:text-[11px] py-0.5 px-1.5"
               title="What's new in this version"
             >
-              v1.9.0
+              v2.0.0
             </button>
           </h1>
           <a
@@ -2050,7 +2050,7 @@
                 class="text-[10px] uppercase tracking-[0.18em] text-brass-600 font-bold"
               >
                 Know Thy World &nbsp;·&nbsp;
-                <span id="changelog-version">v1.9.0</span>
+                <span id="changelog-version">v2.0.0</span>
               </p>
             </div>
           </div>
@@ -3318,6 +3318,37 @@
         // Pieces of a completed whole country read as done too
         const parent = parentCountryOf(fid);
         return !!parent && state.completedTargetIds.has(parent);
+      }
+
+      // Study mode is for learning: clicking a region looks it up on
+      // Google Maps in a new tab, so the place can be explored further.
+      // Countries search by name alone; subdivisions add their country
+      // so "Georgia" finds the U.S. state and not the Caucasus nation.
+      function studyMapsQueryForId(clickedId, featureDatum) {
+        if (!clickedId || clickedId === "undefined") return "";
+        if (ISO_COUNTRY_NAMES[clickedId])
+          return ISO_COUNTRY_NAMES[clickedId].name;
+        if (CANADA_CAPITALS[clickedId]) {
+          const m = CANADA_CAPITALS[clickedId];
+          return m.isNational
+            ? m.name + ", Canada"
+            : m.name + ", " + m.province + ", Canada";
+        }
+        if (CANADA_PROVINCES[clickedId])
+          return CANADA_PROVINCES[clickedId].name + ", Canada";
+        if (US_STATES[clickedId]) return US_STATES[clickedId].name + ", USA";
+        const label = featureDatum
+          ? featureLabelName(featureDatum)
+          : "";
+        return label || "";
+      }
+
+      function openStudyAreaInGoogleMaps(query) {
+        if (!query) return;
+        const url =
+          "https://www.google.com/maps/search/?api=1&query=" +
+          encodeURIComponent(query);
+        window.open(url, "_blank", "noopener");
       }
 
       // SYNTHESIZED SOUND EFFECTS (WEB AUDIO API)
@@ -5073,14 +5104,19 @@
         if (event) {
           event.stopPropagation();
         }
-        if (!state.currentTarget) return;
         if (pickerOpen()) return;
         if (state.studyMode) {
-          showToast(
-            `Study mode — ${d.name} (${d.isNational ? "National Capital of Canada" : "Capital of " + d.province})`,
-          );
+          const query = studyMapsQueryForId(d.id, null) ||
+            (d.isNational
+              ? d.name + ", Canada"
+              : d.name + ", " + d.province + ", Canada");
+          if (query) {
+            showToast("Opening " + query + " in Google Maps…");
+            openStudyAreaInGoogleMaps(query);
+          }
           return;
         }
+        if (!state.currentTarget) return;
 
         const clickedId = d.id;
         if (!isQuizRegion(clickedId)) return;
@@ -6563,14 +6599,7 @@
 
       function handleCountryClick(event, d) {
         if (isTouchDragging) return;
-        if (!state.currentTarget) return;
         if (pickerOpen()) return;
-        if (state.studyMode) {
-          showToast(
-            "Study mode — press Test in the header to be asked about these areas.",
-          );
-          return;
-        }
 
         const clickedId0 = featureFid(d);
         // Island gather rings carry no feature datum of their own — read
@@ -6584,6 +6613,21 @@
               : null;
           if (t) clickedId = t.getAttribute("data-id") || clickedId;
         }
+
+        // Study mode is reading, not playing: a click looks the place up
+        // on Google Maps in a new tab so it can be explored further.
+        // This runs before the quiz guards below so it also works on a
+        // blank study chart with no current target.
+        if (state.studyMode) {
+          const query = studyMapsQueryForId(clickedId, d);
+          if (query) {
+            showToast("Opening " + query + " in Google Maps…");
+            openStudyAreaInGoogleMaps(query);
+          }
+          return;
+        }
+
+        if (!state.currentTarget) return;
 
         // A region that is drawn but never asked for (Western Sahara and
         // friends) is scenery: touching one is not a wrong answer, and
@@ -8679,9 +8723,15 @@
       }
 
       // --- what's new -----------------------------------------------------
-      const APP_VERSION = "v1.9.0";
+      const APP_VERSION = "v2.0.0";
 
       const CHANGELOG = [
+        {
+          version: "v2.0.0",
+          notes: [
+            "Study mode clicks open Google Maps: clicking any area while studying looks it up on Google Maps in a new tab, so each place can be explored and learned about further.",
+          ],
+        },
         {
           version: "v1.9.0",
           notes: [
