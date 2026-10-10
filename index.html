@@ -6,7 +6,7 @@
     <title>Know Thy World</title>
     <meta
       name="description"
-      content="Know Thy World — an old-timey chart-table quiz of world countries, Canadian provinces and U.S. states."
+      content='Know Thy World — "Be patient, for the world is broad and wide."'
     />
     <meta name="theme-color" content="#f2e6ca" />
     <!-- Globe mark: SVG where supported, raster PNG everywhere else -->
@@ -1692,10 +1692,9 @@
         </div>
 
         <p class="text-xs text-ink-600 leading-relaxed">
-          Exports exactly what the chart shows right now — land, sea,
-          on-map names and the compass rose — with none of the game
-          interface and none of the highlighting from answered or hovered
-          places.
+          Exports exactly what the chart shows right now — land, sea, on-map
+          names and the compass rose — with none of the game interface and none
+          of the highlighting from answered or hovered places.
         </p>
 
         <div
@@ -1719,8 +1718,8 @@
           </button>
         </div>
         <p class="text-[11px] text-ink-500 leading-relaxed -mt-2">
-          Black &amp; white drops every background wash and label halo and
-          inks the borders black — made for the photocopier.
+          Black &amp; white drops every background wash and label halo and inks
+          the borders black — made for the photocopier.
         </p>
 
         <div
@@ -9772,8 +9771,7 @@
       // serif, exactly as before.
       let printFontCSSPromise = null;
       function printFontCSS() {
-        if (!printFontCSSPromise)
-          printFontCSSPromise = buildPrintFontCSS();
+        if (!printFontCSSPromise) printFontCSSPromise = buildPrintFontCSS();
         return printFontCSSPromise;
       }
       async function buildPrintFontCSS() {
@@ -9857,7 +9855,8 @@
             // carry it over so zoomed borders print as fine as they read
             try {
               const liveStroke = src.style.getPropertyValue("--map-stroke");
-              if (liveStroke) clone.style.setProperty("--map-stroke", liveStroke);
+              if (liveStroke)
+                clone.style.setProperty("--map-stroke", liveStroke);
             } catch (e) {}
             for (const n of all) {
               if (!(n instanceof Element)) continue;
@@ -9980,9 +9979,9 @@
                     )
                       n.setAttribute("stroke", "#000000");
                   });
-                  rc
-                    .querySelectorAll("g[font-size]")
-                    .forEach((n) => n.setAttribute("fill", "#000000"));
+                  rc.querySelectorAll("g[font-size]").forEach((n) =>
+                    n.setAttribute("fill", "#000000"),
+                  );
                   const pivot = rc.querySelector('circle[r="3"]');
                   if (pivot) pivot.setAttribute("fill", "#000000");
                 }
