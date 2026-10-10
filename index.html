@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
     <title>Know Thy World</title>
     <meta
       name="description"
@@ -1069,48 +1072,130 @@
 
       @media (max-width: 768px) {
         #site-header {
-          height: auto;
-          min-height: 52px;
-          padding: 6px 8px;
-          justify-content: center;
+          position: relative !important;
+          height: auto !important;
+          min-height: calc(50px + env(safe-area-inset-top, 0px)) !important;
+          padding-top: calc(8px + env(safe-area-inset-top, 0px)) !important;
+          padding-bottom: 8px !important;
+          padding-left: calc(10px + env(safe-area-inset-left, 0px)) !important;
+          padding-right: calc(10px + env(safe-area-inset-right, 0px)) !important;
+          background: #f7edd6 !important;
+          backdrop-filter: none !important;
+          -webkit-backdrop-filter: none !important;
+          border-top: none !important;
+          border-bottom: 1px solid rgba(96, 72, 38, 0.4) !important;
+          box-shadow: 0 2px 10px rgba(74, 56, 30, 0.16) !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: space-between !important;
         }
         /* Mobile top menu is buttons only: no title, icon or version */
         #site-branding,
         #btn-version {
           display: none !important;
         }
-        /* No print and no Quiz Settings in mobile mode */
+        /* Hide all buttons not permitted in mobile mode */
+        #btn-sound,
+        #btn-toggle-labels,
         #btn-print,
-        #btn-settings {
-          display: none !important;
-        }
+        #btn-settings,
+        #header-chart-display,
         .header-divider {
           display: none !important;
         }
-        /* Buttons span the full width in portrait or landscape */
+
+        /* Combined find location box in header on mobile */
+        #mobile-target-box {
+          display: flex !important;
+          align-items: center !important;
+          flex: 1 1 0% !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          overflow: hidden !important;
+          gap: 6px !important;
+          margin-right: 6px !important;
+        }
+        #mobile-target-name-wrap {
+          flex: 1 1 0% !important;
+          min-width: 0 !important;
+          overflow: hidden !important;
+          display: flex !important;
+          align-items: center !important;
+        }
+        #mobile-target-name {
+          font-family: var(--font-display, inherit);
+          font-weight: 700 !important;
+          color: #2a2013 !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          display: block !important;
+          line-height: 1.2 !important;
+          font-size: 14px;
+        }
+        #btn-skip-mobile-header {
+          flex: 0 0 auto !important;
+          flex-shrink: 0 !important;
+          height: 28px !important;
+          min-height: 0 !important;
+          min-width: 0 !important;
+          padding: 0 9px !important;
+          font-size: 11px !important;
+          font-weight: 700 !important;
+          color: #fbf6e9 !important;
+          background: #9a6f30 !important;
+          border: 1px solid rgba(74, 56, 30, 0.6) !important;
+          border-radius: 6px !important;
+          box-shadow: 0 1px 3px rgba(74, 56, 30, 0.2) !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          white-space: nowrap !important;
+          transition: background 0.15s ease !important;
+        }
+        #btn-skip-mobile-header:active {
+          background: #845e25 !important;
+        }
+
+        /* Right-aligned header buttons: Study, Test, Select Countries */
         .header-actions {
-          flex: 1 1 auto;
-          width: 100%;
-          max-width: 100%;
-          justify-content: space-between;
-          align-items: center;
-          flex-wrap: nowrap;
-          overflow-x: visible;
-          gap: 6px;
+          flex: 0 0 auto !important;
+          flex-shrink: 0 !important;
+          width: auto !important;
+          max-width: none !important;
+          margin-left: auto !important;
+          justify-content: flex-end !important;
+          align-items: center !important;
+          flex-wrap: nowrap !important;
+          overflow-x: visible !important;
+          gap: 4px !important;
+          display: flex !important;
         }
         .header-actions > div {
-          gap: 6px;
+          display: flex !important;
+          align-items: center !important;
+          gap: 4px !important;
+          flex-shrink: 0 !important;
         }
         .header-actions button {
-          padding-left: 8px;
-          padding-right: 8px;
-          font-size: 11px;
-          white-space: nowrap;
+          flex: 0 0 auto !important;
+          flex-shrink: 0 !important;
+          height: 32px !important;
+          min-height: 0 !important;
+          padding: 0 7px !important;
+          font-size: 11px !important;
+          white-space: nowrap !important;
         }
         #btn-mode-study,
-        #btn-mode-test {
-          flex: 1 1 auto;
+        #btn-mode-test,
+        #btn-select-countries {
+          flex: 0 0 auto !important;
+          flex-shrink: 0 !important;
         }
+        #btn-select-countries .btn-select-label {
+          display: inline !important;
+        }
+
         #minimap-wrap {
           display: none !important;
         }
@@ -1120,76 +1205,53 @@
         #stats-hud {
           display: none !important;
         }
-        /* Hide the status bar; the clock floats over the map instead */
+
+        /* Timer appears at the centre on the bottom */
         #site-footer {
-          position: fixed;
-          right: 8px;
-          bottom: 8px;
-          left: auto;
-          width: auto;
+          position: fixed !important;
+          left: 50% !important;
+          bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+          transform: translateX(-50%) !important;
+          right: auto !important;
+          top: auto !important;
+          width: auto !important;
           height: auto !important;
           padding: 0 !important;
+          margin: 0 !important;
           background: transparent !important;
           background-image: none !important;
           border: none !important;
           box-shadow: none !important;
           backdrop-filter: none !important;
           -webkit-backdrop-filter: none !important;
-          z-index: 15;
-          pointer-events: none;
+          z-index: 25 !important;
+          pointer-events: none !important;
         }
         #footer-status {
           display: none !important;
         }
         #footer-timer {
-          pointer-events: auto;
-          background: rgba(251, 246, 233, 0.55) !important;
-          border: 1px solid rgba(122, 95, 58, 0.25) !important;
-          backdrop-filter: blur(4px);
-          -webkit-backdrop-filter: blur(4px);
-          box-shadow: 0 2px 8px rgba(74, 56, 30, 0.15);
+          pointer-events: auto !important;
+          background: rgba(251, 246, 233, 0.95) !important;
+          border: 1px solid rgba(122, 95, 58, 0.45) !important;
+          backdrop-filter: blur(6px) !important;
+          -webkit-backdrop-filter: blur(6px) !important;
+          box-shadow: 0 3px 12px rgba(74, 56, 30, 0.2) !important;
+          border-radius: 9999px !important;
+          padding: 4px 12px !important;
+          font-size: 13px !important;
+          font-weight: 700 !important;
         }
-        /* Find-location box: name + skip only, translucent to show the map */
+
+        /* The floating target box is removed on mobile because it's combined into menu bar */
         .target-hud-wrap {
-          top: 8px !important;
-          width: calc(100% - 16px);
-        }
-        .target-hud-panel {
-          flex-direction: row !important;
-          align-items: center !important;
-          justify-content: space-between !important;
-          padding: 8px 10px !important;
-          gap: 8px !important;
-          background: rgba(247, 237, 214, 0.65) !important;
-          backdrop-filter: blur(6px);
-          -webkit-backdrop-filter: blur(6px);
-        }
-        .target-hud-panel > div:first-child {
-          flex: 1 1 auto;
-          min-width: 0;
-        }
-        #target-label-row,
-        #target-subtext,
-        #btn-hint,
-        #skip-track {
           display: none !important;
         }
-        #target-country-name {
-          font-size: 17px !important;
-          line-height: 1.2 !important;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-        #btn-skip-mobile {
-          display: inline-flex !important;
-          height: 36px;
-          min-height: 36px !important;
-        }
-        /* Keep the zoom controls clear of the floating clock */
+
+        /* Keep zoom controls bottom right */
         .zoom-controls {
-          bottom: 56px !important;
-          right: 8px !important;
+          bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+          right: calc(10px + env(safe-area-inset-right, 0px)) !important;
         }
       }
 
@@ -1202,112 +1264,160 @@
       /* Landscape orientation mobile optimization */
       @media (max-height: 520px) and (orientation: landscape) {
         #site-header {
+          position: relative !important;
           height: auto !important;
-          min-height: 42px !important;
-          padding: 4px 8px !important;
-          justify-content: center !important;
+          min-height: calc(44px + env(safe-area-inset-top, 0px)) !important;
+          padding-top: calc(5px + env(safe-area-inset-top, 0px)) !important;
+          padding-bottom: 5px !important;
+          padding-left: calc(8px + env(safe-area-inset-left, 0px)) !important;
+          padding-right: calc(8px + env(safe-area-inset-right, 0px)) !important;
+          background: #f7edd6 !important;
+          backdrop-filter: none !important;
+          -webkit-backdrop-filter: none !important;
+          border-top: none !important;
+          border-bottom: 1px solid rgba(96, 72, 38, 0.4) !important;
+          box-shadow: 0 2px 8px rgba(74, 56, 30, 0.16) !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: space-between !important;
         }
         #site-branding,
         #btn-version,
+        #btn-sound,
+        #btn-toggle-labels,
         #btn-print,
-        #btn-settings {
-          display: none !important;
-        }
+        #btn-settings,
+        #header-chart-display,
         .header-divider {
           display: none !important;
         }
+        #mobile-target-box {
+          display: flex !important;
+          align-items: center !important;
+          flex: 1 1 0% !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          overflow: hidden !important;
+          gap: 6px !important;
+          margin-right: 6px !important;
+        }
+        #mobile-target-name-wrap {
+          flex: 1 1 0% !important;
+          min-width: 0 !important;
+          overflow: hidden !important;
+          display: flex !important;
+          align-items: center !important;
+        }
+        #mobile-target-name {
+          font-family: var(--font-display, inherit);
+          font-weight: 700 !important;
+          color: #2a2013 !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          display: block !important;
+          line-height: 1.2 !important;
+          font-size: 13px;
+        }
+        #btn-skip-mobile-header {
+          flex: 0 0 auto !important;
+          flex-shrink: 0 !important;
+          height: 26px !important;
+          min-height: 0 !important;
+          min-width: 0 !important;
+          padding: 0 8px !important;
+          font-size: 10.5px !important;
+          font-weight: 700 !important;
+          color: #fbf6e9 !important;
+          background: #9a6f30 !important;
+          border: 1px solid rgba(74, 56, 30, 0.6) !important;
+          border-radius: 6px !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          white-space: nowrap !important;
+        }
         .header-actions {
-          flex: 1 1 auto;
-          width: 100%;
-          max-width: 100%;
-          justify-content: space-between;
-          align-items: center;
-          flex-wrap: nowrap;
-          gap: 6px;
+          flex: 0 0 auto !important;
+          flex-shrink: 0 !important;
+          width: auto !important;
+          max-width: none !important;
+          margin-left: auto !important;
+          justify-content: flex-end !important;
+          align-items: center !important;
+          flex-wrap: nowrap !important;
+          gap: 4px !important;
+          display: flex !important;
+        }
+        .header-actions > div {
+          display: flex !important;
+          align-items: center !important;
+          gap: 4px !important;
+          flex-shrink: 0 !important;
         }
         .header-actions button {
-          padding-left: 8px;
-          padding-right: 8px;
-          font-size: 11px;
-          white-space: nowrap;
+          flex: 0 0 auto !important;
+          flex-shrink: 0 !important;
+          height: 28px !important;
+          min-height: 0 !important;
+          padding: 0 6px !important;
+          font-size: 10.5px !important;
+          white-space: nowrap !important;
         }
         #btn-mode-study,
-        #btn-mode-test {
-          flex: 1 1 auto;
+        #btn-mode-test,
+        #btn-select-countries {
+          flex: 0 0 auto !important;
+          flex-shrink: 0 !important;
+        }
+        #btn-select-countries .btn-select-label {
+          display: inline !important;
         }
         .target-hud-wrap {
-          top: 4px !important;
-          width: calc(100% - 16px);
-        }
-        .target-hud-panel {
-          flex-direction: row !important;
-          align-items: center !important;
-          justify-content: space-between !important;
-          padding: 6px 10px !important;
-          gap: 8px !important;
-          background: rgba(247, 237, 214, 0.65) !important;
-          backdrop-filter: blur(6px);
-          -webkit-backdrop-filter: blur(6px);
-        }
-        .target-hud-panel > div:first-child {
-          flex: 1 1 auto;
-          min-width: 0;
-        }
-        #target-label-row,
-        #target-subtext,
-        #btn-hint,
-        #skip-track {
           display: none !important;
         }
-        #target-country-name {
-          font-size: 15px !important;
-          line-height: 1.15 !important;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-        #btn-skip-mobile {
-          display: inline-flex !important;
-          height: 30px;
-          min-height: 30px !important;
-        }
         .zoom-controls {
-          bottom: 52px !important;
-          right: 8px !important;
+          bottom: calc(6px + env(safe-area-inset-bottom, 0px)) !important;
+          right: calc(8px + env(safe-area-inset-right, 0px)) !important;
         }
         .zoom-controls button {
-          width: 34px !important;
-          height: 34px !important;
-          min-height: 34px !important;
-          font-size: 13px !important;
+          width: 32px !important;
+          height: 32px !important;
+          min-height: 32px !important;
+          font-size: 12px !important;
         }
         #site-footer {
-          position: fixed;
-          right: 8px;
-          bottom: 6px;
-          left: auto;
-          width: auto;
+          position: fixed !important;
+          left: 50% !important;
+          bottom: calc(6px + env(safe-area-inset-bottom, 0px)) !important;
+          transform: translateX(-50%) !important;
+          right: auto !important;
+          top: auto !important;
+          width: auto !important;
           height: auto !important;
           padding: 0 !important;
+          margin: 0 !important;
           background: transparent !important;
-          background-image: none !important;
           border: none !important;
           box-shadow: none !important;
           backdrop-filter: none !important;
           -webkit-backdrop-filter: none !important;
-          z-index: 15;
-          pointer-events: none;
+          z-index: 25 !important;
+          pointer-events: none !important;
         }
         #footer-status {
           display: none !important;
         }
         #footer-timer {
-          pointer-events: auto;
-          background: rgba(251, 246, 233, 0.55) !important;
-          border: 1px solid rgba(122, 95, 58, 0.25) !important;
-          backdrop-filter: blur(4px);
-          -webkit-backdrop-filter: blur(4px);
-          box-shadow: 0 2px 8px rgba(74, 56, 30, 0.15);
+          pointer-events: auto !important;
+          background: rgba(251, 246, 233, 0.95) !important;
+          border: 1px solid rgba(122, 95, 58, 0.45) !important;
+          backdrop-filter: blur(6px) !important;
+          -webkit-backdrop-filter: blur(6px) !important;
+          box-shadow: 0 2px 8px rgba(74, 56, 30, 0.2) !important;
+          border-radius: 9999px !important;
+          padding: 3px 10px !important;
+          font-size: 12px !important;
         }
       }
 
@@ -1397,6 +1507,30 @@
         </div>
       </div>
 
+      <!-- Mobile Location Section (Combined find location box & skip button) -->
+      <div
+        id="mobile-target-box"
+        class="game-only flex md:hidden items-center min-w-0 flex-1 mr-2 gap-1.5 overflow-hidden"
+      >
+        <div id="mobile-target-name-wrap" class="min-w-0 flex-1 overflow-hidden">
+          <span
+            id="mobile-target-name"
+            class="font-display font-bold text-ink-900 tracking-wide block truncate text-sm leading-tight select-none"
+          >
+            Loading Map...
+          </span>
+        </div>
+        <button
+          id="btn-skip-mobile-header"
+          onclick="skipTarget()"
+          class="shrink-0 px-2 py-1 rounded-md bg-brass-600 hover:bg-brass-500 text-parchment-50 text-[11px] font-bold border border-brass-700/60 shadow-sm transition-all"
+          title="Skip this question"
+          aria-label="Skip this question"
+        >
+          Skip
+        </button>
+      </div>
+
       <!-- Right Header Action Controls — compact, touch-friendly, no horizontal scroll needed -->
       <div
         class="header-actions flex items-center gap-1 sm:gap-2 md:gap-3 shrink-0"
@@ -1433,6 +1567,7 @@
 
         <!-- Chart display: Sound, Labels -->
         <div
+          id="header-chart-display"
           class="flex items-center gap-1 sm:gap-2 shrink-0"
           role="group"
           aria-label="Chart display"
@@ -1490,7 +1625,7 @@
             <i
               class="fa-solid fa-list-check text-brass-600 text-xs sm:text-sm"
             ></i>
-            <span class="hidden lg:inline">Select Countries</span>
+            <span class="btn-select-label hidden lg:inline">Select Countries</span>
             <span
               id="badge-custom-count"
               class="hidden text-[10px] bg-brass-600 text-parchment-50 font-extrabold px-1.5 py-0.5 rounded-full"
@@ -4278,6 +4413,57 @@
         }
       }
 
+      function fitMobileTargetText() {
+        requestAnimationFrame(() => {
+          const el = document.getElementById("mobile-target-name");
+          if (!el) return;
+          const parent = el.parentElement;
+          if (!parent) return;
+          if (el.offsetParent === null) return;
+
+          const maxFontSize = 14;
+          const minFontSize = 8.5;
+
+          el.style.fontSize = `${maxFontSize}px`;
+          el.style.whiteSpace = "nowrap";
+
+          const availableWidth = parent.clientWidth;
+          if (availableWidth <= 0) return;
+
+          let naturalWidth = el.scrollWidth;
+          if (naturalWidth > availableWidth) {
+            let calculatedSize = (availableWidth / naturalWidth) * maxFontSize;
+            calculatedSize = Math.max(minFontSize, Math.min(maxFontSize, calculatedSize));
+            el.style.fontSize = `${calculatedSize.toFixed(1)}px`;
+
+            while (el.scrollWidth > availableWidth && calculatedSize > minFontSize) {
+              calculatedSize -= 0.5;
+              el.style.fontSize = `${calculatedSize.toFixed(1)}px`;
+            }
+          }
+        });
+      }
+
+      function updateTargetNameDisplay(name, isTarget) {
+        const el = document.getElementById("target-country-name");
+        if (el) el.innerText = name;
+        const mobEl = document.getElementById("mobile-target-name");
+        if (mobEl) {
+          const isAreaTarget =
+            isTarget !== undefined
+              ? Boolean(isTarget)
+              : Boolean(
+                  name &&
+                    name !== "Quiz Completed!" &&
+                    name !== "Choose your areas" &&
+                    name !== "Loading Map..."
+                );
+          mobEl.innerText =
+            isAreaTarget && !name.startsWith("Find ") ? `Find ${name}` : name;
+          fitMobileTargetText();
+        }
+      }
+
       function finishQuiz() {
         stopTimer();
         state.currentTarget = null;
@@ -4293,8 +4479,7 @@
 
         // Refresh the HUD now that the final target is gone
         updateStatsUI();
-        document.getElementById("target-country-name").innerText =
-          "Quiz Completed!";
+        updateTargetNameDisplay("Quiz Completed!");
         document.getElementById("target-subtext").innerText =
           "Congratulations on finishing all targets!";
 
@@ -6705,8 +6890,7 @@
           state.completedTargetIds.clear();
           state.guessedMap.clear();
           updateStatsUI();
-          document.getElementById("target-country-name").innerText =
-            "Choose your areas";
+          updateTargetNameDisplay("Choose your areas");
           document.getElementById("target-subtext").innerText =
             "Pick at least one place to be asked about.";
           showToast("Pick at least one area first");
@@ -6751,8 +6935,10 @@
         closeHintBanner();
 
         // Display target name
-        document.getElementById("target-country-name").innerText =
-          state.currentTarget.displayName || state.currentTarget.name;
+        updateTargetNameDisplay(
+          state.currentTarget.displayName || state.currentTarget.name,
+          true
+        );
         document.getElementById("target-subtext").innerText = state
           .currentTarget.isCanadaCapital
           ? state.currentTarget.isNational
@@ -8840,6 +9026,7 @@
         state.studyMode = false;
         document.body.classList.remove("study-mode");
         setModeIndicator("test");
+        fitMobileTargetText();
         if (silent || !gMap) return;
 
         // Names of anything not yet identified come off the chart again
@@ -11356,6 +11543,19 @@
         initSkipSlider();
         setModeIndicator("test"); // the mode the first round will open in
         loadGeographicData();
+
+        window.addEventListener("resize", fitMobileTargetText, { passive: true });
+        window.addEventListener("orientationchange", () => {
+          setTimeout(fitMobileTargetText, 100);
+        });
+        if (typeof ResizeObserver !== "undefined") {
+          const mobBox = document.getElementById("mobile-target-box");
+          if (mobBox) {
+            const ro = new ResizeObserver(() => fitMobileTargetText());
+            ro.observe(mobBox);
+          }
+        }
+        fitMobileTargetText();
       };
     </script>
   </body>
