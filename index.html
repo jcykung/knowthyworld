@@ -3123,6 +3123,7 @@
       let wheelTrail = []; // recent trackpad scroll deltas, for release speed
       let wheelSettleTimer = 0; // fires the glide once the fingers lift
       let wheelPanLatchedUntil = 0; // a trackpad stream keeps panning to its end
+      let wheelZoomLatchedUntil = 0; // a stream that began at rest keeps zooming
       let wheelProgrammatic = false; // a wheel-pan step is driving the transform
 
       // Reserved footprints of placed map labels, in base projection units.
@@ -4058,19 +4059,29 @@
               const looksTrackpad =
                 dx !== 0 || dy % 1 !== 0 || Math.abs(dy) < 50;
               if (!latched && !looksTrackpad) return; // mouse notch: d3 zooms
+              // A stream that began at rest stays a zoom for its whole life:
+              // without this, d3's zooming nudges k just over the lock and
+              // the same stream starts panning a chart that still reads as
+              // fully zoomed out. Pan streams (latched) always win.
+              if (!latched && now < wheelZoomLatchedUntil) return;
               const node = svg.node();
               const t = d3.zoomTransform(node);
               const k = t.k || 1;
-              if (panLocked(k)) return; // fully zoomed out: d3 zooms instead
+              if (panLocked(k)) {
+                // Fully zoomed out: d3 zooms instead, for the whole stream.
+                if (!latched) wheelZoomLatchedUntil = now + 200;
+                return;
+              }
               e.preventDefault();
               e.stopPropagation();
               cancelPanInertia();
               svg.interrupt(); // a scroll takes over from a settling snap
-              // The stride stops dead at the rubber wall so a scroll
-              // cannot sail straight through it
+              // The stride stretches a short rubber past the wall instead
+              // of stopping dead on it — lifting the fingers then bounces
+              // smoothly back to the wall itself
               const wantX = t.x + dx,
                 wantY = t.y + dy;
-              const [cx, cy] = clampRubberTransform(wantX, wantY, k);
+              const [cx, cy] = rubberResistTransform(wantX, wantY, k);
               wheelProgrammatic = true;
               panGliding = true;
               try {
