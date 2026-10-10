@@ -163,10 +163,19 @@
       /* --------------------------------------------------------------
            CHART TABLE — SURFACES, TYPE & ORNAMENT
            -------------------------------------------------------------- */
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        height: 100dvh;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        overscroll-behavior: none;
+      }
       body {
         font-family: "EB Garamond", Georgia, serif;
         user-select: none;
-        overflow: hidden;
         color: #3a2c19;
         background-color: #f2e6ca;
         /* Aged paper: warm mottling + fine grain */
@@ -888,7 +897,8 @@
       /* Study mode is reading, not playing: the question, the score, the
            clock and everything else that belongs to a test come off the chart.
            Anything carrying .game-only is a game element by definition. */
-      body.study-mode .game-only {
+      body.study-mode .game-only,
+      body.study-mode #mobile-target-box {
         display: none !important;
       }
 
@@ -1072,7 +1082,10 @@
 
       @media (max-width: 768px) {
         #site-header {
-          position: relative !important;
+          position: sticky !important;
+          top: 0 !important;
+          z-index: 40 !important;
+          flex-shrink: 0 !important;
           height: auto !important;
           min-height: calc(50px + env(safe-area-inset-top, 0px)) !important;
           padding-top: calc(8px + env(safe-area-inset-top, 0px)) !important;
@@ -1114,6 +1127,9 @@
           overflow: hidden !important;
           gap: 6px !important;
           margin-right: 6px !important;
+        }
+        body.study-mode #mobile-target-box {
+          display: none !important;
         }
         #mobile-target-name-wrap {
           flex: 1 1 0% !important;
@@ -1262,9 +1278,13 @@
       }
 
       /* Landscape orientation mobile optimization */
-      @media (max-height: 520px) and (orientation: landscape) {
+      @media (max-height: 600px) and (orientation: landscape),
+             (max-width: 950px) and (orientation: landscape) {
         #site-header {
-          position: relative !important;
+          position: sticky !important;
+          top: 0 !important;
+          z-index: 40 !important;
+          flex-shrink: 0 !important;
           height: auto !important;
           min-height: calc(44px + env(safe-area-inset-top, 0px)) !important;
           padding-top: calc(5px + env(safe-area-inset-top, 0px)) !important;
@@ -1300,6 +1320,9 @@
           overflow: hidden !important;
           gap: 6px !important;
           margin-right: 6px !important;
+        }
+        body.study-mode #mobile-target-box {
+          display: none !important;
         }
         #mobile-target-name-wrap {
           flex: 1 1 0% !important;
@@ -1373,7 +1396,9 @@
         #btn-select-countries .btn-select-label {
           display: inline !important;
         }
-        .target-hud-wrap {
+        .target-hud-wrap,
+        #minimap-wrap,
+        .compass-rose {
           display: none !important;
         }
         .zoom-controls {
@@ -1463,7 +1488,7 @@
     </style>
   </head>
   <body
-    class="h-screen w-screen flex flex-col justify-between relative overflow-hidden bg-parchment-100 text-ink-800"
+    class="h-full w-full min-h-0 flex flex-col relative overflow-hidden bg-parchment-100 text-ink-800"
   >
     <!-- TOP NAVIGATION BAR -->
     <header
@@ -1649,7 +1674,7 @@
 
     <!-- MAIN CONTENT CONTAINER -->
     <div
-      class="relative flex-1 w-full h-full overflow-hidden flex flex-col md:flex-row"
+      class="relative flex-1 min-h-0 w-full overflow-hidden flex flex-col md:flex-row"
     >
       <!-- TARGET QUESTION HUD OVERLAY (TOP CENTER) -->
       <div
@@ -4449,6 +4474,10 @@
         if (el) el.innerText = name;
         const mobEl = document.getElementById("mobile-target-name");
         if (mobEl) {
+          if (state.studyMode) {
+            mobEl.innerText = "";
+            return;
+          }
           const isAreaTarget =
             isTarget !== undefined
               ? Boolean(isTarget)
@@ -9016,6 +9045,8 @@
         // No card about it either: the header already says which mode is
         // in force, and the chart wants every pixel at the top
         setModeIndicator("study");
+        const mobEl = document.getElementById("mobile-target-name");
+        if (mobEl) mobEl.innerText = "";
         renderSelectionLabels();
         updateStatsUI(); // the footer counts the set, not a test of it
       }
@@ -9026,6 +9057,12 @@
         state.studyMode = false;
         document.body.classList.remove("study-mode");
         setModeIndicator("test");
+        if (state.currentTarget) {
+          updateTargetNameDisplay(
+            state.currentTarget.displayName || state.currentTarget.name,
+            true
+          );
+        }
         fitMobileTargetText();
         if (silent || !gMap) return;
 
@@ -11495,8 +11532,21 @@
       // instead of dozens. Each of those runs hundreds of ms on a full
       // selection; run per-event they wedge the main thread and the page
       // reads as frozen.
+      function resetViewportScroll() {
+        if (window.scrollY !== 0 || window.scrollX !== 0) {
+          window.scrollTo(0, 0);
+        }
+        if (document.documentElement && document.documentElement.scrollTop !== 0) {
+          document.documentElement.scrollTop = 0;
+        }
+        if (document.body && document.body.scrollTop !== 0) {
+          document.body.scrollTop = 0;
+        }
+      }
+
       let resizeSettleTimer = 0;
       window.addEventListener("resize", () => {
+        resetViewportScroll();
         if (!svg || !gMap || !projection) return;
         const container = document.getElementById("map-container");
         const width = container.clientWidth;
@@ -11544,9 +11594,17 @@
         setModeIndicator("test"); // the mode the first round will open in
         loadGeographicData();
 
-        window.addEventListener("resize", fitMobileTargetText, { passive: true });
+        window.addEventListener("resize", () => {
+          resetViewportScroll();
+          fitMobileTargetText();
+        }, { passive: true });
         window.addEventListener("orientationchange", () => {
+          resetViewportScroll();
+          setTimeout(resetViewportScroll, 50);
+          setTimeout(resetViewportScroll, 150);
+          setTimeout(resetViewportScroll, 300);
           setTimeout(fitMobileTargetText, 100);
+          setTimeout(fitMobileTargetText, 350);
         });
         if (typeof ResizeObserver !== "undefined") {
           const mobBox = document.getElementById("mobile-target-box");
